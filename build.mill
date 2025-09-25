@@ -1,6 +1,13 @@
 import mill.*, scalalib.*, scalafmt.*
 
-object `package` extends ScalaModule with ScalafmtModule {
+object `package` extends ScalaModule with ScalafmtModule:
 
   def scalaVersion = "3.7.3"
-}
+
+  //TODO Host kyo-parse on Github Package
+  val kyoVersion = "0.0.0+2684-39101bff-SNAPSHOT"
+
+  def mvnDeps = Seq(
+    mvn"io.getkyo::kyo-core:$kyoVersion",
+    mvn"io.github.iltotore::iron:3.2.0"
+  )
