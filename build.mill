@@ -1,0 +1,6 @@
+import mill.*, scalalib.*, scalafmt.*
+
+object `package` extends ScalaModule with ScalafmtModule {
+
+  def scalaVersion = "3.7.3"
+}
