@@ -1,31 +1,16 @@
 package org.algorab
 
-import kyo.Chunk
-import org.algorab.ast.untpd.Expr
-import org.algorab.ast.Identifier
-import org.algorab.ast.Type
+import kyo.*
+import org.algorab.parser.Lexer
+import scala.io.Source
 
-object Main:
+object Main extends KyoApp:
 
-  @main
-  def run: Unit =
-    
-    /* 
-    def ast(x: Int): Int =
-      if x < 0 then -x
-      else x
-    */
-
-    val expr = Expr.FunDef(
-      name = Identifier("ast"),
-
-      params = Chunk((Identifier("x"), Type.Ref(Identifier("Int")))), 
-      
-      retType = Type.Ref(Identifier("Int")),
-
-      body = Expr.If(
-        Expr.Less(Expr.VarCall(Identifier("x")), Expr.LInt(0)),
-        Expr.Minus(Expr.VarCall(Identifier("x"))),
-        Expr.VarCall(Identifier("x"))
-      )
-    )
+  run:
+    val code = """$ + $ 5""".stripMargin
+    for
+      _ <- Console.printLine("Run")
+      result <- Parse.runResult(code)(Lexer.parseTokens)
+      _ <- Console.printLine(result)
+    yield
+      ()

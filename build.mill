@@ -5,9 +5,17 @@ object `package` extends ScalaModule with ScalafmtModule:
   def scalaVersion = "3.7.3"
 
   //TODO Host kyo-parse on Github Package
-  val kyoVersion = "0.0.0+2684-39101bff-SNAPSHOT"
+  val kyoVersion = "1.0-RC1+30-987eeea4-SNAPSHOT"
 
   def mvnDeps = Seq(
     mvn"io.getkyo::kyo-core:$kyoVersion",
+    mvn"io.getkyo::kyo-parse:$kyoVersion",
     mvn"io.github.iltotore::iron:3.2.0"
+  )
+
+  def scalacOptions = Seq(
+    "-Wvalue-discard", 
+    "-Wnonunit-statement", 
+    "-Wconf:msg=(unused.*value|discarded.*value|pure.*statement):error",
+    "-language:strictEquality"
   )

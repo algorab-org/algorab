@@ -7,7 +7,7 @@ import org.algorab.ast.Type
 enum Expr:
   case LBool(value: Boolean)
   case LInt(value: Int)
-  case LFloat(value: Float)
+  case LFloat(value: Double)
   case LChar(value: Char)
   case LString(value: String)
 
