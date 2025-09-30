@@ -9,6 +9,7 @@ object `package` extends ScalaModule with ScalafmtModule:
 
   def mvnDeps = Seq(
     mvn"io.getkyo::kyo-core:$kyoVersion",
+    mvn"io.getkyo::kyo-direct:$kyoVersion",
     mvn"io.getkyo::kyo-parse:$kyoVersion",
     mvn"io.github.iltotore::iron:3.2.0"
   )
@@ -19,3 +20,9 @@ object `package` extends ScalaModule with ScalafmtModule:
     "-Wconf:msg=(unused.*value|discarded.*value|pure.*statement):error",
     "-language:strictEquality"
   )
+
+  object test extends ScalaTests with TestModule.Utest:
+
+    def utestVersion = "0.9.1"
+
+    def compileResources = resources

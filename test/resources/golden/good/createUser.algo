@@ -1,0 +1,4 @@
+def createUser(name: String, age: Int): User =
+  if isBlank(name) then throw(UserErrorBlankName)
+  else if age < 0 then throw(UserErrorNegativeAge)
+  else User(name, age)
