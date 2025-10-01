@@ -26,12 +26,34 @@ jobs:
             ~/.ivy2/cache
             !~/.ivy2/cache/**/ivydata-*.properties
             out
+            ~/.ivy2/local
+            ~/.sbt
           key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
           restore-keys: |
             ${{ runner.os }}-mill-
+      
+      # ------ Kyo Workaround ------
+
+      # I actually miss Python and Rust here allowing direct compilation of dependencies via source.
+      # - JordanViknar
+
+      - name: KYO - Setup SBT
+        uses: sbt/setup-sbt@v1
+      
+      - name: KYO - Grab source
+        run: git clone https://github.com/getkyo/kyo.git kyo-src
+      
+      - name: KYO - Install
+        run: |
+          cd kyo-src
+          sbt publishLocal
+          cd ..
+          rm -rf kyo-src
+
+      # ------ Resuming Algorab sequence ------
 
       - name: Setup Mill
         uses: zhutmost/setup-mill@main
 
-      - name: Run tests
+      - name: Install dependencies & run tests
         run: mill test
