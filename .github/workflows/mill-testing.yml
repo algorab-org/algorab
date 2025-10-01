@@ -1,0 +1,37 @@
+name: Tests (with Mill)
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      
+      # setup-java seemingly doesn't have mill support bundled unlike sbt/gradle/maven
+      # Might get rid of "out" here if issues occur.
+      - name: Cache Mill, Ivy & outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mill
+            ~/.ivy2/cache
+            !~/.ivy2/cache/**/ivydata-*.properties
+            out
+          key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
+          restore-keys: |
+            ${{ runner.os }}-mill-
+
+      - name: Setup Mill
+        uses: zhutmost/setup-mill@main
+
+      - name: Run tests
+        run: mill test
