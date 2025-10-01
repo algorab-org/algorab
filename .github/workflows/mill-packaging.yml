@@ -1,4 +1,4 @@
-name: Tests (with Mill)
+name: Packaging (with Mill)
 
 on: [push, pull_request]
 
@@ -56,4 +56,21 @@ jobs:
         uses: zhutmost/setup-mill@main
 
       - name: Install dependencies & run tests
-        run: mill test
+        run: mill assembly
+      
+      # ------ Uploading Artifacts ------
+
+      - name: Extract current branch name
+        id: branch-name
+        uses: tj-actions/branch-names@v9
+
+      # Avoids GitHub Actions from panicking about / characters in artifact names.
+      - name: Format branch name
+        id: format-branch-name
+        run: echo "formatted_branch=$(echo ${{ steps.branch-name.outputs.current_branch }} | tr -s '/' '-')" >> $GITHUB_OUTPUT
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: algorab-artifacts-${{ steps.format-branch-name.outputs.formatted_branch }}
+          path: 'out/assembly.dest/*.jar'
