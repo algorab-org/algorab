@@ -1,0 +1,13 @@
+--- Test arithmetic and comparisons ---
+val x: Int = 56
+val y: Int = -23
+println(x + y)
+println(x - y)
+println(x * y)
+println(45 / 2)
+println(78 % 3)
+
+val z: Float = -9.3
+val w: Float = 5.1
+println(z + w > z - w)
+println(z / w <= z * w)

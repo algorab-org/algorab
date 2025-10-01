@@ -1,0 +1,10 @@
+--- Fibonacci ---
+val lo: Int = 1
+val mut hi: Int = lo
+val mut mx: Int = 5000000
+
+println(lo)
+while hi < mx do
+  println(hi)
+  hi = lo + hi
+  lo = hi - lo

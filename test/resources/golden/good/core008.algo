@@ -1,0 +1,7 @@
+-- multiple variables of the same type declared
+-- and possibly initialized in the same statement
+val x: Int = -1234234
+val y: Int = 7
+
+println(x)
+println(y)

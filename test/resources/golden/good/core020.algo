@@ -1,0 +1,6 @@
+--- empty function ---
+def p(): Unit =
+  -- no-op
+
+p()
+println(1)

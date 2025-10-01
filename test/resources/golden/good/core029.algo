@@ -1,0 +1,10 @@
+--- bool operations with doubles ---
+val y: Float = readFloat()
+println(1.01325e5)
+println(y)
+if 1.01325e5 == y and 1.01325e5 <= y and 1.01325e5 >= y then
+  println(1)
+if 0.01325e5 > y and y < 0.01325e5 and y != 0.01325e5 then
+  -- no-op
+else
+  println(2)

@@ -1,0 +1,2 @@
+--- Test pushing -1 ---
+println(-1)

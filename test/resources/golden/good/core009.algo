@@ -1,0 +1,6 @@
+-- Calling functions which take zero parameters
+def foo(): Int =
+  10
+
+val x: Int = foo()
+println(x)

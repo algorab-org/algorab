@@ -1,0 +1,3 @@
+--- empty if statement ---
+if false then
+  -- no-op

@@ -1,0 +1,17 @@
+--- logical operations ---
+def no(): Boolean =
+  println("no")
+  false
+
+def yes(): Boolean =
+  println("yes")
+  true
+
+if 1 < 6 or no() then
+  println(1)
+if 2 + 2 != 4 and no() then
+  println(2)
+if 5 < 5 or yes() then
+  println(3)
+if 0.4 >= 0.3 and yes() then
+  println(4)

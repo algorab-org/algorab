@@ -1,0 +1,49 @@
+def fac(a: Int): Int =
+  mut val r = 1
+  mut val n = a
+  while n > 0 do
+    r = r * n
+    n = n - 1
+  r
+
+def rfac(n: Int): Int =
+  if n == 0 then 1
+  else n * rfac(n - 1)
+
+def mfac(n: Int): Int =
+  if n == 0 then 1
+  else n * nfac(n - 1)
+
+def nfac(n: Int): Int =
+  if n != 0 then mfac(n - 1) * n
+  else 1
+
+def dfac(n: Float): Float =
+  if n == 0.0 then 1.0
+  else n * dfac(n - 1.0)
+
+def ifac(n: Int): Int =
+  ifac2f(1, n)
+
+def ifac2f(l: Int, h: Int): Int =
+  if l == h then l
+  else if l > h then 1
+  else
+    val m = (l + h) / 2
+    ifac2f(l, m) * ifac2f(m + 1, h)
+
+println(fac(10))
+println(rfac(10))
+println(mfac(10))
+println(ifac(10))
+
+mut val r = 1
+mut val n = 10
+while n > 0 do
+  r = r * n
+  n = n - 1
+println(r)
+
+println(dfac(10.0))
+println("hello */")
+println("/* world")

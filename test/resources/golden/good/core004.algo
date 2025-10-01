@@ -1,0 +1,3 @@
+-- allow comparing booleans
+if true == true then
+  println(42)

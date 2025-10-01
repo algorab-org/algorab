@@ -1,0 +1,5 @@
+--- simple variable declarations ---
+val x: Int = 42
+val y: Float = 3.14
+println(x)
+println(y)

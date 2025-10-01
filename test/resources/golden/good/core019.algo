@@ -1,0 +1,19 @@
+--- variable shadowing and scope ---
+mut val i: Int = 78
+{
+  mut val i: Int = 1
+  println(i)
+}
+println(i)
+while i > 76 do
+  i = i - 1
+  println(i)
+  mut val i: Int = i + 7
+  println(i)
+println(i)
+if i > 4 then
+  mut val i: Int = 4
+  println(i)
+else
+  println("foo")
+println(i)

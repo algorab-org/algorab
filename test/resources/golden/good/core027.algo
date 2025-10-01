@@ -1,0 +1,4 @@
+--- simple while loop ---
+val mut b: Boolean = false
+while b do
+  -- no-op

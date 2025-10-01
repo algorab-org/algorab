@@ -1,0 +1,23 @@
+--- function with many parameters ---
+def many_params(
+  x1: Int, x2: Int, x3: Int, x4: Int,
+  d1: Float, d2: Float, d3: Float, d4: Float,
+  y1: Int, y2: Int, y3: Int, y4: Int,
+  z1: Int, z2: Int, z3: Int, z4: Int,
+  q1: Int, q2: Int, q3: Int, q4: Int
+): Unit =
+  println(x1)
+  println(y1)
+  println(z1)
+  println(q1)
+  println(d1)
+  if x1 != 2 then
+    many_params(
+      q4, x1, x2, x3,
+      d4 / 2.0, d1 * 2.0, d2 + 1.0, d3 - 0.0,
+      x4, y1, y2, y3,
+      y4, z1, z2, z3,
+      z4, q1, q2, q3
+    )
+
+many_params(1, 2, 3, 4, 100.0, 100.0, 100.0, 100.0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)

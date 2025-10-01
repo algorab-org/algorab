@@ -1,0 +1,8 @@
+--- recursive function ---
+def foo(n: Int): Int =
+  if n < 100 then
+    foo(foo(n + 11))
+  else
+    n
+
+println(foo(1))

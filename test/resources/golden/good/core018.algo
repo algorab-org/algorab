@@ -1,0 +1,8 @@
+--- test input ---
+val x: Int = readInt()
+val y: Float = readFloat()
+println(x - 5)
+if y > 42.0 or y < 43.0 then
+  println("yay!")
+else
+  println("nay!")
