@@ -3,7 +3,7 @@ name: Packaging (with Mill)
 on: [push, pull_request]
 
 jobs:
-  build:
+  package:
     runs-on: ubuntu-latest
 
     steps:
@@ -50,7 +50,7 @@ jobs:
 
       # ------ Resuming Algorab sequence ------
 
-      - name: Setup mill, install dependencies & run packaging
+      - name: Setup Mill, install dependencies & run packaging
         run: ./millw assembly
       
       # ------ Uploading Artifacts ------

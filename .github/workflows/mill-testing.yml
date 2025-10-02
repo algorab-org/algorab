@@ -3,7 +3,7 @@ name: Tests (with Mill)
 on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -50,5 +50,5 @@ jobs:
 
       # ------ Resuming Algorab sequence ------
 
-      - name: Setup mill, install dependencies & run tests
+      - name: Setup Mill, install dependencies & run tests
         run: ./millw test
