@@ -50,11 +50,8 @@ jobs:
 
       # ------ Resuming Algorab sequence ------
 
-      - name: Setup Mill
-        uses: zhutmost/setup-mill@main
-
-      - name: Install dependencies & run tests
-        run: mill assembly
+      - name: Setup mill, install dependencies & run packaging
+        run: ./millw assembly
       
       # ------ Uploading Artifacts ------
 
