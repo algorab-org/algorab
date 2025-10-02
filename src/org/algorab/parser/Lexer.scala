@@ -27,8 +27,8 @@ object Lexer:
 
   val parseTerm: Token < Parse[Char] = Parse.firstOf(
     Parse.boolean.map(Token.LBool.apply),
-    Parse.int.map(Token.LInt.apply),
     Parse.decimal.map(Token.LFloat.apply),
+    Parse.int.map(Token.LInt.apply),
     parseString,
     Parse.identifier.map(str => Token.Ident(Identifier.assume(str.toString)))
   )
@@ -102,7 +102,7 @@ object Lexer:
       Parse.skipUntil(Parse.literal("---"))
     ).unit,
     Parse.inOrder(
-      Parse.andIs(Parse.literal("--"), Parse.not("---")),
+      Parse.andIs(Parse.literal("--"), Parse.not(Parse.literal("---"))),
       Parse.skipUntil(Parse.firstOf(parseLineBreak, Parse.end))
     ).unit
   )

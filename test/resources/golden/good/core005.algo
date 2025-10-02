@@ -1,5 +1,5 @@
 -- simple if-else with integer comparison
-val x: Int
+mut val x = 0
 val y = 56
 
 if y + 45 <= 2 then

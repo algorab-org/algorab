@@ -31,7 +31,7 @@ enum Expr:
   case Or(left: Expr, right: Expr)
 
   case VarCall(name: Identifier)
-  case ValDef(name: Identifier, tpe: Type, expr: Expr)
+  case ValDef(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean)
   case Assign(name: Identifier, expr: Expr)
   case Apply(expr: Expr, args: Chunk[Expr])
   case FunDef(name: Identifier, typeParams: Chunk[Identifier], params: Chunk[(Identifier, Type)], retType: Type, body: Expr)

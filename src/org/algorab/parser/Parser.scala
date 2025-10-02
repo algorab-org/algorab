@@ -174,6 +174,7 @@ object Parser:
 
   lazy val parseValDef: Expr < Parse[Token] =
     Parse.inOrder(
+      Parse.attempt(Parse.literal(Token.Mut)).map(_.isDefined),
       Parse.literal(Token.Val),
       Parse.require(parseIdentifier),
       Parse.firstOf(
@@ -182,7 +183,7 @@ object Parser:
       ),
       Parse.require(Parse.literal(Token.Equal)),
       Parse.require(parseBlockOrExpr)
-    ).map((_, name, tpe,  _, expr) => Expr.ValDef(name, tpe, expr))
+    ).map((mutable, _, name, tpe,  _, expr) => Expr.ValDef(name, tpe, expr, mutable))
   
   lazy val parseFunDef: Expr < Parse[Token] =
     Parse.inOrder(

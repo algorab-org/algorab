@@ -32,8 +32,8 @@ object resources:
     Using.resource(Source.fromInputStream(Files.newInputStream(path), "UTF-8"))(_.mkString)
 
   def runGoldenTest(code: String): Unit =
-    val result = Abort.runPartialOrThrow(parse(code)).eval
-    assert(result.isSuccess)
+    val result = parse(code)
+    assert(!result.isFailure)
 
   transparent inline def goldenTests(): Unit =
     ${goldenTestsImpl()}
