@@ -17,7 +17,6 @@ jobs:
           java-version: 21
       
       # setup-java seemingly doesn't have mill support bundled unlike sbt/gradle/maven
-      # Might get rid of "out" here if issues occur.
       - name: Cache Mill, Ivy & outputs
         uses: actions/cache@v4
         with:
@@ -27,7 +26,6 @@ jobs:
             !~/.ivy2/cache/**/ivydata-*.properties
             ~/.ivy2/local
             ~/.sbt
-            out
           key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
           restore-keys: |
             ${{ runner.os }}-mill-
