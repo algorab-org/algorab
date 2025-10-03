@@ -27,25 +27,6 @@ object Parser:
       Parse.anyMatch(operators.get.unlift)
     )
 
-  private lazy val redundantIndents: Unit < Parse[Token] = Parse.firstOf(
-    Parse.between(
-      Parse.literal(Token.DeIndent),
-      newlines,
-      Parse.literal(Token.Indent)
-    ),
-    Parse.between(
-      Parse.literal(Token.Indent),
-      newlines,
-      Parse.literal(Token.DeIndent)
-    )
-  ).unit
-
-  private lazy val newlines: Unit < Parse[Token] =
-    Parse.readWhile[Token](_ == Token.Newline)
-      .andThen(Parse.attempt(redundantIndents))
-      .andThen(Parse.readWhile[Token](_ == Token.Newline))
-      .unit
-
   val parseIdentifier: Identifier < Parse[Token] = Parse.anyMatch:
     case Token.Ident(identifier) => identifier
 
@@ -230,10 +211,10 @@ object Parser:
     Parse.inOrder(
       Parse.literal(Token.If),
       Parse.require(parseBlockOrExpr),
-      Parse.require(newlines.andThen(Parse.literal(Token.Then))),
+      Parse.require(Parse.literal(Token.Then)),
       Parse.require(parseBlockOrExpr),
       Parse.firstOf(
-        Parse.inOrder(newlines.andThen(Parse.literal(Token.Else)), Parse.require(parseBlockOrExpr)).map(_._2),
+        Parse.literal(Token.Else).andThen(Parse.require(parseBlockOrExpr)),
         Expr.VarCall(Identifier("Unit"))
       )
     ).map((_, cond, _, thenBranch, elseBranch) => Expr.If(cond, thenBranch, elseBranch))
@@ -244,7 +225,7 @@ object Parser:
       Parse.require(parseIdentifier),
       Parse.require(Parse.literal(Token.In)),
       Parse.require(parseBlockOrExpr),
-      Parse.require(newlines.andThen(Parse.literal(Token.Do))),
+      Parse.require(Parse.literal(Token.Do)),
       Parse.require(parseBlockOrExpr)
     ).map((_, id, _, range, _, body) => Expr.For(id, range, body))
 
@@ -252,30 +233,22 @@ object Parser:
     Parse.inOrder(
       Parse.literal(Token.While),
       Parse.require(parseBlockOrExpr),
-      Parse.require(newlines.andThen(Parse.literal(Token.Do))),
+      Parse.require(Parse.literal(Token.Do)),
       Parse.require(parseBlockOrExpr)
     ).map((_, cond, _, body) => Expr.While(cond, body))
 
   lazy val parseBlockBody: Expr < Parse[Token] =
     Parse.separatedBy(
       parseExpr,
-      Parse.firstOf(
-        redundantIndents,
-        Parse.literal(Token.Newline)
-      ).andThen(newlines),
+      Parse.literal(Token.Newline),
       allowTrailing = true
     ).map(Expr.Block.apply)
 
   lazy val parseBlockOrExpr: Expr < Parse[Token] =
-    Parse.readWhile[Token](_ == Token.Newline).andThen(
-      Parse.firstOf(
-        Parse.between(
-          Parse.literal(Token.Indent),
-          parseBlockBody,
-          Parse.literal(Token.DeIndent)
-        ),
-        parseExpr
-      )
+    Parse.between(
+      Parse.literal(Token.Indent),
+      parseBlockBody,
+      Parse.literal(Token.DeIndent)
     )
 
   lazy val parseExpr: Expr < Parse[Token] = Parse.firstOf(
@@ -289,5 +262,9 @@ object Parser:
   )
 
   val parseAst: Expr < Parse[Token] = Parse.entireInput(
-    Parse.require(parseBlockBody.map(result => newlines.andThen(result)))
+    Parse.between(
+      Parse.readWhile[Token](_ == Token.Newline),
+      Parse.require(parseBlockBody),
+      Parse.readWhile[Token](_ == Token.Newline)
+    )
   )

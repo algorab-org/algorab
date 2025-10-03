@@ -9,11 +9,10 @@ import scala.util.Using
 object Main extends KyoApp:
 
   run:
-    // val code = Using.resource(Source.fromFile(File("test/resources/golden/good/core031.algo")))(_.mkString)
-    val code = """if true then
-                 |  x
-                 |  y
-                 |
-                 |  z
-                 |a""".stripMargin
+    val code = Using.resource(Source.fromFile(File("test/resources/golden/good/core024.algo")))(_.mkString)
+    // val code = """if x then
+    //              |  y = z
+    //              |else
+    //              |  y = z2""".stripMargin
+                 
     Console.printLine(parse(code))

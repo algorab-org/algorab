@@ -11,6 +11,5 @@ def parse(code: String): ParseResult[Expr] =
     lexResult.out match
       case Absent => ParseResult(lexResult.errors, Absent, lexResult.fatal)
       case Present(tokens) =>
-        println(tokens)
         Parse.runResult(tokens)(Parser.parseAst).now
   .eval

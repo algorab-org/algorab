@@ -6,6 +6,54 @@ import org.algorab.ast.Identifier
 //Code source (String) -> Chunk(tokenA, tokenB, ...)
 object Lexer:
 
+  case class Block(indent: Int, layoutEnd: Maybe[Token], skipIndent: Boolean)
+
+  case class State(lineStart: Int, blocks: Chunk[Block]):
+
+    def currentBlock: Block = blocks.headMaybe.getOrElse(Block(0, Absent, false))
+
+    def currentBlockIndent: Int = currentBlock.indent
+
+    def doesCurrentBlockNeedIndent: Boolean = currentBlockIndent == -1
+
+    def withCurrentBlockIndent(indent: Int): State =
+      this.copy(blocks = blocks.head.copy(indent = indent) +: blocks.tail)
+
+    def newline: State < Parse[Char] = Parse.position.map(pos => this.copy(lineStart = pos))
+
+    def newBlock(layoutEnd: Maybe[Token]): State = this.copy(
+      blocks = Block(-1, layoutEnd, false) +: blocks
+    )
+
+    def newParenthesizedBlock(layoutEnd: Token): State = this.copy(
+      blocks = Block(-1, Present(layoutEnd), true) +: blocks
+    )
+
+    def popUntil(indent: Int): (Chunk[Token], State) < Parse[Char] =
+      val remainingIndents = blocks.dropWhile(block => !block.skipIndent && indent < block.indent)
+      val newCurrentBlock = remainingIndents.headMaybe.getOrElse(Block(0, Absent, false))
+      if newCurrentBlock.indent == indent || newCurrentBlock.skipIndent then
+        (
+          Chunk.fill(blocks.size - remainingIndents.size)(Token.DeIndent),
+          this.copy(blocks = remainingIndents)
+        )
+      else
+        Parse.fail(s"Inconsistent indentation: $indent spaces (or tabs) instead of ${newCurrentBlock.indent}")
+
+    def pop1: State =
+      this.copy(blocks = if blocks.isEmpty then blocks else blocks.tail)
+
+    def pop(endToken: Token): (Int, State) =
+      val dropped = blocks.dropWhile(_.layoutEnd.forall(_ != endToken))
+      val droppedTail =
+        if dropped.isEmpty then dropped
+        else dropped.tail
+
+      (blocks.size - droppedTail.size, this.copy(blocks = droppedTail))
+
+
+    def column: Int < Parse[Char] = Parse.position.map(_ - lineStart)
+
   def debug[A, In, S](name: String)(parser: A < (Parse[In] & S))(using Tag[In], Frame): A < (Parse[In] & S) =
     for
       start <- Parse.position
@@ -27,7 +75,14 @@ object Lexer:
 
   val parseTerm: Token < Parse[Char] = Parse.firstOf(
     Parse.boolean.map(Token.LBool.apply),
-    Parse.decimal.map(Token.LFloat.apply),
+    Parse.firstOf(
+      Parse.inOrder(
+        Parse.decimal,
+        Parse.anyIn("eE"),
+        Parse.int
+      ).map((mantissa, _, exponent) => Token.LFloat(mantissa * math.pow(10, exponent))),
+      Parse.decimal.map(Token.LFloat.apply)
+    ),
     Parse.int.map(Token.LInt.apply),
     parseString,
     Parse.identifier.map(str => Token.Ident(Identifier.assume(str.toString)))
@@ -75,6 +130,24 @@ object Lexer:
     "mut" -> Token.Mut
   )
 
+  val blockStart: Map[Token, Maybe[Token]] = Map(
+    Token.Equal -> Absent,
+    // Token.Colon, TODO fix this in order to support multiline 0-arity HOF
+    Token.In -> Present(Token.Do),
+    Token.While -> Present(Token.Do),
+    Token.Do -> Absent,
+    Token.If -> Present(Token.Then),
+    Token.Then -> Present(Token.Else),
+    Token.Else -> Absent
+  )
+
+  val blockEnd: Chunk[Token] = Chunk.from(blockStart.values.flatten)
+
+  val parentheses: Map[Token, Token] = Map(
+    Token.ParenOpen -> Token.ParenClosed,
+    Token.SquareOpen -> Token.SquareClosed
+  )
+
   val parseSymbol: Token < Parse[Char] =
     Parse.firstOf(
       symbols
@@ -90,36 +163,36 @@ object Lexer:
         case None        => Parse.fail("Invalid keyword")
     )
 
-  val parseLineBreak: Token < Parse[Char] = Parse.firstOf(
-    Parse.literal("\r\n"),
-    Parse.literal('\r'),
-    Parse.literal('\n')
-  ).andThen(Token.Newline)
+  def parseLineBreak(state: State): State < Parse[Char] =
+    Parse.spaced(
+        Parse.firstOf(
+          Parse.literal("\r\n"),
+          Parse.literal('\r'),
+          Parse.literal('\n')
+        ).andThen(state.newline),
+      isWhitespace = _ => false,
+      overrideOuter = true
+    )
 
-  val discardComment: Unit < Parse[Char] = Parse.firstOf(
+  def discardComment(state: State): State < Parse[Char] = Parse.firstOf(
     Parse.inOrder(
       Parse.literal("---"),
-      Parse.skipUntil(Parse.literal("---"))
-    ).unit,
+      Parse.skipUntil(Parse.firstOf(
+        Parse.literal("---").andThen(state),
+        parseLineBreak(state).map(discardComment)
+      ))
+    ).map(_._2),
     Parse.inOrder(
       Parse.andIs(Parse.literal("--"), Parse.not(Parse.literal("---"))),
-      Parse.skipUntil(Parse.firstOf(parseLineBreak, Parse.end))
-    ).unit
+      Parse.skipUntil(Parse.firstOf(parseLineBreak(state), Parse.end.andThen(state)))
+    ).map(_._2)
   )
 
-  def parseAnyToken(level: Int): (Chunk[Token], Int) < Parse[Char] = Parse.firstOf(
-    Parse.spaced(
-      Parse.firstOf(
-        parseKeyword,
-        parseTerm,
-        parseSymbol
-      ),
-      isWhitespace = _.isSpaceChar
-    ).map(token => (Chunk(token), level)),
-    Parse.inOrder(parseLineBreak, parseIndent(level))
-      .map:
-        case (br, (idents, newLevel)) => (br +: idents, newLevel),
-    Parse.require(Parse.fail("Invalid Token"))
+  def parseAnyToken: Token < Parse[Char] = Parse.firstOf(
+    parseKeyword,
+    parseTerm,
+    parseSymbol,
+    Parse.fail("Invalid token")
   )
 
   val skipAnyToken: Unit < Parse[Char] = Parse.firstOf(
@@ -128,15 +201,15 @@ object Lexer:
     parseSymbol
   ).unit
 
-  def parseIndent(level: Int): (Chunk[Token], Int) < Parse[Char] =
-    Parse.repeat(Parse.literal("  ")).map(tabs =>
-      val tabsSize = tabs.size
-      val comparison = tabsSize - level
-      if comparison == 0 then (Chunk.empty, tabsSize)
-      else if comparison < 0 then (Chunk.fill(-comparison)(Chunk(Token.DeIndent, Token.Newline)).flattenChunk, tabsSize)
-      else if comparison == 1 then (Chunk(Token.Indent), tabsSize)
-      else Parse.fail("Too much indentation")
-    )
+  // def parseIndent(level: Int): (Chunk[Token], Int) < Parse[Char] =
+  //   Parse.repeat(Parse.literal("  ")).map(tabs =>
+  //     val tabsSize = tabs.size
+  //     val comparison = tabsSize - level
+  //     if comparison == 0 then (Chunk.empty, tabsSize)
+  //     else if comparison < 0 then (Chunk.fill(-comparison)(Chunk(Token.DeIndent, Token.Newline)).flattenChunk, tabsSize)
+  //     else if comparison == 1 then (Chunk(Token.Indent), tabsSize)
+  //     else Parse.fail("Too much indentation")
+  //   )
 
   def repeatUntilState[Out, State](using
       Frame
@@ -152,19 +225,58 @@ object Lexer:
       yield (head +: tail, newState)
     )
 
+  // def lexingIteration(state: State): (Chunk[Token], State) < Parse[Char] =
+  //   Parse.firstOf(
+  //     parseLineBreak(state).map((Chunk.empty, _)),
+  //     parseAnyToken.map(token =>
+  //       if blockStart.contains(token) then
+          
+  //       else (Chunk(token), state)
+  //     )
+  //   )
+
+  //TODO only place indents when line terminates with `=`, `then` or `do`
+
   val parseTokens: Chunk[Token] < Parse[Char] =
     Parse.entireInput(
-      repeatUntilState(0)(
-        level =>
-          Parse.require(
-            Parse.recoverWith(
-              Parse.repeat(discardComment)
-                .andThen(
-                  parseAnyToken(level)
-                ),
-              RecoverStrategy.skipThenRetryUntil(Parse.any, skipAnyToken)
+      Parse.spaced(
+        repeatUntilState(State(0, Chunk.empty))(state =>
+          Parse.firstOf(
+            discardComment(state).map((Chunk.empty, _)),
+            parseLineBreak(state).map((Chunk.empty, _)),
+            Parse.require(
+              Parse.inOrder(state.column, parseAnyToken).map((column, token) =>
+                val indentManagement: (Chunk[Token], State) < Parse[Char] =
+                  if state.currentBlock.skipIndent then
+                    if state.currentBlock.layoutEnd.exists(_ == token) then (Chunk(token), state.pop1)
+                    else (Chunk(token), state)
+                  else
+                    val st =
+                      if state.doesCurrentBlockNeedIndent then state.withCurrentBlockIndent(column)
+                      else state
+                    
+                    if blockEnd.contains(token) then
+                      val (n, newState) = st.pop(token)
+                      (Chunk.fill(n)(Token.DeIndent) :+ token, newState)
+                    else if column == state.currentBlockIndent then (Chunk(Token.Newline, token), st)
+                    else if column < st.currentBlockIndent then
+                      st.popUntil(column).map((deindents, newState) =>
+                        (deindents :+ Token.Newline :+ token, newState)
+                      )
+                    else (Chunk(token), st)
+
+                indentManagement.map((tokens2, st2) =>
+                  if blockStart.contains(token) then (tokens2 ++ Chunk(Token.Indent), st2.newBlock(blockStart(token)))
+                  else if parentheses.contains(token) then
+                    (tokens2, st2.newParenthesizedBlock(parentheses(token)))
+                  else (tokens2, st2)
+                )
+              )
             )
           ),
-        Parse.end
-      ).map((tokenss, remainingLevel) => tokenss.flattenChunk ++ Chunk.fill(remainingLevel)(Token.DeIndent))
+          Parse.end
+        )
+        .map((tokens, state) => state.popUntil(0).map((deindents, _) => tokens.flattenChunk ++ deindents)),
+        isWhitespace = c => c.isSpaceChar || c == '\t'
+      )
     )
