@@ -5,7 +5,7 @@ object `package` extends ScalaModule with ScalafmtModule:
   def scalaVersion = "3.7.3"
 
   //TODO Host kyo-parse on Github Package
-  val kyoVersion = "0.0.0+2685-987eeea4+20251002-0946-SNAPSHOT"
+  val kyoVersion = "0.0.0+2686-ef8c8fe0-SNAPSHOT"
 
   def mvnDeps = Seq(
     mvn"io.getkyo::kyo-core:$kyoVersion",
