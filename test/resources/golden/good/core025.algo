@@ -1,5 +1,5 @@
 --- simple while loop ---
-val mut i: Int = 0
+mut val i: Int = 0
 while i < 5 do
   println(i)
   i = i + 1

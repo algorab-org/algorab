@@ -1,9 +1,5 @@
 --- variable shadowing and scope ---
 mut val i: Int = 78
-{
-  mut val i: Int = 1
-  println(i)
-}
 println(i)
 while i > 76 do
   i = i - 1

@@ -1,3 +1,2 @@
 --- empty if statement ---
-if false then
-  -- no-op
+if false then Unit -- no op

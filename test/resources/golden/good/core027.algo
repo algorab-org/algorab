@@ -1,4 +1,3 @@
 --- simple while loop ---
-val mut b: Boolean = false
-while b do
-  -- no-op
+mut val b: Boolean = false
+while b do Unit

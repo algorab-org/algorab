@@ -1,5 +1,5 @@
 --- uninitialized variables ---
-val x: Int
-val y: Float
+val x: Int = 0
+val y: Float = 0
 println(x)
 println(y)

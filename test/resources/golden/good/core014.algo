@@ -1,7 +1,7 @@
 --- Fibonacci ---
 val lo: Int = 1
-val mut hi: Int = lo
-val mut mx: Int = 5000000
+mut val hi: Int = lo
+mut val mx: Int = 5000000
 
 println(lo)
 while hi < mx do

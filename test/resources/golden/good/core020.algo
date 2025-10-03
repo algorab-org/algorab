@@ -1,6 +1,5 @@
 --- empty function ---
-def p(): Unit =
-  -- no-op
+def p(): Unit = Unit -- no op
 
 p()
 println(1)
