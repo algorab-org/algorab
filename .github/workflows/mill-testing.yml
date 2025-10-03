@@ -39,7 +39,7 @@ jobs:
         uses: sbt/setup-sbt@v1
       
       - name: KYO - Grab source
-        run: git clone https://github.com/getkyo/kyo.git kyo-src
+        run: git clone https://github.com/Iltotore/kyo.git kyo-src
       
       - name: KYO - Install
         run: |
