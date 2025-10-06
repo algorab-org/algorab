@@ -4,6 +4,7 @@ import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.ast.untpd.Expr
 import org.algorab.ast.Type
+import org.algorab.parser.debug
 import scala.annotation.nowarn
 
 object Parser:
@@ -14,7 +15,7 @@ object Parser:
     Parse
       .inOrder(
         element,
-        Parse.repeat(Parse.inOrder(sep, element))
+        Parse.repeat(Parse.inOrder(sep, Parse.require(element)))
       )
       .map((firstTerm, others) =>
         others.foldLeft(firstTerm):
@@ -37,9 +38,12 @@ object Parser:
     case Token.LString(value) => Expr.LString(value)
     case Token.Ident(name)    => Expr.VarCall(name)
 
-  lazy val parseTerm: Expr < Parse[Token] = Parse.firstOf(
-    parseLiteral,
-    Parse.between(Parse.literal(Token.ParenOpen), parseExpr, Parse.literal(Token.ParenClosed))
+  lazy val parseTerm: Expr < Parse[Token] = withErrorMessage(
+    Parse.firstOf(
+      parseLiteral,
+      Parse.between(Parse.literal(Token.ParenOpen), Parse.require(parseExpr), Parse.literal(Token.ParenClosed))
+    ),
+    "Invalid term"
   )
 
   lazy val parseApply: Expr < Parse[Token] = Parse.firstOf(
@@ -90,7 +94,7 @@ object Parser:
     Parse.firstOf(
       Parse.inOrder(
         Parse.anyMatch(unaryOps.get.unlift),
-        parseApply
+        Parse.require(parseApply)
       ).map((op, expr) => op(expr)),
       parseApply
     )

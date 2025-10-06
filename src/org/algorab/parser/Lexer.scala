@@ -2,6 +2,7 @@ package org.algorab.parser
 
 import kyo.*
 import org.algorab.ast.Identifier
+import org.algorab.parser.debug
 
 //Code source (String) -> Chunk(tokenA, tokenB, ...)
 object Lexer:
@@ -51,17 +52,7 @@ object Lexer:
 
       (blocks.size - droppedTail.size, this.copy(blocks = droppedTail))
 
-
     def column: Int < Parse[Char] = Parse.position.map(_ - lineStart)
-
-  def debug[A, In, S](name: String)(parser: A < (Parse[In] & S))(using Tag[In], Frame): A < (Parse[In] & S) =
-    for
-      start <- Parse.position
-      _ = println(s"$name start $start")
-      result <- parser
-      endPos <- Parse.position
-      _ = println(s"$name end $endPos: \"$result\"")
-    yield result
 
   val parseString: Token < Parse[Char] =
     Parse.literal('\"')
@@ -165,11 +156,11 @@ object Lexer:
 
   def parseLineBreak(state: State): State < Parse[Char] =
     Parse.spaced(
-        Parse.firstOf(
-          Parse.literal("\r\n"),
-          Parse.literal('\r'),
-          Parse.literal('\n')
-        ).andThen(state.newline),
+      Parse.firstOf(
+        Parse.literal("\r\n"),
+        Parse.literal('\r'),
+        Parse.literal('\n')
+      ).andThen(state.newline),
       isWhitespace = _ => false,
       overrideOuter = true
     )
@@ -188,12 +179,21 @@ object Lexer:
     ).map(_._2)
   )
 
-  def parseAnyToken: Token < Parse[Char] = Parse.firstOf(
-    parseKeyword,
-    parseTerm,
-    parseSymbol,
-    Parse.fail("Invalid token")
-  )
+  val parseAnyToken: Token < Parse[Char] =
+    val token =
+      withErrorMessage(
+        Parse.firstOf(
+          parseKeyword,
+          parseTerm,
+          parseSymbol
+        ),
+        "Invalid token"
+      )
+
+    Parse.recoverWith(
+      token,
+      RecoverStrategy.skipThenRetryUntil(Parse.any, Parse.end)
+    )
 
   val skipAnyToken: Unit < Parse[Char] = Parse.firstOf(
     parseKeyword,
@@ -230,53 +230,54 @@ object Lexer:
   //     parseLineBreak(state).map((Chunk.empty, _)),
   //     parseAnyToken.map(token =>
   //       if blockStart.contains(token) then
-          
+
   //       else (Chunk(token), state)
   //     )
   //   )
 
-  //TODO only place indents when line terminates with `=`, `then` or `do`
+  // TODO only place indents when line terminates with `=`, `then` or `do`
 
   val parseTokens: Chunk[Token] < Parse[Char] =
     Parse.entireInput(
       Parse.spaced(
-        repeatUntilState(State(0, Chunk.empty))(state =>
-          Parse.firstOf(
-            discardComment(state).map((Chunk.empty, _)),
-            parseLineBreak(state).map((Chunk.empty, _)),
-            Parse.require(
-              Parse.inOrder(state.column, parseAnyToken).map((column, token) =>
-                val indentManagement: (Chunk[Token], State) < Parse[Char] =
-                  if state.currentBlock.skipIndent then
-                    if state.currentBlock.layoutEnd.exists(_ == token) then (Chunk(token), state.pop1)
-                    else (Chunk(token), state)
-                  else
-                    val st =
-                      if state.doesCurrentBlockNeedIndent then state.withCurrentBlockIndent(column)
-                      else state
-                    
-                    if blockEnd.contains(token) then
-                      val (n, newState) = st.pop(token)
-                      (Chunk.fill(n)(Token.DeIndent) :+ token, newState)
-                    else if column == state.currentBlockIndent then (Chunk(Token.Newline, token), st)
-                    else if column < st.currentBlockIndent then
-                      st.popUntil(column).map((deindents, newState) =>
-                        (deindents :+ Token.Newline :+ token, newState)
-                      )
-                    else (Chunk(token), st)
+        repeatUntilState(State(0, Chunk.empty))(
+          state =>
+            Parse.firstOf(
+              discardComment(state).map((Chunk.empty, _)),
+              parseLineBreak(state).map((Chunk.empty, _)),
+              Parse.require(
+                Parse.inOrder(state.column, parseAnyToken).map((column, token) =>
+                  val indentManagement: (Chunk[Token], State) < Parse[Char] =
+                    if state.currentBlock.skipIndent then
+                      if state.currentBlock.layoutEnd.exists(_ == token) then (Chunk(token), state.pop1)
+                      else (Chunk(token), state)
+                    else
+                      val st =
+                        if state.doesCurrentBlockNeedIndent then state.withCurrentBlockIndent(column)
+                        else state
 
-                indentManagement.map((tokens2, st2) =>
-                  if blockStart.contains(token) then (tokens2 ++ Chunk(Token.Indent), st2.newBlock(blockStart(token)))
-                  else if parentheses.contains(token) then
-                    (tokens2, st2.newParenthesizedBlock(parentheses(token)))
-                  else (tokens2, st2)
+                      if blockEnd.contains(token) then
+                        val (n, newState) = st.pop(token)
+                        (Chunk.fill(n)(Token.DeIndent) :+ token, newState)
+                      else if column == state.currentBlockIndent then (Chunk(Token.Newline, token), st)
+                      else if column < st.currentBlockIndent then
+                        st.popUntil(column).map((deindents, newState) =>
+                          (deindents :+ Token.Newline :+ token, newState)
+                        )
+                      else (Chunk(token), st)
+
+                  indentManagement.map((tokens2, st2) =>
+                    if blockStart.contains(token) then (tokens2 ++ Chunk(Token.Indent), st2.newBlock(blockStart(token)))
+                    else if parentheses.contains(token) then
+                      (tokens2, st2.newParenthesizedBlock(parentheses(token)))
+                    else (tokens2, st2)
+                  )
                 )
               )
-            )
-          ),
+            ),
           Parse.end
         )
-        .map((tokens, state) => state.popUntil(0).map((deindents, _) => tokens.flattenChunk ++ deindents)),
+          .map((tokens, state) => state.popUntil(0).map((deindents, _) => tokens.flattenChunk ++ deindents)),
         isWhitespace = c => c.isSpaceChar || c == '\t'
       )
     )
