@@ -1,4 +1,18 @@
+def isBlank(name: String): Boolean = false
+
+---
 def createUser(name: String, age: Int): User =
   if isBlank(name) then throw(UserErrorBlankName)
   else if age < 0 then throw(UserErrorNegativeAge)
+  else User(name, age)
+---
+
+-- Temporary version
+
+def throw(msg: String): Boolean = false
+def User(name: String, age: Int): Boolean = true
+
+def createUser(name: String, age: Int): Boolean =
+  if isBlank(name) then throw("UserErrorBlankName")
+  else if age < 0 then throw("UserErrorNegativeAge")
   else User(name, age)

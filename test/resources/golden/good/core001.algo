@@ -29,7 +29,7 @@ def ifac2f(l: Int, h: Int): Int =
   if l == h then l
   else if l > h then 1
   else
-    val m = (l + h) / 2
+    val m = (l + h) // 2
     ifac2f(l, m) * ifac2f(m + 1, h)
 
 println(fac(10))
