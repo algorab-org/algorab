@@ -10,7 +10,6 @@ object Main extends KyoApp:
 
   run:
     // val code = Source.fromFile("test/resources/golden/good/core019.algo").mkString
-    val code = """def y(): Unit = x()
-                 |def x(): Unit = Unit""".stripMargin
+    val code = """foo[List[Int], String => Int, Double](x)""".stripMargin
                  
-    Console.printLine(compile(code))
+    Console.printLine(parse(code))
