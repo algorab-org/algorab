@@ -112,3 +112,11 @@ object TypeContext:
     case (Type.Int, Type.Float) => true
     case (_, Type.Inferred) => true
     case _ => tpe == expected
+
+  def union(typeA: Type, typeB: Type): Type < Typing = (typeA, typeB) match
+    case (Type.Nothing, _) => typeB
+    case (_, Type.Nothing) => typeA
+    case (Type.Int, Type.Float) => Type.Float
+    case _ =>
+      if typeA == typeB then typeA
+      else Type.Any  

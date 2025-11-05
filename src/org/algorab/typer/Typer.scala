@@ -182,6 +182,16 @@ object Typer:
             typedArgs.zip(params).foreach(assertExprType(_, _).now)
             tpd.Expr.Apply(typedExpr, typedArgs, output)
 
+          case tpd.Type.TypeFun(typeParams, tpd.Type.Fun(params, output)) =>
+            val resolvedTypes = params
+              .zip(typedArgs)
+              .collect:
+                case (tpd.Type.Generic(name), arg) if typeParams.contains(name) => (name, arg.exprType)
+              .groupMap(_._1)(_._2)
+              .map((typeParam, types) =>
+                (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now))
+
+              typedExpr.withType(output.replaceGeneric(resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)).now)
           case tpe =>
             Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Fun(typedArgs.map(_.exprType), tpd.Type.Inferred))).now
       case untpd.Expr.TypeApply(expr, types) =>

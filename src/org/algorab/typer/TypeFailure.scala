@@ -14,3 +14,4 @@ enum TypeFailure:
   case TypeAlreadyDefined(name: Identifier)
   case MissingTypeArguments(missing: Chunk[Identifier])
   case TooManyTypeArguments(got: Chunk[untpd.Type], expected: Chunk[Identifier])
+  case CannotInferType(name: Identifier)

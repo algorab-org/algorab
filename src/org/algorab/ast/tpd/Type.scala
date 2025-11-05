@@ -4,6 +4,7 @@ import kyo.Chunk
 import org.algorab.ast.Identifier
 
 enum Type derives CanEqual:
+  case Nothing
   case Inferred
   case Generic(name: Identifier)
   case Class(name: Identifier)
@@ -19,6 +20,7 @@ enum Type derives CanEqual:
     else this
 
   def replaceGeneric(replacements: Map[Identifier, Type]): Type = this match
+    case Nothing => Type.Nothing
     case Inferred => Type.Inferred
     case Generic(n) => replacements.getOrElse(n, this)
     case Class(name) => Type.Class(name)

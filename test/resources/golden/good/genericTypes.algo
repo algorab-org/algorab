@@ -7,7 +7,6 @@ def id[A](x: A): A =
   -- A
   id[A](x)
 
-
 id[Int](5)
 id[String]("abc")
 id[Boolean](true)
