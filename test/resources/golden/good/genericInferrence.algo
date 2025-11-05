@@ -1,0 +1,9 @@
+-- Generic types with inferrence
+
+-- A
+def id[A](x: A): A = x
+def id2[A, B](x: A): A = x
+
+id(5)
+id("abc")
+id2(true)

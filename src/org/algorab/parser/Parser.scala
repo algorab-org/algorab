@@ -3,7 +3,7 @@ package org.algorab.parser
 import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.ast.untpd.Expr
-import org.algorab.ast.Type
+import org.algorab.ast.untpd.Type
 import org.algorab.parser.debug
 import scala.annotation.nowarn
 
@@ -46,15 +46,40 @@ object Parser:
     "Invalid term"
   )
 
-  lazy val parseApply: Expr < Parse[Token] = Parse.firstOf(
-    Parse.inOrder(
-      parseTerm,
-      Parse.literal(Token.ParenOpen),
-      Parse.separatedBy(parseExpr, Parse.literal(Token.Comma)),
-      Parse.literal(Token.ParenClosed)
-    ).map((function, _, args, _) => Expr.Apply(function, args)),
-    parseTerm
-  )
+  //foo[A, B] => TypeApply(VarCall("foo"), Chunk(Type.Ref("A"), Type.Ref("B")))
+
+  // lazy val parseApply: Expr < Parse[Token] = Parse.firstOf(
+  //   Parse.inOrder(
+  //     parseTerm,
+  //     Parse.literal(Token.ParenOpen),
+  //     Parse.separatedBy(parseExpr, Parse.literal(Token.Comma)),
+  //     Parse.literal(Token.ParenClosed)
+  //   ).map((function, _, args, _) => Expr.Apply(function, args)),
+  //   Parse.inOrder(
+  //     parseTerm,
+  //     Parse.literal(Token.SquareOpen),
+  //     Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
+  //     Parse.literal(Token.SquareClosed) 
+  //   ).map((function, _, types, _) => Expr.TypeApply(function, types)),
+  // )
+
+  lazy val parseApply: Expr < Parse[Token] = Parse.inOrder(
+    parseTerm,
+    Parse.repeat(
+      Parse.firstOf(
+        Parse.inOrder(
+          Parse.literal(Token.ParenOpen),
+          Parse.separatedBy(parseExpr, Parse.literal(Token.Comma)),
+          Parse.literal(Token.ParenClosed)
+        ).map((_, args, _) => Expr.Apply(_, args)),
+        Parse.inOrder(
+          Parse.literal(Token.SquareOpen),
+          Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
+          Parse.literal(Token.SquareClosed)
+        ).map((_, types, _) => Expr.TypeApply(_, types)),
+      )
+    )
+  ).map((expr, apps) => apps.foldLeft(expr)((expr, app) => app(expr)))
 
   // Operators
 

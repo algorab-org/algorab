@@ -2,14 +2,14 @@ if
   true
   false
 then
-  y
-  x
-else if a then
-  +b
-  -c
-else if not true then "hello"
+  5
+  6
+else if true then
+  +7
+  -8
+else if not true then 9
 else
-  if true then x
-  else y
-  x
-  y
+  if true then 10
+  else 11
+  12
+  13

@@ -8,8 +8,13 @@ import scala.util.Using
 
 object Main extends KyoApp:
 
+  /* 
+
+   */
+
   run:
-    // val code = Using.resource(Source.fromFile(File("test/resources/golden/good/core024.algo")))(_.mkString)
-    val code = """5 + """.stripMargin
+    // val code = Source.fromFile("test/resources/golden/good/core019.algo").mkString
+    val code = """def id[A, B](x: A): A = x
+                 |id("test")""".stripMargin
                  
-    Console.printLine(parse(code))
+    Console.printLine(compile(code))

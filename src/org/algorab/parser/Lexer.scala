@@ -72,7 +72,15 @@ object Lexer:
         Parse.anyIn("eE"),
         Parse.int
       ).map((mantissa, _, exponent) => Token.LFloat(mantissa * math.pow(10, exponent))),
-      Parse.decimal.map(Token.LFloat.apply)
+      Parse.inOrder(
+        Parse.int,
+        Parse.literal('.'),
+        Parse.int
+      ).map((intPart, _, decPart) =>
+        s"$intPart.$decPart".toDoubleOption match
+          case None => Parse.fail("Invalid float literal")
+          case Some(value) => Token.LFloat(value)
+      )
     ),
     Parse.int.map(Token.LInt.apply),
     parseString,

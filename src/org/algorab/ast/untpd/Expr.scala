@@ -2,7 +2,6 @@ package org.algorab.ast.untpd
 
 import kyo.Chunk
 import org.algorab.ast.Identifier
-import org.algorab.ast.Type
 
 enum Expr:
   case LBool(value: Boolean)
@@ -34,6 +33,7 @@ enum Expr:
   case ValDef(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean)
   case Assign(name: Identifier, expr: Expr)
   case Apply(expr: Expr, args: Chunk[Expr])
+  case TypeApply(expr: Expr, types: Chunk[Type])
   case FunDef(name: Identifier, typeParams: Chunk[Identifier], params: Chunk[(Identifier, Type)], retType: Type, body: Expr)
 
   case Block(expressions: Chunk[Expr])
