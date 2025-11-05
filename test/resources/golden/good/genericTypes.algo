@@ -1,0 +1,13 @@
+-- Generic types with shadowing
+
+-- A
+def id[A](x: A): A =
+  -- A$1
+  def id[A](x: A): A = x
+  -- A
+  id[A](x)
+
+
+id[Int](5)
+id[String]("abc")
+id[Boolean](true)

@@ -18,6 +18,16 @@ enum Type derives CanEqual:
     if this == Inferred then other
     else this
 
+  def replaceGeneric(replacements: Map[Identifier, Type]): Type = this match
+    case Inferred => Type.Inferred
+    case Generic(n) => replacements.getOrElse(n, this)
+    case Class(name) => Type.Class(name)
+    case Apply(base, args) => Type.Apply(base.replaceGeneric(replacements), args.map(_.replaceGeneric(replacements)))
+    case Fun(params, output) => Type.Fun(params.map(_.replaceGeneric(replacements)), output.replaceGeneric(replacements))
+    case TypeFun(typeParams, output) => Type.TypeFun(typeParams, output.replaceGeneric(replacements))
+    case Tuple(elements) => Type.Tuple(elements.map(_.replaceGeneric(replacements)))
+  
+
 object Type:
 
   // Std types

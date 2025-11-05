@@ -2,7 +2,7 @@ package org.algorab.typer
 
 import kyo.*
 import org.algorab.ast.Identifier
-import org.algorab.ast.untpd.Type
+import org.algorab.ast.tpd.Type
 
 case class TypeContext(scopes: Chunk[TypeScope]):
 
@@ -46,8 +46,8 @@ case class TypeContext(scopes: Chunk[TypeScope]):
       .flatMap(_.types.values)
       .foldLeft(-1)((curId, tpe) =>
         tpe match
-          case Type.Ref(name) if name == baseName && curId == -1 => 0
-          case Type.Ref(Identifier(s"$baseName$$$id")) =>
+          case Type.Generic(name) if name == baseName && curId == -1 => 0
+          case Type.Generic(Identifier(s"$baseName$$$id")) =>
             id.toIntOption.fold(curId)(math.max(_, curId))
           case _ => curId
       )
@@ -109,6 +109,6 @@ object TypeContext:
 
   def isSubtype(tpe: Type, expected: Type): Boolean < Typing = (tpe, expected) match
     case (_, Type.Any) => true
-    case (Type.Ref(Identifier("Int")), Type.Ref(Identifier("Float"))) => true
+    case (Type.Int, Type.Float) => true
     case (_, Type.Inferred) => true
     case _ => tpe == expected

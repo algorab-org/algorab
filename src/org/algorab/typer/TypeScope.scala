@@ -2,7 +2,7 @@ package org.algorab.typer
 
 import kyo.*
 import org.algorab.ast.Identifier
-import org.algorab.ast.untpd.Type
+import org.algorab.ast.tpd.Type
 
 case class TypeScope(types: Map[Identifier, Type], variables: Map[Identifier, Type]):
 
