@@ -2,7 +2,6 @@ package org.algorab.ast.untpd
 
 import kyo.Chunk
 import org.algorab.ast.Identifier
-import org.algorab.ast.Type
 
 enum Expr:
   case LBool(value: Boolean)

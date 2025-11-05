@@ -2,7 +2,8 @@ package org.algorab.typer
 
 import kyo.*
 import org.algorab.assertionError
-import org.algorab.ast.Type
+import org.algorab.ast.Identifier
+import org.algorab.ast.untpd.Type
 import org.algorab.ast.tpd
 import org.algorab.ast.untpd
 import scala.annotation.meta.param
@@ -73,6 +74,23 @@ object Typer:
     then (typedA, typedB)
     else Typing.failAndAbort(TypeFailure.Mismatch(typedA.exprType, typedB.exprType)).now
 
+  def assertTypeExists(tpe: Type): Unit < Typing = direct:
+    tpe match
+      case Type.Inferred =>
+      case Type.Ref(name) => TypeContext.getType(name).now match
+        case Some(_) =>
+        case None => Typing.fail(TypeFailure.UnknownType(name)).now
+      case Type.Apply(base, args) =>
+        assertTypeExists(base).now
+        args.foreach(assertTypeExists(_).now)
+      case Type.Fun(params, output) =>
+        params.foreach(assertTypeExists(_).now)
+        assertTypeExists(output).now
+      case Type.TypeFun(typeParams, output) =>
+        assertTypeExists(output).now
+      case Type.Tuple(elements) =>
+        elements.foreach(assertTypeExists(_).now)
+  
   def typeExpr(expr: untpd.Expr): tpd.Expr < Typing = direct:
     expr match
       case untpd.Expr.LBool(value)   => tpd.Expr.LBool(value, Type.Boolean)
@@ -134,6 +152,8 @@ object Typer:
         tpd.Expr.VarCall(name, varType)
       case untpd.Expr.ValDef(name, tpe, expr, mutable) =>
         val typedExpr = TypeContext.inNewScope(typeExpr(expr)).now
+
+        assertTypeExists(tpe).now
         
         if tpe == Type.Inferred then TypeContext.updateVariable(name, typedExpr.exprType).now
         else assertExprType(typedExpr, tpe).now
@@ -150,29 +170,66 @@ object Typer:
         typedExpr.exprType match
           case Type.Fun(params, output) =>
             typedArgs.zip(params).foreach(assertExprType(_, _).now)
-
             tpd.Expr.Apply(typedExpr, typedArgs, output)
 
           case tpe =>
             Typing.failAndAbort(TypeFailure.Mismatch(tpe, Type.Fun(typedArgs.map(_.exprType), Type.Inferred))).now
+      case untpd.Expr.TypeApply(expr, types) =>
+        val typedExpr = typeExpr(expr).now
+        typedExpr.exprType match
+          case Type.TypeFun(typeParams, output) =>
+            val sizeCompare = types.sizeCompare(typeParams)
+            if sizeCompare < 0 then
+              Typing.failAndAbort(TypeFailure.MissingTypeArguments(typeParams.take(types.size))).now
+            else if sizeCompare > 0 then
+              Typing.failAndAbort(TypeFailure.TooManyTypeArguments(types, typeParams)).now
+            else
+              TypeContext.inNewScope:
+                direct:
+                  typeParams
+                    .zip(types)
+                    .foreach(TypeContext.declareType(_, _).now)
+                  
+                  assertTypeExists(output).now
+
+                  //ICI
+                  typedExpr.withType(output)
+              .now
+          case tpe => Typing.failAndAbort(TypeFailure.Mismatch(tpe, Type.TypeFun(Chunk.empty, Type.Inferred))).now
       case untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
         val paramTypes = params.map(_._2)
-        val funcType = Type.Fun(paramTypes, retType)
+        val uniqueTypeParams = typeParams.map(tp => (tp, TypeContext.newUniqueName(tp).now))
+        val funcType =
+          if typeParams.isEmpty then Type.Fun(paramTypes, retType)
+          else Type.TypeFun(typeParams, Type.Fun(paramTypes, retType))
 
         TypeContext.inNewScope:
           direct:
-            params.foreach((paramName, paramType) =>
-              TypeContext.declareVariable(paramName, paramType).now
+            uniqueTypeParams.foreach((originalName, newName) =>
+              TypeContext.declareType(originalName, Type.Ref(newName)).now
             )
-
-            val typedBody = typeExpr(body).now
-
-            if retType == Type.Inferred then
-              TypeContext.updateVariable(name, Type.Fun(paramTypes, typedBody.exprType)).now
-            else
-              assertExprType(typedBody, retType).now
             
-            tpd.Expr.FunDef(name, typeParams, params, retType, typedBody, funcType)
+            assertTypeExists(retType).now
+
+            TypeContext.inNewScope:
+              direct:
+                params.foreach((paramName, paramType) =>
+                  assertTypeExists(paramType).now
+                  TypeContext.declareVariable(paramName, paramType).now
+                )
+
+                val typedBody = typeExpr(body).now
+
+                if retType == Type.Inferred then
+                  val inferredType =
+                    if typeParams.isEmpty then Type.Fun(paramTypes, typedBody.exprType)
+                    else Type.TypeFun(typeParams, Type.Fun(paramTypes, typedBody.exprType))
+                  TypeContext.updateVariable(name, inferredType).now
+                else
+                  assertExprType(typedBody, retType).now
+                
+                tpd.Expr.FunDef(name, typeParams, params, retType, typedBody, funcType)
+            .now
         .now
         
       case untpd.Expr.Block(expressions) =>
@@ -181,7 +238,9 @@ object Typer:
             TypeContext.declareVariable(name, tpe).now
           case untpd.Expr.FunDef(name, typeParams, params, retType, _) =>
             val paramTypes = params.map(_._2)
-            val funcType = Type.Fun(paramTypes, retType)
+            val funcType =
+              if typeParams.isEmpty then Type.Fun(paramTypes, retType)
+              else Type.TypeFun(typeParams, Type.Fun(paramTypes, retType))
             TypeContext.declareVariable(name, funcType).now
           case _ =>
 

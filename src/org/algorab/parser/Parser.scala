@@ -3,7 +3,7 @@ package org.algorab.parser
 import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.ast.untpd.Expr
-import org.algorab.ast.Type
+import org.algorab.ast.untpd.Type
 import org.algorab.parser.debug
 import scala.annotation.nowarn
 

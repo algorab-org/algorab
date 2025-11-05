@@ -1,12 +1,14 @@
-package org.algorab.ast
+package org.algorab.ast.untpd
 
 import kyo.Chunk
+import org.algorab.ast.Identifier
 
 enum Type derives CanEqual:
   case Inferred
   case Ref(name: Identifier)
   case Apply(base: Type, args: Chunk[Type])
   case Fun(params: Chunk[Type], output: Type)
+  case TypeFun(typeParams: Chunk[Identifier], output: Type)
   case Tuple(elements: Chunk[Type])
 
   def zip(other: Type): Type = Type.Tuple(Chunk(this, other))

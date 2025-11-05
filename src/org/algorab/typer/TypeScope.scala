@@ -2,12 +2,15 @@ package org.algorab.typer
 
 import kyo.*
 import org.algorab.ast.Identifier
-import org.algorab.ast.Type
+import org.algorab.ast.untpd.Type
 
 case class TypeScope(types: Map[Identifier, Type], variables: Map[Identifier, Type]):
 
   def getType(name: Identifier): Option[Type] =
     types.get(name)
+
+  def withType(name: Identifier, tpe: Type): TypeScope =
+    this.copy(types = types.updated(name, tpe))
 
   def getVariable(name: Identifier): Option[Type] =
     variables.get(name)
