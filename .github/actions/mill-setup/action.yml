@@ -18,6 +18,7 @@ runs:
           !~/.ivy2/cache/**/ivydata-*.properties
           ~/.ivy2/local
           ~/.sbt
+          ~/.cache/coursier
         key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
         restore-keys: |
           ${{ runner.os }}-mill-
