@@ -14,7 +14,7 @@ runs:
         path: |
           ~/.mill
           ~/.coursier
-          ~/.cache/download
+          ~/.cache/mill
           ~/.cache/coursier
           ~/.cache/cs
         key: ${{ runner.os }}-${{ hashFiles('build.mill') }}
