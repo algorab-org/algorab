@@ -18,9 +18,12 @@ runs:
           !~/.ivy2/cache/**/ivydata-*.properties
           ~/.ivy2/local
           ~/.sbt
-          ~/.cache/coursier
-          ~/.coursier
-          ~/.cache/cs
         key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
         restore-keys: |
           ${{ runner.os }}-mill-
+    
+    - name: Cache Mill build outputs (out/)
+      uses: actions/cache@v4
+      with:
+        path: out
+        key: ${{ runner.os }}-mill-${{ github.run_id }}

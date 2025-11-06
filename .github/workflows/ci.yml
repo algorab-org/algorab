@@ -31,10 +31,8 @@ jobs:
       
       # ------ End Kyo Workaround ------
       
-      # Note : will use -i __.compile eventually to precompile.
-      # That also means making run-exclusive cache.
       - name: Prepare Mill
-        run: ./millw
+        run: ./millw -i __.compile
 
   test:
     needs: prepare
