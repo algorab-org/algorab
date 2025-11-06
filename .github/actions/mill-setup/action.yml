@@ -1,4 +1,4 @@
-name: Setup repo, Java, caches & Mill
+name: Setup Java & Mill Cache
 
 runs:
   using: composite
@@ -14,8 +14,16 @@ runs:
         path: |
           ~/.mill
           ~/.coursier
+          ~/.cache/download
           ~/.cache/coursier
           ~/.cache/cs
         key: ${{ runner.os }}-${{ hashFiles('build.mill') }}
         restore-keys: |
           ${{ runner.os }}-
+    
+    # All the Mill jobs require the local build of Kyo, through the Ivy2 local repository.
+    # So we download it here to avoid duplicating this step in all Mill jobs.
+    - uses: actions/download-artifact@v5
+      with:
+        name: ivy2-local
+        path: ~/.ivy2/local

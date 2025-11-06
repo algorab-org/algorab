@@ -3,25 +3,13 @@ name: CI (Testing & Packaging)
 on: [push, pull_request]
 
 jobs:
+  # This job is meant to be nearly independent from the others.
+  # It gets its own cache and only gives the other jobs the local Ivy2 repository as artifact.
   kyo:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - uses: sbt/setup-sbt@v1
-
-      - name: Cache sbt
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-          key: ${{ runner.os }}-sbt-${{ hashFiles('build.mill') }}
-          restore-keys: |
-            ${{ runner.os }}-sbt-
+      - uses: ./.github/actions/sbt-setup
 
       - name: Grab source
         run: git clone --branch main https://github.com/Iltotore/kyo.git kyo-src
@@ -39,11 +27,11 @@ jobs:
             kyo-src/**/target
             kyo-src/project/target
             kyo-src/project/**/target
-          key: ${{ runner.os }}-kyo-target-${{ steps.kyo-sha.outputs.sha }}
+          key: ${{ runner.os }}-kyo-${{ steps.kyo-sha.outputs.sha }}
           restore-keys: |
-            ${{ runner.os }}-kyo-target-
-      
-      - name: Install
+            ${{ runner.os }}-kyo-
+
+      - name: Local packaging & publishing
         run: |
           cd kyo-src
           sbt publishLocal
@@ -54,6 +42,8 @@ jobs:
           path: ~/.ivy2/local
           retention-days: 1
 
+  # The jobs below are directly & only related to our repository.
+
   prepare:
     needs: kyo
     runs-on: ubuntu-latest
@@ -61,14 +51,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/mill-setup
       
-      - uses: actions/download-artifact@v5
-        with:
-          name: ivy2-local
-          path: ~/.ivy2/local
-
       - name: Prepare Mill
         run: ./millw --no-server __.compile
-
       - uses: actions/upload-artifact@v4
         with:
           name: mill-build
@@ -83,15 +67,9 @@ jobs:
       
       - uses: actions/download-artifact@v5
         with:
-          name: ivy2-local
-          path: ~/.ivy2/local
-
-      - uses: actions/download-artifact@v5
-        with:
           name: mill-build
           path: out
-
-      - name: Setup Mill, install dependencies & run tests
+      - name: Testing
         run: ./millw test
 
   package:
@@ -100,19 +78,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/mill-setup
-      
-      - uses: actions/download-artifact@v5
-        with:
-          name: ivy2-local
-          path: ~/.ivy2/local
 
       - uses: actions/download-artifact@v5
         with:
           name: mill-build
           path: out
-
       - name: Packaging
         run: ./millw assembly
+
+        # Artifact uploading
       
       - uses: tj-actions/branch-names@v9
         id: branch-name

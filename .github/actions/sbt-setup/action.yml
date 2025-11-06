@@ -1,0 +1,22 @@
+name: Setup Java, SBT & Cache
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - uses: sbt/setup-sbt@v1
+
+    - name: Cache SBT, Ivy2 & Coursier directories
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.sbt
+          ~/.ivy2/cache
+          ~/.cache/coursier
+        key: ${{ runner.os }}-sbt-${{ hashFiles('build.mill') }}
+        restore-keys: |
+          ${{ runner.os }}-sbt-
