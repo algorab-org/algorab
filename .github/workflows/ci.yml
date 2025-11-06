@@ -57,6 +57,23 @@ jobs:
         with:
           name: mill-build
           path: out
+  
+  # The actual CI jobs. Finally.
+
+  check:
+    needs: [kyo, prepare]
+    runs-on: ubuntu-latest
+    continue-on-error: true # Ideally, this would be a temporary measure.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: mill-build
+          path: out
+      - name: Checking
+        run: ./millw checkFormat
 
   test:
     needs: [kyo, prepare]
