@@ -1,11 +1,10 @@
-name: Packaging (with Mill)
+name: CI (Testing & Packaging)
 
 on: [push, pull_request]
 
 jobs:
-  package:
+  prepare:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,13 +47,67 @@ jobs:
           cd ..
           rm -rf kyo-src
 
-      # ------ Resuming Algorab sequence ------
+  test:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Mill, Ivy & outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mill
+            ~/.ivy2/cache
+            !~/.ivy2/cache/**/ivydata-*.properties
+            ~/.ivy2/local
+            ~/.sbt
+          key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
+          restore-keys: |
+            ${{ runner.os }}-mill-
+
+      # ------ Resuming Algorab sequence ------
+      - name: Setup Mill, install dependencies & run tests
+        run: ./millw test
+
+  package:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Mill, Ivy & outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mill
+            ~/.ivy2/cache
+            !~/.ivy2/cache/**/ivydata-*.properties
+            ~/.ivy2/local
+            ~/.sbt
+          key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
+          restore-keys: |
+            ${{ runner.os }}-mill-
+
+      # ------ Resuming Algorab sequence ------
       - name: Setup Mill, install dependencies & run packaging
         run: ./millw assembly
       
       # ------ Uploading Artifacts ------
-
       - name: Extract current branch name
         id: branch-name
         uses: tj-actions/branch-names@v9
