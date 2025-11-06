@@ -6,31 +6,30 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup repo, Java, caches & Mill
-        uses: ./.github/actions/mill-setup
-      
-      # ------ Kyo Workaround ------
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
 
-      # I actually miss Python and Rust here allowing direct compilation of dependencies via source.
-      # - JordanViknar
+      # ---- Kyo ----
+      - name: Cache sbt & kyo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            kyo-src/out
+          key: ${{ runner.os }}-kyo
 
-      - name: KYO - Setup SBT
-        uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1
       
-      - name: KYO - Grab source
+      - name: Grab source
         run: git clone --depth 1 --branch main https://github.com/Iltotore/kyo.git kyo-src
       
-      - name: KYO - Install
+      - name: Install
         run: |
           cd kyo-src
           sbt publishLocal
           cd ..
-          rm -rf kyo-src
       
-      # ------ End Kyo Workaround ------
-      
+      # ---- Back to Mill ----
       - name: Prepare Mill
         run: ./millw -i __.compile
 
@@ -38,10 +37,8 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup repo, Java, caches & Mill
-        uses: ./.github/actions/mill-setup
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
 
       - name: Setup Mill, install dependencies & run tests
         run: ./millw test
@@ -50,24 +47,20 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup repo, Java, caches & Mill
-        uses: ./.github/actions/mill-setup
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
 
       - name: Setup Mill, install dependencies & run packaging
         run: ./millw assembly
       
-      - name: Extract current branch name
+      - uses: tj-actions/branch-names@v9
         id: branch-name
-        uses: tj-actions/branch-names@v9
 
       - name: Format branch name
         id: format-branch-name
         run: echo "formatted_branch=$(echo ${{ steps.branch-name.outputs.current_branch }} | tr -s '/' '-')" >> $GITHUB_OUTPUT
       
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: algorab-artifacts-${{ steps.format-branch-name.outputs.formatted_branch }}
           path: 'out/assembly.dest/*.jar'

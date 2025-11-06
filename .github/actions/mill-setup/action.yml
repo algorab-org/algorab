@@ -3,13 +3,12 @@ name: Setup repo, Java, caches & Mill
 runs:
   using: composite
   steps:
-    - name: Setup Java
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: 21
 
-    - name: Cache Mill, Ivy & Coursier
+    - name: Cache Mill, Ivy & sbt
       uses: actions/cache@v4
       with:
         path: |
@@ -17,14 +16,12 @@ runs:
           ~/.ivy2/cache
           !~/.ivy2/cache/**/ivydata-*.properties
           ~/.ivy2/local
-          ~/.sbt
-          ~/.cache/coursier
-        key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
+        key: ${{ runner.os }}-${{ hashFiles('build.mill') }}
         restore-keys: |
-          ${{ runner.os }}-mill-
-    
-    - name: Cache Mill build outputs (out/)
+          ${{ runner.os }}-
+
+    - name: Cache Mill build outputs (between jobs)
       uses: actions/cache@v4
       with:
         path: out
-        key: ${{ runner.os }}-mill-${{ github.run_id }}
+        key: ${{ runner.os }}-${{ github.run_id }}
