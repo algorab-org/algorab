@@ -8,27 +8,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      
-      # setup-java seemingly doesn't have mill support bundled unlike sbt/gradle/maven
-      - name: Cache Mill, Ivy & outputs
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.mill
-            ~/.ivy2
-            ~/.sbt
-            ~/.cache/coursier
-            ~/.coursier
-            ~/.cache/cs
-          key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
-          restore-keys: |
-            ${{ runner.os }}-mill-
+      - name: Setup repo, Java, caches & Mill
+        uses: ./.github/actions/mill-setup
       
       # ------ Kyo Workaround ------
 
@@ -50,6 +31,8 @@ jobs:
       
       # ------ End Kyo Workaround ------
       
+      # Note : will use -i __.compile eventually to precompile.
+      # That also means making run-exclusive cache.
       - name: Prepare Mill
         run: ./millw
 
@@ -59,26 +42,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Cache Mill, Ivy & outputs
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.mill
-            ~/.ivy2
-            ~/.sbt
-            ~/.cache/coursier
-            ~/.coursier
-            ~/.cache/cs
-          key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
-          restore-keys: |
-            ${{ runner.os }}-mill-
+      - name: Setup repo, Java, caches & Mill
+        uses: ./.github/actions/mill-setup
 
       - name: Setup Mill, install dependencies & run tests
         run: ./millw test
@@ -89,26 +54,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Cache Mill, Ivy & outputs
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.mill
-            ~/.ivy2
-            ~/.sbt
-            ~/.cache/coursier
-            ~/.coursier
-            ~/.cache/cs
-          key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
-          restore-keys: |
-            ${{ runner.os }}-mill-
+      - name: Setup repo, Java, caches & Mill
+        uses: ./.github/actions/mill-setup
 
       - name: Setup Mill, install dependencies & run packaging
         run: ./millw assembly
