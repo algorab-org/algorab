@@ -14,7 +14,7 @@ object Main extends KyoApp:
 
   run:
     // val code = Source.fromFile("test/resources/golden/good/core019.algo").mkString
-    val code = """def id[A, B](x: A): A = x
-                 |id("test")""".stripMargin
+    val code = """mut val x = 5
+                 |x = 6""".stripMargin
                  
     Console.printLine(compile(code))

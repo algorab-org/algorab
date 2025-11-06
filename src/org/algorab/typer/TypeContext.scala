@@ -22,21 +22,21 @@ case class TypeContext(scopes: Chunk[TypeScope]):
   def updateType(name: Identifier, tpe: Type): TypeContext < Typing =
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
-  def getVariable(name: Identifier): Option[Type] =
+  def getVariable(name: Identifier): Option[Variable] =
     scopes.collectFirst(((scope: TypeScope) => scope.getVariable(name)).unlift)
   
-  def getVariableOrFail(name: Identifier): Type < Typing =
+  def getVariableOrFail(name: Identifier): Variable < Typing =
     getVariable(name) match
       case Some(value) => value
       case None => Typing.failAndAbort(TypeFailure.UnknownVariable(name))
 
-  def declareVariable(name: Identifier, tpe: Type): TypeContext < Typing =
+  def declareVariable(name: Identifier, variable: Variable): TypeContext < Typing =
     scopes.head.getVariable(name) match
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
-      case None => updateVariable(name, tpe)
+      case None => updateVariable(name, variable)
 
-  def updateVariable(name: Identifier, tpe: Type): TypeContext < Typing =
-    this.copy(scopes = scopes.head.withVariable(name, tpe) +: scopes.tail)
+  def updateVariable(name: Identifier, variable: Variable): TypeContext < Typing =
+    this.copy(scopes = scopes.head.withVariable(name, variable) +: scopes.tail)
 
   def merge(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.takeRight(scopes.length))
@@ -70,10 +70,10 @@ object TypeContext:
         Identifier("Array") -> Type.Array,
       ),
       variables = Map(
-        Identifier("Unit") -> Type.Unit,
-        Identifier("println") -> Type.Fun(Chunk(Type.Any), Type.Unit),
-        Identifier("readInt") -> Type.Fun(Chunk.empty, Type.Int),
-        Identifier("readFloat") -> Type.Fun(Chunk.empty, Type.Float)
+        Identifier("Unit") -> Variable(Type.Unit,false),
+        Identifier("println") -> Variable(Type.Fun(Chunk(Type.Any), Type.Unit),false),
+        Identifier("readInt") -> Variable(Type.Fun(Chunk.empty, Type.Int),false),
+        Identifier("readFloat") -> Variable(Type.Fun(Chunk.empty, Type.Float),false)
       )
     )
   ))
@@ -91,13 +91,13 @@ object TypeContext:
 
   def updateType(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateType(name, tpe))
 
-  def getVariable(name: Identifier): Option[Type] < Typing = Var.use(_.getVariable(name))
+  def getVariable(name: Identifier): Option[Variable] < Typing = Var.use(_.getVariable(name))
 
-  def getVariableOrFail(name: Identifier): Type < Typing = Var.use(_.getVariableOrFail(name))
+  def getVariableOrFail(name: Identifier): Variable < Typing = Var.use(_.getVariableOrFail(name))
 
-  def declareVariable(name: Identifier, tpe: Type): Unit < Typing = modify(_.declareVariable(name, tpe))
+  def declareVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.declareVariable(name, variable))
 
-  def updateVariable(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateVariable(name, tpe))
+  def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
   
   def newUniqueName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueName(name))
 
