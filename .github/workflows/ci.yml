@@ -21,10 +21,11 @@ jobs:
         with:
           path: |
             ~/.mill
-            ~/.ivy2/cache
-            !~/.ivy2/cache/**/ivydata-*.properties
-            ~/.ivy2/local
+            ~/.ivy2
             ~/.sbt
+            ~/.cache/coursier
+            ~/.coursier
+            ~/.cache/cs
           key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
           restore-keys: |
             ${{ runner.os }}-mill-
@@ -38,7 +39,7 @@ jobs:
         uses: sbt/setup-sbt@v1
       
       - name: KYO - Grab source
-        run: git clone https://github.com/Iltotore/kyo.git kyo-src
+        run: git clone --depth 1 --branch main https://github.com/Iltotore/kyo.git kyo-src
       
       - name: KYO - Install
         run: |
@@ -46,6 +47,11 @@ jobs:
           sbt publishLocal
           cd ..
           rm -rf kyo-src
+      
+      # ------ End Kyo Workaround ------
+      
+      - name: Prepare Mill
+        run: ./millw
 
   test:
     needs: prepare
@@ -65,15 +71,15 @@ jobs:
         with:
           path: |
             ~/.mill
-            ~/.ivy2/cache
-            !~/.ivy2/cache/**/ivydata-*.properties
-            ~/.ivy2/local
+            ~/.ivy2
             ~/.sbt
+            ~/.cache/coursier
+            ~/.coursier
+            ~/.cache/cs
           key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
           restore-keys: |
             ${{ runner.os }}-mill-
 
-      # ------ Resuming Algorab sequence ------
       - name: Setup Mill, install dependencies & run tests
         run: ./millw test
 
@@ -95,24 +101,22 @@ jobs:
         with:
           path: |
             ~/.mill
-            ~/.ivy2/cache
-            !~/.ivy2/cache/**/ivydata-*.properties
-            ~/.ivy2/local
+            ~/.ivy2
             ~/.sbt
+            ~/.cache/coursier
+            ~/.coursier
+            ~/.cache/cs
           key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
           restore-keys: |
             ${{ runner.os }}-mill-
 
-      # ------ Resuming Algorab sequence ------
       - name: Setup Mill, install dependencies & run packaging
         run: ./millw assembly
       
-      # ------ Uploading Artifacts ------
       - name: Extract current branch name
         id: branch-name
         uses: tj-actions/branch-names@v9
 
-      # Avoids GitHub Actions from panicking about / characters in artifact names.
       - name: Format branch name
         id: format-branch-name
         run: echo "formatted_branch=$(echo ${{ steps.branch-name.outputs.current_branch }} | tr -s '/' '-')" >> $GITHUB_OUTPUT
