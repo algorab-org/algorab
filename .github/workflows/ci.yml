@@ -22,7 +22,7 @@ jobs:
           key: ${{ runner.os }}-sbt-${{ hashFiles('build.mill') }}
           restore-keys: |
             ${{ runner.os }}-sbt-
-      
+
       - name: Grab source
         run: git clone --branch main https://github.com/Iltotore/kyo.git kyo-src
 
@@ -52,7 +52,6 @@ jobs:
         with:
           name: ivy2-local
           path: ~/.ivy2/local
-          # Temporary placeholder for deletion
           retention-days: 1
 
   prepare:
@@ -60,23 +59,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      # TO-DO : Restore cache behavior
+      - uses: ./.github/actions/mill-setup
       
       - uses: actions/download-artifact@v5
         with:
           name: ivy2-local
           path: ~/.ivy2/local
 
-      - name: Debug
-        run: ls -la ~/.ivy2/local
-      
       - name: Prepare Mill
-        run: ./millw -i __.compile
+        run: ./millw --no-server __.compile
+
       - uses: actions/upload-artifact@v4
         with:
           name: mill-build
@@ -87,21 +79,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      
-      # TO-DO : Restore cache behavior
+      - uses: ./.github/actions/mill-setup
       
       - uses: actions/download-artifact@v5
         with:
           name: ivy2-local
           path: ~/.ivy2/local
+
       - uses: actions/download-artifact@v5
         with:
           name: mill-build
           path: out
+
       - name: Setup Mill, install dependencies & run tests
         run: ./millw test
 
@@ -110,21 +99,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      
-      # TO-DO : Restore cache behavior
+      - uses: ./.github/actions/mill-setup
       
       - uses: actions/download-artifact@v5
         with:
           name: ivy2-local
           path: ~/.ivy2/local
+
       - uses: actions/download-artifact@v5
         with:
           name: mill-build
           path: out
+
       - name: Packaging
         run: ./millw assembly
       
@@ -136,5 +122,5 @@ jobs:
       
       - uses: actions/upload-artifact@v4
         with:
-          name: algorab-artifacts-${{ steps.format-branch-name.outputs.formatted_branch }}
+          name: algorab-artifacts-${{ steps.format-branch-name.outputs.formatted_branch }}-${{ github.run_number }}
           path: 'out/assembly.dest/*.jar'
