@@ -3,59 +3,133 @@ name: CI (Testing & Packaging)
 on: [push, pull_request]
 
 jobs:
-  prepare:
+  kyo:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/mill-setup
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: sbt/setup-sbt@v1
 
-      # ---- Kyo ----
-      - name: Cache sbt & kyo
+      - name: Cache sbt
         uses: actions/cache@v4
         with:
           path: |
             ~/.sbt
-            kyo-src/out
-          key: ${{ runner.os }}-kyo
-
-      - uses: sbt/setup-sbt@v1
+            ~/.ivy2/cache
+          key: ${{ runner.os }}-sbt-${{ hashFiles('build.mill') }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-
       
       - name: Grab source
-        run: git clone --depth 1 --branch main https://github.com/Iltotore/kyo.git kyo-src
+        run: git clone --branch main https://github.com/Iltotore/kyo.git kyo-src
+
+      - name: Get Kyo commit
+        id: kyo-sha
+        run: |
+          cd kyo-src
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      - name: Cache Kyo targets
+        uses: actions/cache@v4
+        with:
+          path: |
+            kyo-src/target
+            kyo-src/**/target
+            kyo-src/project/target
+            kyo-src/project/**/target
+          key: ${{ runner.os }}-kyo-target-${{ steps.kyo-sha.outputs.sha }}
+          restore-keys: |
+            ${{ runner.os }}-kyo-target-
       
       - name: Install
         run: |
           cd kyo-src
           sbt publishLocal
-          cd ..
-      
-      # ---- Back to Mill ----
-      - name: Prepare Mill
-        run: ./millw -i __.compile
 
-  test:
-    needs: prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ivy2-local
+          path: ~/.ivy2/local
+          # Temporary placeholder for deletion
+          retention-days: 1
+
+  prepare:
+    needs: kyo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/mill-setup
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
+      # TO-DO : Restore cache behavior
+      
+      - uses: actions/download-artifact@v5
+        with:
+          name: ivy2-local
+          path: ~/.ivy2/local
+
+      - name: Debug
+        run: ls -la ~/.ivy2/local
+      
+      - name: Prepare Mill
+        run: ./millw -i __.compile
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mill-build
+          path: out
+
+  test:
+    needs: [kyo, prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      
+      # TO-DO : Restore cache behavior
+      
+      - uses: actions/download-artifact@v5
+        with:
+          name: ivy2-local
+          path: ~/.ivy2/local
+      - uses: actions/download-artifact@v5
+        with:
+          name: mill-build
+          path: out
       - name: Setup Mill, install dependencies & run tests
         run: ./millw test
 
   package:
-    needs: prepare
+    needs: [kyo, prepare]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/mill-setup
-
-      - name: Setup Mill, install dependencies & run packaging
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      
+      # TO-DO : Restore cache behavior
+      
+      - uses: actions/download-artifact@v5
+        with:
+          name: ivy2-local
+          path: ~/.ivy2/local
+      - uses: actions/download-artifact@v5
+        with:
+          name: mill-build
+          path: out
+      - name: Packaging
         run: ./millw assembly
       
       - uses: tj-actions/branch-names@v9
         id: branch-name
-
       - name: Format branch name
         id: format-branch-name
         run: echo "formatted_branch=$(echo ${{ steps.branch-name.outputs.current_branch }} | tr -s '/' '-')" >> $GITHUB_OUTPUT
