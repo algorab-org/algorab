@@ -226,7 +226,7 @@ object Typer:
       case funDef@untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
         TypeContext.inNewScope:
           direct:
-            val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, funType) = declareTypeParamsAndResolveFunTypes(funDef).now
+            val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, _) = declareTypeParamsAndResolveFunTypes(funDef).now
 
             TypeContext.inNewScope:
               direct:
@@ -242,7 +242,7 @@ object Typer:
                 else
                   assertExprType(typedBody, resolvedRetType).now
                 
-                tpd.Expr.FunDef(name, resolvedParams, resolvedRetType, typedBody, funType)
+                tpd.Expr.FunDef(name, resolvedParams, resolvedRetType, typedBody, tpd.Type.Unit)
             .now
         .now
         
