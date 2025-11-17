@@ -10,13 +10,15 @@ object Main extends KyoApp:
 
   run:
     // val code = Source.fromFile("test/resources/golden/good/core019.algo").mkString
-    val code = """def id[A](x: A): A = x
-                 |val f = id
-                 |val g = id[String]
-                 |f("hey")
-                 |f(5)
-                 |-- f[String](5)
-                 |g("hey")
-                 |-- g(5)""".stripMargin
+    val code = """val x = 5
+                 |val y = x + 5 * 3
+                 |
+                 |mut val z =
+                 |  if y < x then true
+                 |  else false
+                 |
+                 |while z do
+                 |  z = false
+                 |""".stripMargin
                  
-    Console.printLine(compile(code))
+    Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n")))

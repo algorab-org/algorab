@@ -75,7 +75,7 @@ object Typer:
     tpd.Type,
     tpd.Type
   ) < Typing = direct:
-    val uniqueTypeParams = funDef.typeParams.map(tp => (tp, TypeContext.newUniqueName(tp).now))
+    val uniqueTypeParams = funDef.typeParams.map(tp => (tp, TypeContext.newUniqueTypeName(tp).now))
     uniqueTypeParams.foreach((originalName, newName) =>
       TypeContext.declareType(originalName, tpd.Type.Generic(newName)).now
     )
@@ -290,7 +290,9 @@ object Typer:
               direct:
                 TypeContext.declareVariable(iterator, Variable(elemType,false)).now
                 val typedBody = Var.use[TypeContext](iterContext => Var.set(iterContext).flatMap(_ => typeExpr(body))).now
-                tpd.Expr.For(iterator, typedIterable, typedBody, tpd.Type.Unit)
+                
+                //TODO translate to while
+                tpd.Expr.While(???, ???, tpd.Type.Unit)
             .now
           case tpe =>
             Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Array)).now

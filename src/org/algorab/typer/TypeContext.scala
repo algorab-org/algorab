@@ -41,13 +41,27 @@ case class TypeContext(scopes: Chunk[TypeScope]):
   def merge(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.takeRight(scopes.length))
 
-  def newUniqueName(baseName: Identifier): Identifier =
+  def newUniqueTypeName(baseName: Identifier): Identifier =
     val greatestId = scopes
       .flatMap(_.types.values)
       .foldLeft(-1)((curId, tpe) =>
         tpe match
           case Type.Generic(name) if name == baseName && curId == -1 => 0
           case Type.Generic(Identifier(s"$baseName$$$id")) =>
+            id.toIntOption.fold(curId)(math.max(_, curId))
+          case _ => curId
+      )
+
+    if greatestId == -1 then baseName
+    else Identifier.assume(s"$baseName$$${greatestId+1}")
+
+  def newUniqueVarName(baseName: Identifier): Identifier =
+    val greatestId = scopes
+      .flatMap(_.variables.keys)
+      .foldLeft(-1)((curId, name) =>
+        name match
+          case n if n == baseName && curId == -1 => 0
+          case Identifier(s"$baseName$$$id") =>
             id.toIntOption.fold(curId)(math.max(_, curId))
           case _ => curId
       )
@@ -99,7 +113,9 @@ object TypeContext:
 
   def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
   
-  def newUniqueName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueName(name))
+  def newUniqueTypeName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueTypeName(name))
+
+  def newUniqueVarName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueVarName(name))
 
   def inNewScope[A](body: A < Typing): A < Typing =
     Var.isolate.merge[TypeContext](_.merge(_)).run(

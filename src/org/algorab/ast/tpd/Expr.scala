@@ -19,7 +19,6 @@ enum Expr:
   case Greater(left: Expr, right: Expr, exprType: Type)
   case GreaterEqual(left: Expr, right: Expr, exprType: Type)
 
-  case Plus(expr: Expr, exprType: Type)
   case Minus(expr: Expr, exprType: Type)
   case Add(left: Expr, right: Expr, exprType: Type)
   case Sub(left: Expr, right: Expr, exprType: Type)
@@ -39,7 +38,6 @@ enum Expr:
   case Block(expressions: Chunk[Expr], exprType: Type)
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, exprType: Type)
   case While(cond: Expr, body: Expr, exprType: Type)
-  case For(iterator: Identifier, iterable: Expr, body: Expr, exprType: Type)
 
   def exprType: Type
 
@@ -56,7 +54,6 @@ enum Expr:
     case LessEqual(left, right, _) => LessEqual(left, right, tpe)
     case Greater(left, right, _) => Greater(left, right, tpe)
     case GreaterEqual(left, right, _) => GreaterEqual(left, right, tpe)
-    case Plus(expr, _) => Plus(expr, tpe)
     case Minus(expr, _) => Minus(expr, tpe)
     case Add(left, right, _) => Add(left, right, tpe)
     case Sub(left, right, _) => Sub(left, right, tpe)
@@ -74,5 +71,3 @@ enum Expr:
     case Block(expressions, _) => Block(expressions, tpe)
     case If(cond, ifTrue, ifFalse, _) => If(cond, ifTrue, ifFalse, tpe)
     case While(cond, body, _) => While(cond, body, tpe)
-    case For(iterator, iterable, body, _) => For(iterator, iterable, body, tpe)
-  
