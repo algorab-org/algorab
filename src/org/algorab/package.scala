@@ -10,6 +10,8 @@ import org.algorab.parser.Parser
 import org.algorab.typer.Typing
 import org.algorab.typer.Typer
 import org.algorab.compiler.Compilation
+import org.algorab.runtime.Runtime
+import org.algorab.runtime.VM
 
 private[algorab] def assertionError(msg: String): Nothing =
   throw AssertionError(msg)
@@ -37,3 +39,9 @@ def compile(code: String): Result[Chunk[CompilerFailure], Chunk[Instruction]] =
         )
         .eval
         .mapFailure(parsed.errors ++ _)
+
+def runCode(code: String): Result[Chunk[CompilerFailure], Unit] < Runtime.Execution =
+  compile(code) match
+    case Result.Failure(failures) => Result.Failure(failures)
+    case Result.Success(instructions) =>
+      Runtime.run(VM.interpretAll(instructions)).map(Result.Success.apply)

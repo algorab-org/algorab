@@ -25,9 +25,10 @@ Instructions:
   ...
 */
 
-enum Instruction:
+enum Instruction derives CanEqual:
   case Push(value: Value)
-  case Store(name: Identifier)
+  case Declare(name: Identifier)
+  case Assign(name: Identifier)
   case Load(name: Identifier)
 
   case Not

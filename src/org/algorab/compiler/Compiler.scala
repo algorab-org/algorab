@@ -40,17 +40,20 @@ object Compiler:
       case Expr.VarCall(name, _)       => Compilation.emit(Instruction.Load(name)).now
       case Expr.ValDef(name, _, expr, _, _) =>
         compileExpr(expr).now
-        Compilation.emit(Instruction.Store(name)).now
+        Compilation.emit(Instruction.Declare(name)).now
       case Expr.Assign(name, expr, _) =>
         compileExpr(expr).now
-        Compilation.emit(Instruction.Store(name)).now
+        Compilation.emit(Instruction.Assign(name)).now
       case Expr.Apply(expr, args, _) =>
         Kyo.foreachDiscard(args.reverse)(compileExpr).now
         compileExpr(expr).now
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
       case Expr.FunDef(name, params, retType, body, _) => ??? // TODO
-      case Expr.Block(expressions, _)                  => Kyo.foreachDiscard(expressions)(compileExpr).now
+      case Expr.Block(expressions, _)                  =>
+        Compilation.emit(Instruction.PushScope).now
+        Kyo.foreachDiscard(expressions)(compileExpr).now
+        Compilation.emit(Instruction.PopScope).now
       case Expr.If(cond, ifTrue, ifFalse, _) =>
         compileExpr(cond).now
 
