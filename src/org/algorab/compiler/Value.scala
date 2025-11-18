@@ -27,3 +27,14 @@ enum Value derives CanEqual:
   def asString: String = this match
     case VString(value) => value
     case _ => throw AssertionError(s"String expected, got $this")
+
+  def convertToString: String = this match
+    case VUnit => "()"
+    case VBool(value) => value.toString
+    case VInt(value) => value.toString
+    case VFloat(value) => value.toString
+    case VChar(value) => value.toString
+    case VString(value) => value
+    case UserDefinedFunction(position) => "<function>"
+    case BuiltInFunction(f) => "<builtin function>"
+  

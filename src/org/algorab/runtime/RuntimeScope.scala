@@ -14,6 +14,6 @@ object RuntimeScope:
 
   val builtins: RuntimeScope = RuntimeScope(Map(
     Identifier("println") -> Value.BuiltInFunction(args =>
-      Console.printLine(args.head).andThen(Value.VUnit)
+      Console.printLine(args.head.convertToString).andThen(Value.VUnit)
     )
   ))
