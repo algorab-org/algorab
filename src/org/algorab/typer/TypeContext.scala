@@ -87,7 +87,37 @@ object TypeContext:
         Identifier("Unit") -> Variable(Type.Unit,false),
         Identifier("println") -> Variable(Type.Fun(Chunk(Type.Any), Type.Unit),false),
         Identifier("readInt") -> Variable(Type.Fun(Chunk.empty, Type.Int),false),
-        Identifier("readFloat") -> Variable(Type.Fun(Chunk.empty, Type.Float),false)
+        Identifier("readFloat") -> Variable(Type.Fun(Chunk.empty, Type.Float),false),
+        //TODO Change length and Array once OOP and multifile are implemented
+        Identifier("length") -> Variable(
+          tpe = Type.TypeFun(
+            typeParams = Chunk(Identifier("A")),
+            output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
+          ),
+          mutable = false
+        ),
+        Identifier("get") -> Variable(
+          tpe = Type.TypeFun(
+            typeParams = Chunk(Identifier("A")),
+            output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
+          ),
+          mutable = false
+        ),
+        Identifier("Array") -> Variable(
+          tpe = Type.TypeFun(
+            typeParams = Chunk(Identifier("A")),
+            output = Type.Fun(
+              //TODO Use varargs once implemented
+              Chunk(
+                Type.Generic(Identifier("A")),
+                Type.Generic(Identifier("A")),
+                Type.Generic(Identifier("A"))
+              ),
+              Type.arrayOf(Type.Generic(Identifier("A")))
+            )
+          ),
+          mutable = false 
+        )
       )
     )
   ))

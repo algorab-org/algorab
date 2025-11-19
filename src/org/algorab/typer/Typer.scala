@@ -285,14 +285,63 @@ object Typer:
       case untpd.Expr.For(iterator, iterable, body) =>
         val typedIterable = typeExpr(iterable).now
         typedIterable.exprType match
-          case tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
+          case iterableType@tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
             TypeContext.inNewScope:
               direct:
                 TypeContext.declareVariable(iterator, Variable(elemType,false)).now
                 val typedBody = Var.use[TypeContext](iterContext => Var.set(iterContext).flatMap(_ => typeExpr(body))).now
-                
-                //TODO translate to while
-                tpd.Expr.While(???, ???, tpd.Type.Unit)
+              
+                val indexName = TypeContext.newUniqueVarName(Identifier("i")).now
+
+                //TODO Once OOP is implemented, use something like an `Iterable` interface or/and a `forEach` method.
+                tpd.Expr.Block(
+                  expressions = Chunk(
+                    tpd.Expr.ValDef(indexName, tpd.Type.Int, tpd.Expr.LInt(0, tpd.Type.Int), true, tpd.Type.Unit),
+                    tpd.Expr.While(
+                      cond = tpd.Expr.Less(
+                        left = tpd.Expr.VarCall(indexName, tpd.Type.Int),
+                        right = tpd.Expr.Apply(
+                          expr =
+                            tpd.Expr.VarCall(Identifier("length"), tpd.Type.Fun(Chunk(iterableType), tpd.Type.Int)),
+                          args = Chunk(typedIterable),
+                          exprType = tpd.Type.Int
+                        ),
+                        exprType = tpd.Type.Boolean
+                      ),
+                      body = tpd.Expr.Block(
+                        expressions = Chunk(
+                          tpd.Expr.ValDef(
+                            name = iterator,
+                            tpe = elemType,
+                            expr = tpd.Expr.Apply(
+                              tpd.Expr.VarCall(Identifier("get"), tpd.Type.Fun(Chunk(iterableType, tpd.Type.Int), elemType)),
+                              Chunk(
+                                typedIterable,
+                                tpd.Expr.VarCall(indexName, tpd.Type.Int)
+                              ),
+                              tpd.Type.Generic(Identifier("A"))
+                            ),
+                            mutable = false,
+                            exprType = tpd.Type.Unit
+                          ),
+                          typedBody,
+                          tpd.Expr.Assign(
+                            name = indexName,
+                            tpd.Expr.Add(
+                              tpd.Expr.VarCall(indexName, tpd.Type.Int),
+                              tpd.Expr.LInt(1, tpd.Type.Int),
+                              tpd.Type.Int
+                            ),
+                            tpd.Type.Unit
+                          )
+                        ),
+                        exprType = tpd.Type.Unit
+                      ),
+                      exprType = tpd.Type.Unit
+                    )
+                  ),
+                  exprType = tpd.Type.Unit
+                )
             .now
           case tpe =>
             Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Array)).now

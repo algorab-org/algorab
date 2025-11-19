@@ -9,6 +9,7 @@ enum Value derives CanEqual:
   case VFloat(value: Double)
   case VChar(value: Char)
   case VString(value: String)
+  case VArray(values: Array[Value])
   case UserDefinedFunction(position: InstrPosition)
   case BuiltInFunction(f: Chunk[Value] => Value < Sync)
 
@@ -28,6 +29,10 @@ enum Value derives CanEqual:
     case VString(value) => value
     case _ => throw AssertionError(s"String expected, got $this")
 
+  def asArray: Array[Value] = this match
+    case VArray(values) => values
+    case _ => throw AssertionError(s"Array expected, got $this")
+
   def convertToString: String = this match
     case VUnit => "()"
     case VBool(value) => value.toString
@@ -35,6 +40,7 @@ enum Value derives CanEqual:
     case VFloat(value) => value.toString
     case VChar(value) => value.toString
     case VString(value) => value
+    case VArray(values) => values.mkString("Array(", ", ", ")")
     case UserDefinedFunction(position) => "<function>"
     case BuiltInFunction(f) => "<builtin function>"
   

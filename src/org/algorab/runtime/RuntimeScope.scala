@@ -15,5 +15,15 @@ object RuntimeScope:
   val builtins: RuntimeScope = RuntimeScope(Map(
     Identifier("println") -> Value.BuiltInFunction(args =>
       Console.printLine(args.head.convertToString).andThen(Value.VUnit)
+    ),
+    //TODO Change length and Array once OOP and multifile are implemented
+    Identifier("length") -> Value.BuiltInFunction(args =>
+      Value.VInt(args.head.asArray.length)
+    ),
+    Identifier("get") -> Value.BuiltInFunction(args =>
+      args(0).asArray(args(1).asInt)  
+    ),
+    Identifier("Array") -> Value.BuiltInFunction(args =>
+      Value.VArray(args.toArray)  
     )
   ))
