@@ -1,0 +1,9 @@
+-- HOF scope
+def f(x: Int): Int =
+  val z = 2 * x
+  def g(x: Int): Int = x + z
+
+  g(10)
+
+-- 22
+f(6)

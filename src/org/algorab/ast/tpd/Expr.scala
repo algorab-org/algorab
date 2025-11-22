@@ -33,8 +33,7 @@ enum Expr:
   case ValDef(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean, exprType: Type)
   case Assign(name: Identifier, expr: Expr, exprType: Type)
   case Apply(expr: Expr, args: Chunk[Expr], exprType: Type)
-  case FunDef(name: Identifier, params: Chunk[(Identifier, Type)], retType: Type, body: Expr, exprType: Type)
-
+  case FunRef(internalName: Identifier, exprType: Type)
   case Block(expressions: Chunk[Expr], exprType: Type)
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, exprType: Type)
   case While(cond: Expr, body: Expr, exprType: Type)
@@ -67,7 +66,7 @@ enum Expr:
     case ValDef(name, typ, expr, mutable, _) => ValDef(name, typ, expr, mutable, tpe)
     case Assign(name, expr, _) => Assign(name, expr, tpe)
     case Apply(expr, args, _) => Apply(expr, args, tpe)
-    case FunDef(name, params, retType, body, _) => FunDef(name, params, retType, body, tpe)
+    case FunRef(internalName, _) => FunRef(internalName, tpe)
     case Block(expressions, _) => Block(expressions, tpe)
     case If(cond, ifTrue, ifFalse, _) => If(cond, ifTrue, ifFalse, tpe)
     case While(cond, body, _) => While(cond, body, tpe)

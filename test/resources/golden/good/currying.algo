@@ -1,0 +1,7 @@
+-- Currying
+def add(x: Int): Int => Int =
+  def addX(y: Int): Int = x + y
+  addX
+
+-- 9
+add(5)(4)

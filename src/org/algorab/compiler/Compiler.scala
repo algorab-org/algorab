@@ -49,7 +49,7 @@ object Compiler:
         compileExpr(expr).now
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
-      case Expr.FunDef(name, params, retType, body, _) => ??? // TODO
+      case Expr.FunRef(name, _) =>
       case Expr.Block(expressions, _)                  =>
         Compilation.emit(Instruction.PushScope).now
         Kyo.foreachDiscard(expressions)(compileExpr).now

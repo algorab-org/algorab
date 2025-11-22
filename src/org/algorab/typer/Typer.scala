@@ -241,8 +241,17 @@ object Typer:
                   TypeContext.updateVariable(name, Variable(inferredType,false)).now
                 else
                   assertExprType(typedBody, resolvedRetType).now
+
+                val internalName = TypeContext.newUniqueFunctionName(name).now
+                TypeContext.declareFunction(internalName, FunctionDef(name, params.size, Set.empty, typedBody)).now
                 
-                tpd.Expr.FunDef(name, resolvedParams, resolvedRetType, typedBody, tpd.Type.Unit)
+                tpd.Expr.ValDef(
+                  name = name,
+                  tpe = resolvedRetType,
+                  expr = tpd.Expr.FunRef(internalName, tpd.Type.Unit),
+                  mutable = false,
+                  exprType = tpd.Type.Unit
+                )
             .now
         .now
         

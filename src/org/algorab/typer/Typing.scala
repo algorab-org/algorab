@@ -7,7 +7,7 @@ type Typing = Var[TypeContext] & Emit[TypeFailure] & Abort[Unit]
 object Typing:
 
   def run[A, S](body: A < (Typing & S)): Result[Chunk[TypeFailure], A] < S =
-    body.handle(
+    body.map(r => Var.use[TypeContext](ctx => println(ctx.functions.mkString("\n"))).andThen(r)).handle(
       Var.run(TypeContext.default),
       Abort.runPartialOrThrow,
       Emit.run(_)

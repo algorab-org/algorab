@@ -20,16 +20,11 @@ object Main extends KyoApp:
   run:
     direct:
       // val code = Source.fromFile("test/resources/golden/good/core019.algo").mkString
-      val code = """val arr = Array(1, 2, 3)
-                   |println(length(arr))
-                   |mut val sum = 0
-                   |
-                   |for i in arr do
-                   |  sum = sum + i
-                   |
-                   |println(sum)
-                   |println(get(arr, 2))""".stripMargin
+      val code = """val x = 5
+                   |def f(y: Int): Int =
+                   |  def g(): Int = x + y
+                   |  g()""".stripMargin
                   
-      // Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now
+      Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now
       // Console.printLine("======================").now
-      runCode(code).map(Console.printLine).now
+      // runCode(code).map(Console.printLine).now
