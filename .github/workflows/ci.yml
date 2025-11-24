@@ -1,4 +1,4 @@
-name: CI (Testing & Packaging)
+name: Algorab CI
 
 on: [push, pull_request]
 
@@ -57,6 +57,7 @@ jobs:
         with:
           name: mill-build
           path: out
+          retention-days: 1
   
   # The actual CI jobs. Finally.
 
