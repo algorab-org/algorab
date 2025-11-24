@@ -15,8 +15,10 @@ runs:
       with:
         path: |
           ~/.sbt
+          ~/.coursier
           ~/.ivy2/cache
           ~/.cache/coursier
+          ~/.cache/cs
         key: ${{ runner.os }}-sbt-${{ hashFiles('build.mill') }}
         restore-keys: |
           ${{ runner.os }}-sbt-

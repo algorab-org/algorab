@@ -17,9 +17,9 @@ runs:
           ~/.cache/mill
           ~/.cache/coursier
           ~/.cache/cs
-        key: ${{ runner.os }}-${{ hashFiles('build.mill') }}
+        key: ${{ runner.os }}-mill-${{ hashFiles('build.mill') }}
         restore-keys: |
-          ${{ runner.os }}-
+          ${{ runner.os }}-mill-
     
     # All the Mill jobs require the local build of Kyo, through the Ivy2 local repository.
     # So we download it here to avoid duplicating this step in all Mill jobs.
