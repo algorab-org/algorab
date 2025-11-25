@@ -23,7 +23,17 @@ case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, Func
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
   def getVariable(name: Identifier): Option[Variable] =
-    scopes.collectFirst[Variable](((scope: TypeScope) => scope.getVariable(name)).unlift)
+    
+    def rec(scopes: Chunk[TypeScope]): Option[Variable] = scopes match
+      case head +: tail =>
+        head match
+          case TypeScope.Block(_, variables) => variables.get(name).orElse(rec(tail))
+          case TypeScope.Function(name, _, variables, captures) =>
+            //TODO capture checking
+            variables.get(name).orElse(rec(tail))
+      case _ => None
+
+    rec(scopes)
 
   def getVariableOrFail(name: Identifier): Variable < Typing =
     getVariable(name) match
@@ -86,14 +96,11 @@ case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, Func
     if greatestId == -1 then baseName
     else Identifier.assume(s"$baseName$$${greatestId + 1}")
 
-  def withCurrentFunction(currentFunction: Identifier): TypeContext =
-    this.copy(currentFunction = Present((scopes.size - 1, currentFunction)))
-
 object TypeContext:
 
   val default: TypeContext = TypeContext(
     scopes = Chunk(
-      TypeScope(
+      TypeScope.Block(
         types = Map(
           Identifier("Any") -> Type.Any,
           Identifier("Unit") -> Type.Unit,
@@ -142,8 +149,7 @@ object TypeContext:
         )
       )
     ),
-    functions = Map.empty,
-    currentFunction = Maybe.empty
+    functions = Map.empty
   )
 
   def modify(f: TypeContext => TypeContext < Typing): Unit < Typing =
@@ -163,9 +169,9 @@ object TypeContext:
 
   def updateType(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateType(name, tpe))
 
-  def getVariable(name: Identifier): Option[Variable] < Typing = modifyReturn(_.getVariable(name))
+  def getVariable(name: Identifier): Option[Variable] < Typing = Var.use(_.getVariable(name))
 
-  def getVariableOrFail(name: Identifier): Variable < Typing = modifyReturn(_.getVariableOrFail(name))
+  def getVariableOrFail(name: Identifier): Variable < Typing = Var.use(_.getVariableOrFail(name))
 
   def declareVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.declareVariable(name, variable))
 
@@ -181,11 +187,9 @@ object TypeContext:
 
   def newUniqueFunctionName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueFunctionName(name))
 
-  def setCurrentFunction(name: Identifier): Unit < Typing = modify(_.withCurrentFunction(name))
-
   def inNewScope[A](body: A < Typing): A < Typing =
     Var.isolate.merge[TypeContext](_.merge(_)).run(
-      Var.update[TypeContext](ctx => ctx.copy(scopes = TypeScope(Map.empty, Map.empty) +: ctx.scopes))
+      Var.update[TypeContext](ctx => ctx.copy(scopes = TypeScope.Block(Map.empty, Map.empty) +: ctx.scopes))
         .andThen(body)
     )
 
