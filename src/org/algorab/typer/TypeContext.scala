@@ -3,6 +3,8 @@ package org.algorab.typer
 import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Type
+import scala.annotation.tailrec
+import org.algorab.ast.tpd.Expr
 
 case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, FunctionDef]):
 
@@ -22,23 +24,27 @@ case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, Func
   def updateType(name: Identifier, tpe: Type): TypeContext < Typing =
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
-  def getVariable(name: Identifier): Option[Variable] =
+  def getVariable(name: Identifier): (TypeContext, Option[Variable]) =
     
-    def rec(scopes: Chunk[TypeScope]): Option[Variable] = scopes match
+    @tailrec
+    def rec(scopes: Chunk[TypeScope], updatedScopes: Chunk[TypeScope]): (Chunk[TypeScope], Option[Variable]) = scopes match
       case head +: tail =>
         head match
-          case TypeScope.Block(_, variables) => variables.get(name).orElse(rec(tail))
-          case TypeScope.Function(name, _, variables, captures) =>
-            //TODO capture checking
-            variables.get(name).orElse(rec(tail))
-      case _ => None
+          case TypeScope.Block(_, variables) => variables.get(name) match
+            case None => rec(tail, updatedScopes :+ head)
+            case some => (updatedScopes ++ scopes, some)
+          case TypeScope.Function(types, variables, captures) => variables.get(name) match
+            case None => rec(tail, updatedScopes :+ TypeScope.Function(types, variables, captures + name))
+            case some => (updatedScopes ++ scopes, some)
+      case _ => (updatedScopes ++ scopes, None)
 
-    rec(scopes)
+    val (updated, variable) = rec(scopes, Chunk.empty)
+    (this.copy(scopes = updated), variable)
 
-  def getVariableOrFail(name: Identifier): Variable < Typing =
+  def getVariableOrFail(name: Identifier): (TypeContext, Variable) < Typing =
     getVariable(name) match
-      case Some(value) => value
-      case None        => Typing.failAndAbort(TypeFailure.UnknownVariable(name))
+      case (newCtx, Some(value)) => (newCtx, value)
+      case (_, None)        => Typing.failAndAbort(TypeFailure.UnknownVariable(name))
 
   def declareVariable(name: Identifier, variable: Variable): TypeContext < Typing =
     scopes.head.getVariable(name) match
@@ -50,11 +56,16 @@ case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, Func
 
   def getFunction(name: Identifier): Option[FunctionDef] = functions.get(name)
 
-  def declareFunction(name: Identifier, function: FunctionDef): TypeContext =
-    this.copy(functions = functions.updated(name, function))
+  def mergeBlock(inner: TypeContext): TypeContext =
+    this.copy(scopes = inner.scopes.drop(1), functions = inner.functions)
 
-  def merge(inner: TypeContext): TypeContext =
-    this.copy(scopes = inner.scopes.takeRight(scopes.length), functions = functions ++ inner.functions)
+  def popFunction(name: Identifier, displayName: Identifier, body: Expr): TypeContext = scopes match
+    case TypeScope.Function(types, variables, captures) +: remaining =>
+      this.copy(
+        scopes = remaining,
+        functions = this.functions.updated(name, FunctionDef(displayName, captures, body))
+      )
+    case _ => throw AssertionError("Tried to merge a block scope as a function scope")
 
   def newUniqueTypeName(baseName: Identifier): Identifier =
     val greatestId = scopes
@@ -169,9 +180,9 @@ object TypeContext:
 
   def updateType(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateType(name, tpe))
 
-  def getVariable(name: Identifier): Option[Variable] < Typing = Var.use(_.getVariable(name))
+  def getVariable(name: Identifier): Option[Variable] < Typing = modifyReturn(_.getVariable(name))
 
-  def getVariableOrFail(name: Identifier): Variable < Typing = Var.use(_.getVariableOrFail(name))
+  def getVariableOrFail(name: Identifier): Variable < Typing = modifyReturn(_.getVariableOrFail(name))
 
   def declareVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.declareVariable(name, variable))
 
@@ -179,19 +190,29 @@ object TypeContext:
 
   def getFunction(name: Identifier): Option[FunctionDef] < Typing = Var.use(_.getFunction(name))
 
-  def declareFunction(name: Identifier, function: FunctionDef): Unit < Typing = modify(_.declareFunction(name, function))
-
   def newUniqueTypeName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueTypeName(name))
 
   def newUniqueVarName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueVarName(name))
 
   def newUniqueFunctionName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueFunctionName(name))
 
-  def inNewScope[A](body: A < Typing): A < Typing =
-    Var.isolate.merge[TypeContext](_.merge(_)).run(
+  def inNewBlockScope[A](body: A < Typing): A < Typing =
+    Var.isolate.merge[TypeContext](_.mergeBlock(_)).run(
       Var.update[TypeContext](ctx => ctx.copy(scopes = TypeScope.Block(Map.empty, Map.empty) +: ctx.scopes))
         .andThen(body)
     )
+
+  def inNewFunctionScope(displayName: Identifier)(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
+    val name = newUniqueFunctionName(displayName).now
+    val ctx = Var.updateDiscard[TypeContext](ctx => ctx.copy(
+      scopes = TypeScope.Function(Map.empty, Map.empty, Set.empty) +: ctx.scopes,
+      functions = ctx.functions.updated(name, null) //Reserve name to avoid duplication of internal name
+    )).now
+
+    val (funBody, funDecl) = body(name).now
+    Var.updateDiscard[TypeContext](_.popFunction(name, displayName, funBody)).now
+
+    funDecl
 
   def isSubtype(tpe: Type, expected: Type): Boolean < Typing = (tpe, expected) match
     case (_, Type.Any)          => true

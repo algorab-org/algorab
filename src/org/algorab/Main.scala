@@ -22,7 +22,9 @@ object Main extends KyoApp:
       // val code = Source.fromFile("test/resources/golden/good/core019.algo").mkString
       val code = """val x = 5
                    |def f(y: Int): Int =
-                   |  def g(): Int = x + y
+                   |  def g(): Int =
+                   |    val z = 5
+                   |    x + y + z
                    |  g()""".stripMargin
                   
       Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now

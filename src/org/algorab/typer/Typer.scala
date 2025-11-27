@@ -163,7 +163,7 @@ object Typer:
         tpd.Expr.VarCall(name, varType)
       case untpd.Expr.ValDef(name, tpe, expr, mutable) =>
         val resolvedType = resolveType(tpe).now
-        val typedExpr = TypeContext.inNewScope(typeExpr(expr)).now
+        val typedExpr = TypeContext.inNewBlockScope(typeExpr(expr)).now
         
         if resolvedType == tpd.Type.Inferred then TypeContext.updateVariable(name, Variable(typedExpr.exprType, mutable)).now
         else assertExprType(typedExpr, resolvedType).now
@@ -213,7 +213,7 @@ object Typer:
             else if sizeCompare > 0 then
               Typing.failAndAbort(TypeFailure.TooManyTypeArguments(types, typeParams)).now
             else
-              TypeContext.inNewScope:
+              TypeContext.inNewBlockScope:
                 direct:
                   val replacements = typeParams
                     .zip(types)
@@ -224,11 +224,11 @@ object Typer:
               .now
           case tpe => Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.TypeFun(Chunk.empty, tpd.Type.Inferred))).now
       case funDef@untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
-        TypeContext.inNewScope:
+        TypeContext.inNewBlockScope:
           direct:
             val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, _) = declareTypeParamsAndResolveFunTypes(funDef).now
 
-            TypeContext.inNewScope:
+            TypeContext.inNewFunctionScope(name): internalName =>
               direct:
                 resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(tpe,false)).now)
 
@@ -241,16 +241,16 @@ object Typer:
                   TypeContext.updateVariable(name, Variable(inferredType,false)).now
                 else
                   assertExprType(typedBody, resolvedRetType).now
-
-                val internalName = TypeContext.newUniqueFunctionName(name).now
-                TypeContext.declareFunction(internalName, FunctionDef(name, params.size, Set.empty, typedBody)).now
                 
-                tpd.Expr.ValDef(
-                  name = name,
-                  tpe = resolvedRetType,
-                  expr = tpd.Expr.FunRef(internalName, tpd.Type.Unit),
-                  mutable = false,
-                  exprType = tpd.Type.Unit
+                (
+                  typedBody,
+                  tpd.Expr.ValDef(
+                    name = name,
+                    tpe = resolvedRetType,
+                    expr = tpd.Expr.FunRef(internalName, tpd.Type.Unit),
+                    mutable = false,
+                    exprType = tpd.Type.Unit
+                  )
                 )
             .now
         .now
@@ -261,7 +261,7 @@ object Typer:
             val resolvedType = resolveType(tpe).now
             TypeContext.declareVariable(name, Variable(resolvedType, mutable)).now
           case funDef: untpd.Expr.FunDef =>
-            val (_, _, _, _, funType) = TypeContext.inNewScope(declareTypeParamsAndResolveFunTypes(funDef)).now
+            val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
             TypeContext.declareVariable(funDef.name, Variable(funType, false)).now
           case _ =>
 
@@ -271,8 +271,8 @@ object Typer:
       case untpd.Expr.If(cond, ifTrue, ifFalse) =>
         val typedCond = typeExpr(cond).now
         assertExprType(typedCond, tpd.Type.Boolean).now
-        val typedIfTrue = TypeContext.inNewScope(typeExpr(ifTrue)).now
-        val typedIfFalse = TypeContext.inNewScope(typeExpr(ifFalse)).now
+        val typedIfTrue = TypeContext.inNewBlockScope(typeExpr(ifTrue)).now
+        val typedIfFalse = TypeContext.inNewBlockScope(typeExpr(ifFalse)).now
 
         //TODO support inheritance
         if TypeContext.isSubtype(typedIfTrue.exprType, typedIfFalse.exprType).now then
@@ -289,13 +289,13 @@ object Typer:
       case untpd.Expr.While(cond, body) =>
         val typedCond = typeExpr(cond).now
         assertExprType(typedCond, tpd.Type.Boolean).now
-        val typedBody = TypeContext.inNewScope(typeExpr(body)).now
+        val typedBody = TypeContext.inNewBlockScope(typeExpr(body)).now
         tpd.Expr.While(typedCond, typedBody, tpd.Type.Unit)
       case untpd.Expr.For(iterator, iterable, body) =>
         val typedIterable = typeExpr(iterable).now
         typedIterable.exprType match
           case iterableType@tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
-            TypeContext.inNewScope:
+            TypeContext.inNewBlockScope:
               direct:
                 TypeContext.declareVariable(iterator, Variable(elemType,false)).now
                 val typedBody = Var.use[TypeContext](iterContext => Var.set(iterContext).flatMap(_ => typeExpr(body))).now
