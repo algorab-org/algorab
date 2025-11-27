@@ -12,6 +12,7 @@ import org.algorab.typer.Typer
 import org.algorab.compiler.Compilation
 import org.algorab.runtime.Runtime
 import org.algorab.runtime.VM
+import org.algorab.compiler.InstrPosition
 
 private[algorab] def assertionError(msg: String): Nothing =
   throw AssertionError(msg)
@@ -34,7 +35,7 @@ def compile(code: String): Result[Chunk[CompilerFailure], Chunk[Instruction]] =
       Typer.typeExpr(expr)
         .map(Compiler.compileExpr)
         .handle(
-          Compilation.run,
+          Compilation.run(InstrPosition(0)),
           Typing.run
         )
         .eval

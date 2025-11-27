@@ -57,11 +57,12 @@ object Compiler:
       case Expr.If(cond, ifTrue, ifFalse, _) =>
         compileExpr(cond).now
 
-        val ifTrueInstrs = Compilation.run(compileExpr(ifTrue)).now
-        val ifFalseInstrs = Compilation.run(compileExpr(ifFalse)).now
-
         val ifTrueStart = Compilation.nextPosition.now + 1
+        val ifTrueInstrs = Compilation.run(ifTrueStart)(compileExpr(ifTrue)).now
+        
         val ifFalseStart = ifTrueStart + ifTrueInstrs.size + 1
+        val ifFalseInstrs = Compilation.run(ifFalseStart)(compileExpr(ifFalse)).now
+
         val ifNext = ifFalseStart + ifFalseInstrs.size
 
         Compilation.emit(Instruction.JumpIf(ifTrueStart, ifFalseStart)).now
@@ -76,7 +77,7 @@ object Compiler:
 
         val bodyStart = Compilation.nextPosition.now + 1
 
-        val bodyInstrs = Compilation.run(compileExpr(body)).now
+        val bodyInstrs = Compilation.run(bodyStart)(compileExpr(body)).now
 
         val loopEnd = bodyStart + bodyInstrs.size + 1
 
