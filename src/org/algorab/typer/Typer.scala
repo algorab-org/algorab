@@ -231,7 +231,7 @@ object Typer:
           direct:
             val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, _) = declareTypeParamsAndResolveFunTypes(funDef).now
 
-            TypeContext.inNewFunctionScope(name): internalName =>
+            TypeContext.inNewFunctionScope(name, params.map(_._1)): internalName =>
               direct:
                 resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(tpe,false)).now)
 

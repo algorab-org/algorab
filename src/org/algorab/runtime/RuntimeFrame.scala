@@ -1,0 +1,56 @@
+package org.algorab.runtime
+
+import kyo.Chunk
+import org.algorab.compiler.Value
+import org.algorab.compiler.InstrPosition
+import org.algorab.ast.Identifier
+
+case class RuntimeFrame(
+  nextInstruction: InstrPosition,
+  stack: Chunk[Value],
+  scopes: Chunk[RuntimeScope]
+):
+
+  def jump(nextInstruction: InstrPosition): RuntimeFrame =
+    this.copy(nextInstruction = nextInstruction)
+
+  def push(value: Value): RuntimeFrame =
+    this.copy(stack = value +: stack)
+
+  def pop: (Value, RuntimeFrame) =
+    (stack.head, this.copy(stack = stack.tail))
+
+  def pushScope: RuntimeFrame =
+    this.copy(scopes = RuntimeScope.empty +: scopes)
+
+  def popScope: RuntimeFrame =
+    this.copy(scopes = scopes.tail)
+
+  def getVariable(name: Identifier): Option[Value] =
+    scopes.collectFirst(((scope: RuntimeScope) => scope.getVariable(name)).unlift)
+
+  def declareVariable(name: Identifier, value: Value): RuntimeFrame =
+    this.copy(scopes = scopes.headOption match
+      case Some(head) => RuntimeScope(head.variables + (name -> value)) +: scopes.tail
+      case None       => RuntimeScope(Map(name -> value)) +: scopes
+    )
+
+  def assignVariable(name: Identifier, value: Value): RuntimeFrame =
+    def rec(scopes: Chunk[RuntimeScope]): Chunk[RuntimeScope] = scopes match
+      case head +: tail =>
+        if head.variables.contains(name) then
+          head.copy(variables = head.variables.updated(name, value)) +: tail
+        else
+          head +: rec(tail)
+      
+      case _ => throw AssertionError(s"Unknown variable: $name")
+
+    this.copy(scopes = rec(scopes))
+      
+object RuntimeFrame:
+
+  val root: RuntimeFrame = RuntimeFrame(
+    nextInstruction = InstrPosition(0),
+    stack = Chunk.empty,
+    scopes = Chunk(RuntimeScope.builtins),
+  )

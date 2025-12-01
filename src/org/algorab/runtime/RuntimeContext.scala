@@ -5,50 +5,60 @@ import org.algorab.ast.Identifier
 import org.algorab.compiler.Value
 import org.algorab.compiler.InstrPosition
 
-case class RuntimeContext(nextInstruction: InstrPosition, stack: Chunk[Value], scopes: Chunk[RuntimeScope]):
+case class RuntimeContext(
+  frames: Chunk[RuntimeFrame],
+  functions: Map[Identifier, FunctionDef]
+):
+
+  def modifyHeadFrame(f: RuntimeFrame => RuntimeFrame): RuntimeContext =
+    this.copy(frames = f(frames.head) +: frames.tail)
+
+  def modifyHeadFrameReturn[A](f: RuntimeFrame => (A, RuntimeFrame)): (A, RuntimeContext) =
+    val (result, updated) = f(frames.head)
+    (result, this.copy(frames = updated +: frames.tail))
+
+  def nextInstruction: InstrPosition = frames.head.nextInstruction
 
   def jump(nextInstruction: InstrPosition): RuntimeContext =
-    this.copy(nextInstruction = nextInstruction)
+    modifyHeadFrame(_.jump(nextInstruction))
 
   def push(value: Value): RuntimeContext =
-    this.copy(stack = value +: stack)
+    modifyHeadFrame(_.push(value))
 
   def pop: (Value, RuntimeContext) =
-    (stack.head, this.copy(stack = stack.tail))
+    modifyHeadFrameReturn(_.pop)
 
   def pushScope: RuntimeContext =
-    this.copy(scopes = RuntimeScope.empty +: scopes)
+    modifyHeadFrame(_.pushScope)
 
   def popScope: RuntimeContext =
-    this.copy(scopes = scopes.tail)
+    modifyHeadFrame(_.popScope)
+
+  def pushFrame(frame: RuntimeFrame): RuntimeContext =
+    this.copy(frames = frame +: frames)
+  
+  def popFrame: RuntimeContext =
+    this.copy(frames = frames.tail)
 
   def getVariable(name: Identifier): Option[Value] =
-    scopes.collectFirst(((scope: RuntimeScope) => scope.getVariable(name)).unlift)
-
+    frames.collectFirst(((frame: RuntimeFrame) => frame.getVariable(name)).unlift)
+    
   def declareVariable(name: Identifier, value: Value): RuntimeContext =
-    this.copy(scopes = scopes.headOption match
-      case Some(head) => RuntimeScope(head.variables + (name -> value)) +: scopes.tail
-      case None       => RuntimeScope(Map(name -> value)) +: scopes
-    )
+    modifyHeadFrame(_.declareVariable(name, value))
 
   def assignVariable(name: Identifier, value: Value): RuntimeContext =
-    def rec(scopes: Chunk[RuntimeScope]): Chunk[RuntimeScope] = scopes match
-      case head +: tail =>
-        if head.variables.contains(name) then
-          head.copy(variables = head.variables.updated(name, value)) +: tail
-        else
-          head +: rec(tail)
-      
-      case _ => throw AssertionError(s"Unknown variable: $name")
-      
-    this.copy(scopes = rec(scopes))
+    modifyHeadFrame(_.assignVariable(name, value))
+
+  def getFunction(name: Identifier): Option[FunctionDef] = functions.get(name)
+  
+  def declareFunction(name: Identifier, function: FunctionDef): RuntimeContext =
+    this.copy(functions = functions.updated(name, function))
 
 object RuntimeContext:
 
   val empty: RuntimeContext = RuntimeContext(
-    nextInstruction = InstrPosition(0),
-    stack = Chunk.empty,
-    scopes = Chunk(RuntimeScope.builtins)
+    frames = Chunk(RuntimeFrame.root),
+    functions = Map.empty
   )
 
   def modify(f: RuntimeContext => RuntimeContext < Runtime): Unit < Runtime =
@@ -72,6 +82,11 @@ object RuntimeContext:
 
   def popScope: Unit < Runtime = modify(_.popScope)
 
+  def pushFrame(frame: RuntimeFrame): Unit < Runtime =
+    modify(_.pushFrame(frame))
+  
+  def popFrame: Unit < Runtime = modify(_.popFrame)
+
   def getVariable(name: Identifier): Value < Runtime =
     Var.use[RuntimeContext](
       _
@@ -84,4 +99,13 @@ object RuntimeContext:
 
   def assignVariable(name: Identifier, value: Value): Unit < Runtime =
     modify(_.assignVariable(name, value))
-    
+
+  def getFunction(name: Identifier): FunctionDef < Runtime =
+    Var.use[RuntimeContext](
+      _
+        .getFunction(name)
+        .getOrElse(throw AssertionError(s"Unknown function: $name"))
+    )
+
+  def declareFunction(name: Identifier, function: FunctionDef): Unit < Runtime =
+    modify(_.declareFunction(name, function))

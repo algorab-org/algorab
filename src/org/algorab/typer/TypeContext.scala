@@ -59,11 +59,11 @@ case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, Func
   def mergeBlock(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions)
 
-  def popFunction(name: Identifier, displayName: Identifier, body: Expr): TypeContext = scopes match
+  def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
     case TypeScope.Function(types, variables, captures) +: remaining =>
       this.copy(
         scopes = remaining,
-        functions = this.functions.updated(name, FunctionDef(displayName, captures, body))
+        functions = this.functions.updated(name, FunctionDef(displayName, params, captures, body))
       )
     case _ => throw AssertionError("Tried to merge a block scope as a function scope")
 
@@ -202,7 +202,7 @@ object TypeContext:
         .andThen(body)
     )
 
-  def inNewFunctionScope(displayName: Identifier)(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
+  def inNewFunctionScope(displayName: Identifier, params: Chunk[Identifier])(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
     val name = newUniqueFunctionName(displayName).now
     val ctx = Var.updateDiscard[TypeContext](ctx => ctx.copy(
       scopes = TypeScope.Function(Map.empty, Map.empty, Set.empty) +: ctx.scopes,
@@ -210,7 +210,7 @@ object TypeContext:
     )).now
 
     val (funBody, funDecl) = body(name).now
-    Var.updateDiscard[TypeContext](_.popFunction(name, displayName, funBody)).now
+    Var.updateDiscard[TypeContext](_.popFunction(name, displayName, params, funBody)).now
 
     funDecl
 

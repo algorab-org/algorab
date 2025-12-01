@@ -89,10 +89,12 @@ object Compiler:
 
 
   def compileFunction(internalName: Identifier, function: FunctionDef): Unit < Compilation = direct:
-    val bodyPos = Compilation.nextPosition.now + 1
+    val argsInstrs = function.params.map(Instruction.Declare.apply)
+    val bodyPos = Compilation.nextPosition.now + argsInstrs.size + 1
     val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
 
     Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, function.captures, bodyPos + bodyInstrs.size + 1)).now
+    Compilation.emitAll(argsInstrs).now
     Compilation.emitAll(bodyInstrs).now
     Compilation.emit(Instruction.Return).now
 
