@@ -2,34 +2,12 @@ package org.algorab.compiler
 
 import org.algorab.ast.Identifier
 
-/* 
-while condition do
-  println("hey")
-
-AST:
-  While(
-    VarCall("condition"),
-    Apply(
-      VarCall("println"),
-      LString("hey")
-    )
-  )
-
-Instructions:
-  Load("condition")
-  JumpIf(2, 6)
-  Load("println")
-  Push("hey")
-  Apply(1)
-  Jump(0)
-  ...
-*/
-
 enum Instruction derives CanEqual:
   case Push(value: Value)
   case Declare(name: Identifier)
   case Assign(name: Identifier)
   case Load(name: Identifier)
+  case LoadFunction(name: Identifier)
 
   case Not
   case Equal
@@ -52,5 +30,7 @@ enum Instruction derives CanEqual:
   case Apply(paramCount: ParamCount)
   case Jump(position: InstrPosition)
   case JumpIf(ifTrue: InstrPosition, ifFalse: InstrPosition)
+  case Return
   case PushScope
   case PopScope
+  case FunctionStart(internalName: Identifier, displayName: Identifier, captures: Set[Identifier], next: InstrPosition)

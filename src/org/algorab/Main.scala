@@ -25,7 +25,10 @@ object Main extends KyoApp:
       //              |  def g(): Int =
       //              |    val z = 5
       //              |    x + y + z
-      //              |  g()""".stripMargin
+      //              |  g()
+      //              |f(4)""".stripMargin
+
+      // val code = "1 + 2 * 3"
                   
       // Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now
       // Console.printLine("======================").now

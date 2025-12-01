@@ -1,6 +1,7 @@
 package org.algorab.compiler
 
 import kyo.*
+import org.algorab.ast.Identifier
 
 enum Value derives CanEqual:
   case VUnit
@@ -10,7 +11,7 @@ enum Value derives CanEqual:
   case VChar(value: Char)
   case VString(value: String)
   case VArray(values: Array[Value])
-  case UserDefinedFunction(position: InstrPosition)
+  case UserDefinedFunction(position: InstrPosition, captured: Map[Identifier, Value])
   case BuiltInFunction(f: Chunk[Value] => Value < Sync)
 
   def asBool: Boolean = this match
@@ -41,6 +42,6 @@ enum Value derives CanEqual:
     case VChar(value) => value.toString
     case VString(value) => value
     case VArray(values) => values.mkString("Array(", ", ", ")")
-    case UserDefinedFunction(position) => "<function>"
-    case BuiltInFunction(f) => "<builtin function>"
+    case UserDefinedFunction(_, _) => "<function>"
+    case BuiltInFunction(_) => "<builtin function>"
   

@@ -101,6 +101,9 @@ object Typer:
         tpd.Type.TypeFun(typeParams, resolveType(output).now)
       case untpd.Type.Tuple(elements) =>
         tpd.Type.Tuple(elements.map(resolveType(_).now))
+
+  def typeProgram(expr: untpd.Expr): (Map[Identifier, FunctionDef], tpd.Expr) < Typing =
+    typeExpr(expr).map(typedExpr => Var.use[TypeContext](_.functions).map((_, typedExpr)))
   
   def typeExpr(expr: untpd.Expr): tpd.Expr < Typing = direct:
     expr match

@@ -2,6 +2,8 @@ package org.algorab.compiler
 
 import kyo.*
 import org.algorab.ast.tpd.Expr
+import org.algorab.ast.Identifier
+import org.algorab.typer.FunctionDef
 
 object Compiler:
 
@@ -49,7 +51,7 @@ object Compiler:
         compileExpr(expr).now
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
-      case Expr.FunRef(name, _) =>
+      case Expr.FunRef(name, _) => Compilation.emit(Instruction.LoadFunction(name)).now
       case Expr.Block(expressions, _)                  =>
         Compilation.emit(Instruction.PushScope).now
         Kyo.foreachDiscard(expressions)(compileExpr).now
@@ -84,3 +86,16 @@ object Compiler:
         Compilation.emit(Instruction.JumpIf(bodyStart, loopEnd)).now
         Compilation.emitAll(bodyInstrs).now
         Compilation.emit(Instruction.Jump(condStart)).now
+
+
+  def compileFunction(internalName: Identifier, function: FunctionDef): Unit < Compilation = direct:
+    val bodyPos = Compilation.nextPosition.now + 1
+    val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
+
+    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, function.captures, bodyPos + bodyInstrs.size + 1)).now
+    Compilation.emitAll(bodyInstrs).now
+    Compilation.emit(Instruction.Return).now
+
+  def compileProgram(functions: Map[Identifier, FunctionDef], main: Expr): Unit < Compilation = direct:
+    functions.foreach(compileFunction(_, _).now)
+    compileExpr(main).now
