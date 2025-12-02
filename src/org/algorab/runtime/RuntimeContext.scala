@@ -43,8 +43,11 @@ case class RuntimeContext(
   def getVariable(name: Identifier): Option[Value] =
     frames.collectFirst(((frame: RuntimeFrame) => frame.getVariable(name)).unlift)
     
-  def declareVariable(name: Identifier, value: Value): RuntimeContext =
-    modifyHeadFrame(_.declareVariable(name, value))
+  def declareVariable(name: Identifier): RuntimeContext =
+    modifyHeadFrame(_.declareVariable(name))
+
+  def declareBox(name: Identifier): RuntimeContext =
+    modifyHeadFrame(_.declareBox(name))
 
   def assignVariable(name: Identifier, value: Value): RuntimeContext =
     modifyHeadFrame(_.assignVariable(name, value))
@@ -94,8 +97,11 @@ object RuntimeContext:
         .getOrElse(throw AssertionError(s"Unknown variable: $name"))
     )
 
-  def declareVariable(name: Identifier, value: Value): Unit < Runtime =
-    modify(_.declareVariable(name, value))
+  def declareVariable(name: Identifier): Unit < Runtime =
+    modify(_.declareVariable(name))
+
+  def declareBox(name: Identifier): Unit < Runtime =
+    modify(_.declareBox(name))
 
   def assignVariable(name: Identifier, value: Value): Unit < Runtime =
     modify(_.assignVariable(name, value))

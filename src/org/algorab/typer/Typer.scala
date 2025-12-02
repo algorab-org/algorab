@@ -102,8 +102,8 @@ object Typer:
       case untpd.Type.Tuple(elements) =>
         tpd.Type.Tuple(elements.map(resolveType(_).now))
 
-  def typeProgram(expr: untpd.Expr): (Map[Identifier, FunctionDef], tpd.Expr) < Typing =
-    typeExpr(expr).map(typedExpr => Var.use[TypeContext](_.functions).map((_, typedExpr)))
+  def typeProgram(expr: untpd.Expr): (TypeContext, tpd.Expr) < Typing =
+    typeExpr(expr).map(typedExpr => Var.use[TypeContext]((_, typedExpr)))
   
   def typeExpr(expr: untpd.Expr): tpd.Expr < Typing = direct:
     expr match
@@ -162,22 +162,24 @@ object Typer:
       case untpd.Expr.Or(left, right) =>
         assertBooleanOp(left, right)(tpd.Expr.Or.apply).now
       case untpd.Expr.VarCall(name) =>
-        val varType = TypeContext.getVariableOrFail(name).now.tpe
-        tpd.Expr.VarCall(name, varType)
+        val (id, variable) = TypeContext.getVariableOrFail(name).now
+        tpd.Expr.VarCall(id, name, variable.tpe)
       case untpd.Expr.ValDef(name, tpe, expr, mutable) =>
         val resolvedType = resolveType(tpe).now
         val typedExpr = TypeContext.inNewBlockScope(typeExpr(expr)).now
         
-        if resolvedType == tpd.Type.Inferred then TypeContext.updateVariable(name, Variable(typedExpr.exprType, mutable)).now
+        if resolvedType == tpd.Type.Inferred then TypeContext.updateVariable(name, Variable(typedExpr.exprType, mutable, false)).now
         else assertExprType(typedExpr, resolvedType).now
 
-        tpd.Expr.ValDef(name, resolvedType.notInferredOr(typedExpr.exprType), typedExpr, mutable, tpd.Type.Unit)
+        val (id, _) = TypeContext.getVariableOrFail(name).now
+
+        tpd.Expr.ValDef(id, name, resolvedType.notInferredOr(typedExpr.exprType), typedExpr, tpd.Type.Unit)
       case untpd.Expr.Assign(name, expr) =>
         val typedExpr = typeExpr(expr).now
-        val variable = TypeContext.getVariableOrFail(name).now
+        val (id, variable) = TypeContext.getVariableOrFail(name).now
         if variable.mutable then
           Typing.abortIfFail(assertExprType(typedExpr, variable.tpe)).now
-          tpd.Expr.Assign(name, typedExpr, tpd.Type.Unit)
+          tpd.Expr.Assign(id, name, typedExpr, tpd.Type.Unit)
         else
           Typing.failAndAbort(TypeFailure.ImmutableVariableAssignment(name)).now
       case untpd.Expr.Apply(expr, args) =>
@@ -233,7 +235,7 @@ object Typer:
 
             TypeContext.inNewFunctionScope(name, params.map(_._1)): internalName =>
               direct:
-                resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(tpe,false)).now)
+                resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(tpe, false, false)).now)
 
                 val typedBody = typeExpr(body).now
 
@@ -241,17 +243,19 @@ object Typer:
                   val inferredType =
                     if typeParams.isEmpty then tpd.Type.Fun(paramTypes, typedBody.exprType)
                     else tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, typedBody.exprType))
-                  TypeContext.updateVariable(name, Variable(inferredType,false)).now
+                  TypeContext.updateVariable(name, Variable(inferredType,false,false)).now
                 else
                   assertExprType(typedBody, resolvedRetType).now
+
+                val (id, _) = TypeContext.getVariableOrFail(name).now
                 
                 (
                   typedBody,
                   tpd.Expr.ValDef(
+                    id = id,
                     name = name,
                     tpe = resolvedRetType,
                     expr = tpd.Expr.FunRef(internalName, tpd.Type.Unit),
-                    mutable = false,
                     exprType = tpd.Type.Unit
                   )
                 )
@@ -262,10 +266,10 @@ object Typer:
         expressions.foreach:
           case untpd.Expr.ValDef(name, tpe, _, mutable) => 
             val resolvedType = resolveType(tpe).now
-            TypeContext.declareVariable(name, Variable(resolvedType, mutable)).now
+            TypeContext.declareVariable(name, Variable(resolvedType, mutable, false)).now
           case funDef: untpd.Expr.FunDef =>
             val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
-            TypeContext.declareVariable(funDef.name, Variable(funType, false)).now
+            TypeContext.declareVariable(funDef.name, Variable(funType, false, false)).now
           case _ =>
 
         val typedExprs = expressions.map(typeExpr(_).now)
@@ -300,21 +304,25 @@ object Typer:
           case iterableType@tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
             TypeContext.inNewBlockScope:
               direct:
-                TypeContext.declareVariable(iterator, Variable(elemType,false)).now
+                val iteratorId = TypeContext.declareVariable(iterator, Variable(elemType,false,false)).now
                 val typedBody = Var.use[TypeContext](iterContext => Var.set(iterContext).flatMap(_ => typeExpr(body))).now
               
-                val indexName = TypeContext.newUniqueVarName(Identifier("i")).now
+                val indexName = TypeContext.newUniqueVarName(Identifier("$i")).now
+                val indexId = TypeContext.declareVariable(indexName, Variable(tpd.Type.Int, true, false)).now
+
+                val (lengthId, _) = TypeContext.getVariableOrFail(Identifier("length")).now
+                val (getId, _) = TypeContext.getVariableOrFail(Identifier("get")).now
 
                 //TODO Once OOP is implemented, use something like an `Iterable` interface or/and a `forEach` method.
                 tpd.Expr.Block(
                   expressions = Chunk(
-                    tpd.Expr.ValDef(indexName, tpd.Type.Int, tpd.Expr.LInt(0, tpd.Type.Int), true, tpd.Type.Unit),
+                    tpd.Expr.ValDef(indexId, indexName, tpd.Type.Int, tpd.Expr.LInt(0, tpd.Type.Int), tpd.Type.Unit),
                     tpd.Expr.While(
                       cond = tpd.Expr.Less(
-                        left = tpd.Expr.VarCall(indexName, tpd.Type.Int),
+                        left = tpd.Expr.VarCall(indexId, indexName, tpd.Type.Int),
                         right = tpd.Expr.Apply(
                           expr =
-                            tpd.Expr.VarCall(Identifier("length"), tpd.Type.Fun(Chunk(iterableType), tpd.Type.Int)),
+                            tpd.Expr.VarCall(lengthId, Identifier("length"), tpd.Type.Fun(Chunk(iterableType), tpd.Type.Int)),
                           args = Chunk(typedIterable),
                           exprType = tpd.Type.Int
                         ),
@@ -323,24 +331,25 @@ object Typer:
                       body = tpd.Expr.Block(
                         expressions = Chunk(
                           tpd.Expr.ValDef(
+                            id = iteratorId,
                             name = iterator,
                             tpe = elemType,
                             expr = tpd.Expr.Apply(
-                              tpd.Expr.VarCall(Identifier("get"), tpd.Type.Fun(Chunk(iterableType, tpd.Type.Int), elemType)),
+                              tpd.Expr.VarCall(getId, Identifier("get"), tpd.Type.Fun(Chunk(iterableType, tpd.Type.Int), elemType)),
                               Chunk(
                                 typedIterable,
-                                tpd.Expr.VarCall(indexName, tpd.Type.Int)
+                                tpd.Expr.VarCall(indexId, indexName, tpd.Type.Int)
                               ),
                               tpd.Type.Generic(Identifier("A"))
                             ),
-                            mutable = false,
                             exprType = tpd.Type.Unit
                           ),
                           typedBody,
                           tpd.Expr.Assign(
+                            id = indexId,
                             name = indexName,
                             tpd.Expr.Add(
-                              tpd.Expr.VarCall(indexName, tpd.Type.Int),
+                              tpd.Expr.VarCall(indexId, indexName, tpd.Type.Int),
                               tpd.Expr.LInt(1, tpd.Type.Int),
                               tpd.Type.Int
                             ),

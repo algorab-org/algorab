@@ -6,7 +6,11 @@ import org.algorab.ast.tpd.Type
 import scala.annotation.tailrec
 import org.algorab.ast.tpd.Expr
 
-case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, FunctionDef]):
+case class TypeContext(
+  scopes: Chunk[TypeScope],
+  functions: Map[Identifier, FunctionDef],
+  variables: Chunk[Variable]
+):
 
   def getType(name: Identifier): Option[Type] =
     scopes.collectFirst[Type](((scope: TypeScope) => scope.getType(name)).unlift)
@@ -24,40 +28,72 @@ case class TypeContext(scopes: Chunk[TypeScope], functions: Map[Identifier, Func
   def updateType(name: Identifier, tpe: Type): TypeContext < Typing =
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
-  def getVariable(name: Identifier): (TypeContext, Option[Variable]) =
+  def getVariable(name: Identifier): (TypeContext, Option[(VariableId, Variable)]) =
     
     @tailrec
-    def rec(scopes: Chunk[TypeScope], updatedScopes: Chunk[TypeScope]): (Chunk[TypeScope], Option[Variable]) = scopes match
+    def rec(
+      scopes: Chunk[TypeScope],
+      updatedScopes: Chunk[TypeScope],
+      captured: Boolean
+    ): (Chunk[TypeScope], Option[(VariableId, Variable)]) = scopes match
       case head +: tail =>
         head match
           case TypeScope.Block(_, variables) => variables.get(name) match
-            case None => rec(tail, updatedScopes :+ head)
-            case some => (updatedScopes ++ scopes, some)
+            case None => rec(tail, updatedScopes :+ head, captured)
+            case Some(id) =>
+              var variable = this.variables(id.value)
+              if captured && variable.mutable then variable = variable.copy(boxxed = true)
+              (updatedScopes ++ scopes, Some((id, variable)))
           case TypeScope.Function(types, variables, captures) => variables.get(name) match
-            case None => rec(tail, updatedScopes :+ TypeScope.Function(types, variables, captures + name))
-            case some => (updatedScopes ++ scopes, some)
+            case None => rec(tail, updatedScopes :+ TypeScope.Function(types, variables, captures + name), true)
+            case Some(id) =>
+              var variable = this.variables(id.value)
+              if captured && variable.mutable then variable = variable.copy(boxxed = true)
+              (updatedScopes ++ scopes, Some((id, variable)))
+
       case _ => (updatedScopes ++ scopes, None)
 
-    val (updated, variable) = rec(scopes, Chunk.empty)
-    (this.copy(scopes = updated), variable)
+    val (updatedScopes, variable) = rec(scopes, Chunk.empty, false)
+    variable match
+      case Some((id, v)) if v.boxxed =>
+        val st = this.copy(variables = variables.updated(id.value, v), scopes = updatedScopes)
+        (st, variable)
+      case _ =>
+        (this.copy(scopes = updatedScopes), variable)
 
-  def getVariableOrFail(name: Identifier): (TypeContext, Variable) < Typing =
+  def getVariableOrFail(name: Identifier): (TypeContext, (VariableId, Variable)) < Typing =
     getVariable(name) match
       case (newCtx, Some(value)) => (newCtx, value)
       case (_, None)        => Typing.failAndAbort(TypeFailure.UnknownVariable(name))
 
-  def declareVariable(name: Identifier, variable: Variable): TypeContext < Typing =
+  def declareVariable(name: Identifier, variable: Variable): (TypeContext, VariableId) < Typing =
     scopes.head.getVariable(name) match
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
-      case None    => updateVariable(name, variable)
+      case None    =>
+        val id = VariableId.assume(variables.size)
+        (
+          this.copy(
+            scopes = scopes.head.withVariable(name, id) +: scopes.tail,
+            variables = variables :+ variable
+          ),
+          id
+        )
+
+  def declareVariableForce(name: Identifier, variable: Variable): TypeContext =
+    this.copy(
+      scopes = scopes.head.withVariable(name, VariableId.assume(variables.size)) +: scopes.tail,
+      variables = variables :+ variable
+    )
 
   def updateVariable(name: Identifier, variable: Variable): TypeContext =
-    this.copy(scopes = scopes.head.withVariable(name, variable) +: scopes.tail)
+    this.copy(
+      variables = variables.updated(scopes.head.variables(name).value, variable)
+    )
 
   def getFunction(name: Identifier): Option[FunctionDef] = functions.get(name)
 
   def mergeBlock(inner: TypeContext): TypeContext =
-    this.copy(scopes = inner.scopes.drop(1), functions = inner.functions)
+    this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
     case TypeScope.Function(types, variables, captures) +: remaining =>
@@ -122,7 +158,8 @@ object TypeContext:
           Identifier("String") -> Type.String,
           Identifier("Array") -> Type.Array
         ),
-        variables = Map(
+        variables = Map.empty
+        /*variables = Map(
           Identifier("Unit") -> Variable(Type.Unit, false),
           Identifier("println") -> Variable(Type.Fun(Chunk(Type.Any), Type.Unit), false),
           Identifier("readInt") -> Variable(Type.Fun(Chunk.empty, Type.Int), false),
@@ -157,11 +194,58 @@ object TypeContext:
             ),
             mutable = false
           )
-        )
+        )*/
       )
     ),
-    functions = Map.empty
+    functions = Map.empty,
+    variables = Chunk.Indexed.empty
   )
+  .declareVariableForce(Identifier("Unit"), Variable(Type.Unit, false, false))
+  .declareVariableForce(Identifier("println"), Variable(Type.Fun(Chunk(Type.Any), Type.Unit), false, false))
+  .declareVariableForce(Identifier("readInt"), Variable(Type.Fun(Chunk.empty, Type.Int), false, false))
+  .declareVariableForce(Identifier("readFloat"), Variable(Type.Fun(Chunk.empty, Type.Float), false, false))
+  .declareVariableForce(
+    Identifier("length"),
+    Variable(
+      tpe = Type.TypeFun(
+        typeParams = Chunk(Identifier("A")),
+        output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
+      ),
+      mutable = false,
+      boxxed = false
+    )
+  )
+  .declareVariableForce(
+    Identifier("get"),
+    Variable(
+      tpe = Type.TypeFun(
+        typeParams = Chunk(Identifier("A")),
+        output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
+      ),
+      mutable = false,
+      boxxed = false
+    )
+  )
+  .declareVariableForce(
+    Identifier("Array"),
+    Variable(
+      tpe = Type.TypeFun(
+        typeParams = Chunk(Identifier("A")),
+        output = Type.Fun(
+          // TODO Use varargs once implemented
+          Chunk(
+            Type.Generic(Identifier("A")),
+            Type.Generic(Identifier("A")),
+            Type.Generic(Identifier("A"))
+          ),
+          Type.arrayOf(Type.Generic(Identifier("A")))
+        )
+      ),
+      mutable = false,
+      boxxed = false
+    )
+  )
+  
 
   def modify(f: TypeContext => TypeContext < Typing): Unit < Typing =
     Var.use[TypeContext](f)
@@ -180,11 +264,11 @@ object TypeContext:
 
   def updateType(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateType(name, tpe))
 
-  def getVariable(name: Identifier): Option[Variable] < Typing = modifyReturn(_.getVariable(name))
+  def getVariable(name: Identifier): Option[(VariableId, Variable)] < Typing = modifyReturn(_.getVariable(name))
 
-  def getVariableOrFail(name: Identifier): Variable < Typing = modifyReturn(_.getVariableOrFail(name))
+  def getVariableOrFail(name: Identifier): (VariableId, Variable) < Typing = modifyReturn(_.getVariableOrFail(name))
 
-  def declareVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.declareVariable(name, variable))
+  def declareVariable(name: Identifier, variable: Variable): VariableId < Typing = modifyReturn(_.declareVariable(name, variable))
 
   def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
 

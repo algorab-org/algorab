@@ -4,6 +4,7 @@ import kyo.*
 import org.algorab.ast.tpd.Expr
 import org.algorab.ast.Identifier
 import org.algorab.typer.FunctionDef
+import org.algorab.typer.TypeContext
 
 object Compiler:
 
@@ -39,13 +40,19 @@ object Compiler:
       case Expr.Mod(left, right, _)    => compileBinaryOp(left, right, Instruction.Mod).now
       case Expr.And(left, right, _)    => compileBinaryOp(left, right, Instruction.And).now
       case Expr.Or(left, right, _)     => compileBinaryOp(left, right, Instruction.Or).now
-      case Expr.VarCall(name, _)       => Compilation.emit(Instruction.Load(name)).now
-      case Expr.ValDef(name, _, expr, _, _) =>
+      case Expr.VarCall(id, name, _)       =>
+        val boxxed = Compilation.isBoxxed(id).now
+        Compilation.emit(Instruction.load(name, boxxed)).now
+      case Expr.ValDef(id, name, _, expr, _) =>
+        val boxxed = Compilation.isBoxxed(id).now
+        Compilation.emit(Instruction.declare(name, boxxed)).now
         compileExpr(expr).now
-        Compilation.emit(Instruction.Declare(name)).now
-      case Expr.Assign(name, expr, _) =>
+        Compilation.emit(Instruction.assign(name, boxxed)).now
+        
+      case Expr.Assign(id, name, expr, _) =>
+        val boxxed = Compilation.isBoxxed(id).now
         compileExpr(expr).now
-        Compilation.emit(Instruction.Assign(name)).now
+        Compilation.emit(Instruction.assign(name, boxxed)).now
       case Expr.Apply(expr, args, _) =>
         Kyo.foreachDiscard(args.reverse)(compileExpr).now
         compileExpr(expr).now
@@ -89,7 +96,12 @@ object Compiler:
 
 
   def compileFunction(internalName: Identifier, function: FunctionDef): Unit < Compilation = direct:
-    val argsInstrs = function.params.map(Instruction.Declare.apply)
+    val argsInstrs = function.params.flatMap(arg =>
+      Chunk(
+        Instruction.Declare(arg),
+        Instruction.Assign(arg)
+      )
+    )
     val bodyPos = Compilation.nextPosition.now + argsInstrs.size + 1
     val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
 
@@ -98,6 +110,6 @@ object Compiler:
     Compilation.emitAll(bodyInstrs).now
     Compilation.emit(Instruction.Return).now
 
-  def compileProgram(functions: Map[Identifier, FunctionDef], main: Expr): Unit < Compilation = direct:
-    functions.foreach(compileFunction(_, _).now)
+  def compileProgram(main: Expr): Unit < Compilation = direct:
+    Compilation.functions.now.foreach(compileFunction(_, _).now)
     compileExpr(main).now

@@ -3,6 +3,7 @@ package org.algorab.ast.tpd
 import kyo.Chunk
 import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Type
+import org.algorab.typer.VariableId
 
 enum Expr:
   case LBool(value: Boolean, exprType: Type)
@@ -29,9 +30,9 @@ enum Expr:
   case And(left: Expr, right: Expr, exprType: Type)
   case Or(left: Expr, right: Expr, exprType: Type)
 
-  case VarCall(name: Identifier, exprType: Type)
-  case ValDef(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean, exprType: Type)
-  case Assign(name: Identifier, expr: Expr, exprType: Type)
+  case VarCall(id: VariableId, name: Identifier, exprType: Type)
+  case ValDef(id: VariableId, name: Identifier, tpe: Type, expr: Expr, exprType: Type)
+  case Assign(id: VariableId, name: Identifier, expr: Expr, exprType: Type)
   case Apply(expr: Expr, args: Chunk[Expr], exprType: Type)
   case FunRef(internalName: Identifier, exprType: Type)
   case Block(expressions: Chunk[Expr], exprType: Type)
@@ -62,9 +63,9 @@ enum Expr:
     case Mod(left, right, _) => Mod(left, right, tpe)
     case And(left, right, _) => And(left, right, tpe)
     case Or(left, right, _) => Or(left, right, tpe)
-    case VarCall(name, _) => VarCall(name, tpe)
-    case ValDef(name, typ, expr, mutable, _) => ValDef(name, typ, expr, mutable, tpe)
-    case Assign(name, expr, _) => Assign(name, expr, tpe)
+    case VarCall(id, name, _) => VarCall(id, name, tpe)
+    case ValDef(id, name, typ, expr, _) => ValDef(id, name, typ, expr, tpe)
+    case Assign(id, name, expr, _) => Assign(id, name, expr, tpe)
     case Apply(expr, args, _) => Apply(expr, args, tpe)
     case FunRef(internalName, _) => FunRef(internalName, tpe)
     case Block(expressions, _) => Block(expressions, tpe)

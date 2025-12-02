@@ -13,6 +13,7 @@ object RuntimeScope:
   val empty: RuntimeScope = RuntimeScope(Map.empty)
 
   val builtins: RuntimeScope = RuntimeScope(Map(
+    Identifier("Unit") -> Value.VUnit,
     Identifier("println") -> Value.BuiltInFunction(args =>
       Console.printLine(args.head.convertToString).andThen(Value.VUnit)
     ),

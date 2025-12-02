@@ -29,10 +29,16 @@ case class RuntimeFrame(
   def getVariable(name: Identifier): Option[Value] =
     scopes.collectFirst(((scope: RuntimeScope) => scope.getVariable(name)).unlift)
 
-  def declareVariable(name: Identifier, value: Value): RuntimeFrame =
+  def declareVariable(name: Identifier): RuntimeFrame =
     this.copy(scopes = scopes.headOption match
-      case Some(head) => RuntimeScope(head.variables + (name -> value)) +: scopes.tail
-      case None       => RuntimeScope(Map(name -> value)) +: scopes
+      case Some(head) => RuntimeScope(head.variables + (name -> null)) +: scopes.tail
+      case None       => RuntimeScope(Map(name -> null)) +: scopes
+    )
+
+  def declareBox(name: Identifier): RuntimeFrame =
+    this.copy(scopes = scopes.headOption match
+      case Some(head) => RuntimeScope(head.variables + (name -> Value.VBox(null))) +: scopes.tail
+      case None       => RuntimeScope(Map(name -> Value.VBox(null))) +: scopes
     )
 
   def assignVariable(name: Identifier, value: Value): RuntimeFrame =

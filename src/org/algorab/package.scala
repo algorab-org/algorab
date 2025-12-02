@@ -33,7 +33,7 @@ def compile(code: String): Result[Chunk[CompilerFailure], Chunk[Instruction]] =
     case Absent => Result.Failure(parsed.errors)
     case Present(expr) =>
       Typer.typeProgram(expr)
-        .map(Compiler.compileProgram)
+        .map((ctx, expr) => Env.run(ctx)(Compiler.compileProgram(expr)))
         .handle(
           Compilation.run(InstrPosition(0)),
           Typing.run
