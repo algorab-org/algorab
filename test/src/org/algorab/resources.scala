@@ -28,12 +28,13 @@ object resources:
     val ls = Files.list(path)
     Chunk.from(ls.collect(Collectors.toList()).asScala)
 
-  def readResource(path: Path): String =
-    Using.resource(Source.fromInputStream(Files.newInputStream(path), "UTF-8"))(_.mkString)
+  def readResource(path: String): String =
+    Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream(path)))(_.mkString)
 
-  def runGoldenTest(code: String): Unit =
-    val result = compile(code)
-    assert(!result.isFailure)
+  def runGoldenTest(code: String, expectedOutput: Maybe[String]): Unit =
+    import AllowUnsafe.embrace.danger
+    val result = KyoApp.Unsafe.runAndBlock(1.minute)(runCode(code))
+    assert(result.isSuccess)
 
   transparent inline def goldenTests(): Unit =
     ${goldenTestsImpl()}
@@ -41,13 +42,20 @@ object resources:
   def goldenTestsImpl()(using Quotes): Expr[Unit] =
     import quotes.reflect.*
 
-    val cases: Chunk[Expr[Unit]] = listResources("/golden/good").map(file =>
-      val fileName = Expr(file.getFileName().toString)
+    val cases: Chunk[Expr[Unit]] = listResources("/golden/good").filter(_.toString.endsWith(".algo")).map(file =>
+      val fileStr = file.getFileName().toString
+      val fileName = Expr(fileStr)
+      val outputFile = fileStr.substring(0, fileStr.length - 5) + ".output"
+      val outputName = Expr(outputFile)
+      val hasOutput = Expr(Files.exists(file.resolveSibling(outputFile)))
       val name = Expr(file.getFileName().toString().dropRight(5))
       '{
         test($fileName):
-          val code = Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream("/golden/good/" + $fileName)))(_.mkString)
-          runGoldenTest(code)
+          val code = readResource("/golden/good/" + $fileName)
+          val expectedOutput =
+            if $hasOutput then Present(readResource("/golden/good/" + $outputName))
+            else Absent
+          runGoldenTest(code, expectedOutput)
       }
     )
 
