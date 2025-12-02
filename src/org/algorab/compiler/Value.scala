@@ -2,6 +2,7 @@ package org.algorab.compiler
 
 import kyo.*
 import org.algorab.ast.Identifier
+import java.io.IOException
 
 enum Value derives CanEqual:
   case VUnit
@@ -13,7 +14,7 @@ enum Value derives CanEqual:
   case VArray(values: Array[Value])
   case VBox(var boxxed: Value)
   case UserDefinedFunction(position: InstrPosition, captured: Map[Identifier, Value])
-  case BuiltInFunction(f: Chunk[Value] => Value < Sync)
+  case BuiltInFunction(f: Chunk[Value] => Value < (Sync & Abort[IOException]))
 
   def asBool: Boolean = this match
     case VBool(value) => value

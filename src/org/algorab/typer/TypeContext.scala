@@ -44,8 +44,8 @@ case class TypeContext(
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
               (updatedScopes ++ scopes, Some((id, variable)))
-          case TypeScope.Function(types, variables, captures) => variables.get(name) match
-            case None => rec(tail, updatedScopes :+ TypeScope.Function(types, variables, captures + name), true)
+          case TypeScope.Function(fid, types, variables, captures) => variables.get(name) match
+            case None => rec(tail, updatedScopes :+ TypeScope.Function(fid, types, variables, captures + name), true)
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
@@ -96,10 +96,13 @@ case class TypeContext(
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
-    case TypeScope.Function(types, variables, captures) +: remaining =>
+    case TypeScope.Function(id, types, variables, captures) +: remaining =>
       this.copy(
         scopes = remaining,
-        functions = this.functions.updated(name, FunctionDef(displayName, params, captures, body))
+        functions = this.functions.updated(name, FunctionDef(displayName, params, captures, body)),
+        variables =
+          if captures.contains(displayName) then this.variables.updated(id.value, this.variables(id.value).copy(boxxed = true))
+          else this.variables
       )
     case _ => throw AssertionError("Tried to merge a block scope as a function scope")
 
@@ -286,10 +289,10 @@ object TypeContext:
         .andThen(body)
     )
 
-  def inNewFunctionScope(displayName: Identifier, params: Chunk[Identifier])(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
+  def inNewFunctionScope(id: VariableId, displayName: Identifier, params: Chunk[Identifier])(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
     val name = newUniqueFunctionName(displayName).now
     val ctx = Var.updateDiscard[TypeContext](ctx => ctx.copy(
-      scopes = TypeScope.Function(Map.empty, Map.empty, Set.empty) +: ctx.scopes,
+      scopes = TypeScope.Function(id, Map.empty, Map.empty, Set.empty) +: ctx.scopes,
       functions = ctx.functions.updated(name, null) //Reserve name to avoid duplication of internal name
     )).now
 

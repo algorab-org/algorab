@@ -232,8 +232,9 @@ object Typer:
         TypeContext.inNewBlockScope:
           direct:
             val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, _) = declareTypeParamsAndResolveFunTypes(funDef).now
+            val (id, _) = TypeContext.getVariableOrFail(name).now
 
-            TypeContext.inNewFunctionScope(name, params.map(_._1)): internalName =>
+            TypeContext.inNewFunctionScope(id, name, params.map(_._1)): internalName =>
               direct:
                 resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(tpe, false, false)).now)
 
@@ -246,8 +247,6 @@ object Typer:
                   TypeContext.updateVariable(name, Variable(inferredType,false,false)).now
                 else
                   assertExprType(typedBody, resolvedRetType).now
-
-                val (id, _) = TypeContext.getVariableOrFail(name).now
                 
                 (
                   typedBody,

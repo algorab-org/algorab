@@ -15,13 +15,13 @@ object Main extends KyoApp:
 
   run:
     direct:
-      // val code = Source.fromFile("test/resources/golden/good/core015.algo").mkString
+      val code = Source.fromFile("test/resources/golden/good/core012.algo").mkString
 
-      val code = """def fac(x: Int): Int =
-                   |  if x == 0 then 1
-                   |  else x * fac(x - 1)
-                   |
-                   |println(fac(5))""".stripMargin
+      // val code = """def fac(x: Int): Int =
+      //              |  if x == 0 then 1
+      //              |  else x * fac(x - 1)
+      //              |
+      //              |println(fac(5))""".stripMargin
 
       // val code = """def f(): Int => Int =
       //              |  mut val x = 0
@@ -55,4 +55,7 @@ object Main extends KyoApp:
 
       Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now
       Console.printLine("======================").now
-      runCode(code).map(Console.printLine).now
+      Console.withIn(Chunk(
+        "10",
+        "42.5"
+      ))(runCode(code).map(Console.printLine)).now

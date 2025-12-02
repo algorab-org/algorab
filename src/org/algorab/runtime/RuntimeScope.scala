@@ -17,6 +17,12 @@ object RuntimeScope:
     Identifier("println") -> Value.BuiltInFunction(args =>
       Console.printLine(args.head.convertToString).andThen(Value.VUnit)
     ),
+    Identifier("readInt") -> Value.BuiltInFunction(args =>
+      Console.readLine.map(str => Value.VInt(str.toInt))
+    ),
+    Identifier("readFloat") -> Value.BuiltInFunction(args =>
+      Console.readLine.map(str => Value.VFloat(str.toFloat))
+    ),
     //TODO Change length and Array once OOP and multifile are implemented
     Identifier("length") -> Value.BuiltInFunction(args =>
       Value.VInt(args.head.asArray.length)

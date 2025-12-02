@@ -4,4 +4,6 @@ import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.all.*
 
 type VariableId = VariableId.T
-object VariableId extends RefinedType[Int, Positive0]
+object VariableId extends RefinedType[Int, Positive0]:
+
+  given CanEqual[VariableId, VariableId] = CanEqual.derived
