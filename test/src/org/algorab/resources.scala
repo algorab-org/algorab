@@ -31,9 +31,14 @@ object resources:
   def readResource(path: String): String =
     Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream(path)))(_.mkString)
 
-  def runGoldenTest(code: String, expectedOutput: Maybe[String]): Unit =
+  def readResourceLines(path: String): Iterable[String] =
+    Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream(path)))(_.getLines().toSeq)
+
+  def runGoldenTest(code: String, input: Iterable[String], expectedOutput: Maybe[String]): Unit =
     import AllowUnsafe.embrace.danger
-    val result = KyoApp.Unsafe.runAndBlock(1.minute)(runCode(code))
+    val result = KyoApp.Unsafe.runAndBlock(1.minute)(
+      Console.withIn(input)(runCode(code))
+    )
     assert(result.isSuccess)
 
   transparent inline def goldenTests(): Unit =
@@ -48,14 +53,19 @@ object resources:
       val outputFile = fileStr.substring(0, fileStr.length - 5) + ".output"
       val outputName = Expr(outputFile)
       val hasOutput = Expr(Files.exists(file.resolveSibling(outputFile)))
-      val name = Expr(file.getFileName().toString().dropRight(5))
+      val inputFile = fileStr.substring(0, fileStr.length - 5) + ".input"
+      val inputName = Expr(inputFile)
+      val hasInput = Expr(Files.exists(file.resolveSibling(inputFile)))
       '{
         test($fileName):
           val code = readResource("/golden/good/" + $fileName)
           val expectedOutput =
             if $hasOutput then Present(readResource("/golden/good/" + $outputName))
             else Absent
-          runGoldenTest(code, expectedOutput)
+          val input =
+            if $hasInput then readResourceLines("/golden/good/" + $inputName)
+            else Seq.empty
+          runGoldenTest(code, input, expectedOutput)
       }
     )
 
