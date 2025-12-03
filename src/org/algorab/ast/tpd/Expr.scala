@@ -35,7 +35,7 @@ enum Expr:
   case Assign(id: VariableId, name: Identifier, expr: Expr, exprType: Type)
   case Apply(expr: Expr, args: Chunk[Expr], exprType: Type)
   case FunRef(internalName: Identifier, exprType: Type)
-  case Block(expressions: Chunk[Expr], exprType: Type)
+  case Block(declarations: Chunk[(VariableId, Identifier)], expressions: Chunk[Expr], exprType: Type)
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, exprType: Type)
   case While(cond: Expr, body: Expr, exprType: Type)
 
@@ -68,6 +68,6 @@ enum Expr:
     case Assign(id, name, expr, _) => Assign(id, name, expr, tpe)
     case Apply(expr, args, _) => Apply(expr, args, tpe)
     case FunRef(internalName, _) => FunRef(internalName, tpe)
-    case Block(expressions, _) => Block(expressions, tpe)
+    case Block(declarations, expressions, _) => Block(declarations, expressions, tpe)
     case If(cond, ifTrue, ifFalse, _) => If(cond, ifTrue, ifFalse, tpe)
     case While(cond, body, _) => While(cond, body, tpe)

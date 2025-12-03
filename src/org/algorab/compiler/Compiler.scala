@@ -59,8 +59,12 @@ object Compiler:
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
       case Expr.FunRef(name, _) => Compilation.emit(Instruction.LoadFunction(name)).now
-      case Expr.Block(expressions, _)                  =>
+      case Expr.Block(declarations, expressions, _)                  =>
         Compilation.emit(Instruction.PushScope).now
+        declarations.foreach((id, name) =>
+          val boxxed = Compilation.isBoxxed(id).now
+          Compilation.emit(Instruction.declare(name, boxxed)).now
+        ).now
         Kyo.foreachDiscard(expressions)(compileExpr).now
         Compilation.emit(Instruction.PopScope).now
       case Expr.If(cond, ifTrue, ifFalse, _) =>

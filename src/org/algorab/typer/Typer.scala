@@ -173,7 +173,7 @@ object Typer:
 
         val (id, _) = TypeContext.getVariableOrFail(name).now
 
-        tpd.Expr.ValDef(id, name, resolvedType.notInferredOr(typedExpr.exprType), typedExpr, tpd.Type.Unit)
+        tpd.Expr.Assign(id, name, typedExpr, tpd.Type.Unit)
       case untpd.Expr.Assign(name, expr) =>
         val typedExpr = typeExpr(expr).now
         val (id, variable) = TypeContext.getVariableOrFail(name).now
@@ -250,10 +250,9 @@ object Typer:
                 
                 (
                   typedBody,
-                  tpd.Expr.ValDef(
+                  tpd.Expr.Assign(
                     id = id,
                     name = name,
-                    tpe = resolvedRetType,
                     expr = tpd.Expr.FunRef(internalName, tpd.Type.Unit),
                     exprType = tpd.Type.Unit
                   )
@@ -262,18 +261,25 @@ object Typer:
         .now
         
       case untpd.Expr.Block(expressions) =>
-        expressions.foreach:
+        val declarations = expressions.flatMap:
           case untpd.Expr.ValDef(name, tpe, _, mutable) => 
             val resolvedType = resolveType(tpe).now
-            TypeContext.declareVariable(name, Variable(resolvedType, mutable, false)).now
+            Chunk((
+              TypeContext.declareVariable(name, Variable(resolvedType, mutable, false)).now,
+              name
+            ))
           case funDef: untpd.Expr.FunDef =>
             val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
-            TypeContext.declareVariable(funDef.name, Variable(funType, false, false)).now
+            Chunk((
+              TypeContext.declareVariable(funDef.name, Variable(funType, false, false)).now,
+              funDef.name
+            ))
           case _ =>
+            Chunk.empty
 
         val typedExprs = expressions.map(typeExpr(_).now)
         val blockType = if typedExprs.isEmpty then tpd.Type.Unit else typedExprs.last.exprType
-        tpd.Expr.Block(typedExprs, blockType)
+        tpd.Expr.Block(declarations, typedExprs, blockType)
       case untpd.Expr.If(cond, ifTrue, ifFalse) =>
         val typedCond = typeExpr(cond).now
         assertExprType(typedCond, tpd.Type.Boolean).now
@@ -314,8 +320,9 @@ object Typer:
 
                 //TODO Once OOP is implemented, use something like an `Iterable` interface or/and a `forEach` method.
                 tpd.Expr.Block(
+                  declarations = Chunk((indexId, indexName)),
                   expressions = Chunk(
-                    tpd.Expr.ValDef(indexId, indexName, tpd.Type.Int, tpd.Expr.LInt(0, tpd.Type.Int), tpd.Type.Unit),
+                    tpd.Expr.Assign(indexId, indexName, tpd.Expr.LInt(0, tpd.Type.Int), tpd.Type.Unit),
                     tpd.Expr.While(
                       cond = tpd.Expr.Less(
                         left = tpd.Expr.VarCall(indexId, indexName, tpd.Type.Int),
@@ -328,11 +335,11 @@ object Typer:
                         exprType = tpd.Type.Boolean
                       ),
                       body = tpd.Expr.Block(
+                        declarations = Chunk((iteratorId, iterator)),
                         expressions = Chunk(
-                          tpd.Expr.ValDef(
+                          tpd.Expr.Assign(
                             id = iteratorId,
                             name = iterator,
-                            tpe = elemType,
                             expr = tpd.Expr.Apply(
                               tpd.Expr.VarCall(getId, Identifier("get"), tpd.Type.Fun(Chunk(iterableType, tpd.Type.Int), elemType)),
                               Chunk(
