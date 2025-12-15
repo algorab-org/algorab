@@ -21,10 +21,10 @@ object RuntimeScope:
       Console.readLine.map(str => Value.VInt(str.toInt))
     ),
     Identifier("readFloat") -> Value.BuiltInFunction(args =>
-      Console.readLine.map(str => Value.VFloat(str.toFloat))
+      Console.readLine.map(str => Value.VFloat(str.toDouble))
     ),
     Identifier("toFloat") -> Value.BuiltInFunction(args =>
-      Value.VFloat(args.head.asInt.toFloat)  
+      Value.VFloat(args.head.asInt.toDouble)  
     ),
     //TODO Change length and Array once OOP and multifile are implemented
     Identifier("length") -> Value.BuiltInFunction(args =>
