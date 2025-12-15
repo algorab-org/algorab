@@ -7,6 +7,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.Files
 import java.util.stream.Collectors
+import java.util.NoSuchElementException
 import scala.collection.JavaConverters.*
 import kyo.*
 import scala.quoted.*
@@ -36,10 +37,17 @@ object resources:
 
   def runGoldenTest(code: String, input: Iterable[String], expectedOutput: Maybe[String]): Unit =
     import AllowUnsafe.embrace.danger
-    val result = KyoApp.Unsafe.runAndBlock(1.minute)(
-      Console.withIn(input)(runCode(code))
-    )
+    val result = KyoApp.Unsafe.runAndBlock(1.minute) {
+      Console.withOut(Console.withIn(input)(runCode(code))).map((out, r) =>
+          r.map((out, _))
+      )
+    }.flatten
+
     assert(result.isSuccess)
+    val out = result.getOrElse(throw NoSuchElementException("Result"))._1
+
+    assert(expectedOutput.forall(str => str.strip == out.stdOut.strip))
+    
 
   transparent inline def goldenTests(): Unit =
     ${goldenTestsImpl()}
