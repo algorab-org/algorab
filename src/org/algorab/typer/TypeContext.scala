@@ -5,6 +5,7 @@ import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Type
 import scala.annotation.tailrec
 import org.algorab.ast.tpd.Expr
+import scala.annotation.nowarn
 
 case class TypeContext(
   scopes: Chunk[TypeScope],
@@ -28,14 +29,14 @@ case class TypeContext(
   def updateType(name: Identifier, tpe: Type): TypeContext < Typing =
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
-  def getVariable(name: Identifier): (TypeContext, Option[(VariableId, Variable)]) =
+  def getVariable(name: Identifier): (TypeContext, Result[TypeFailure, (VariableId, Variable)]) =
     
     @tailrec
     def rec(
       scopes: Chunk[TypeScope],
       updatedScopes: Chunk[TypeScope],
       captured: Boolean
-    ): (Chunk[TypeScope], Option[(VariableId, Variable)]) = scopes match
+    ): (Chunk[TypeScope], Result[TypeFailure, (VariableId, Variable)]) = scopes match
       case head +: tail =>
         head match
           case TypeScope.Block(_, variables) => variables.get(name) match
@@ -43,28 +44,36 @@ case class TypeContext(
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              (updatedScopes ++ scopes, Some((id, variable)))
+              if !captured && !variable.initialized then
+                (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
+              else
+                (updatedScopes ++ scopes, Result.succeed((id, variable)))
           case TypeScope.Function(fid, types, variables, captures) => variables.get(name) match
             case None => rec(tail, updatedScopes :+ TypeScope.Function(fid, types, variables, captures + name), true)
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              (updatedScopes ++ scopes, Some((id, variable)))
+              if !captured && !variable.initialized then
+                (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
+              else
+                (updatedScopes ++ scopes, Result.succeed((id, variable)))
 
-      case _ => (updatedScopes ++ scopes, None)
+      case _ => (updatedScopes ++ scopes, Result.fail(TypeFailure.UnknownVariable(name)))
 
     val (updatedScopes, variable) = rec(scopes, Chunk.empty, false)
     variable match
-      case Some((id, v)) if v.boxxed =>
+      case Result.Success((id, v)) if v.boxxed =>
         val st = this.copy(variables = variables.updated(id.value, v), scopes = updatedScopes)
         (st, variable)
       case _ =>
         (this.copy(scopes = updatedScopes), variable)
 
+  @nowarn("msg=exhaustive") //Because it is, actually.
   def getVariableOrFail(name: Identifier): (TypeContext, (VariableId, Variable)) < Typing =
     getVariable(name) match
-      case (newCtx, Some(value)) => (newCtx, value)
-      case (_, None)        => Typing.failAndAbort(TypeFailure.UnknownVariable(name))
+      case (newCtx, Result.Success(value)) => (newCtx, value)
+      case (_, Result.Failure(failure))        => Typing.failAndAbort(failure)
+      case (_, Result.Panic(error)) => throw error
 
   def getVariableId(name: Identifier): VariableId =
     scopes.collectFirst(((scope: TypeScope) => scope.getVariable(name)).unlift).get

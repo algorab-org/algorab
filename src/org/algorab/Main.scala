@@ -30,13 +30,13 @@ object Main extends KyoApp:
       //              |
       //              |println(identity(5))""".stripMargin
 
-      val code = """def f(n: Int): Int = g(n)
-                   |def g(n: Int): Int = 5 * n
-                   |
-                   |println(f(5))""".stripMargin
+      // val code = """def f(n: Int): Int = g(n)
+      //              |def g(n: Int): Int = 5 * n
+      //              |
+      //              |println(f(5))""".stripMargin
 
-      // val code = """println(x)
-      //              |val x = 5""".stripMargin
+      val code = """println(x)
+                   |val x = 5""".stripMargin
 
       Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now
       Console.printLine("======================").now
