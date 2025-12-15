@@ -66,6 +66,9 @@ case class TypeContext(
       case (newCtx, Some(value)) => (newCtx, value)
       case (_, None)        => Typing.failAndAbort(TypeFailure.UnknownVariable(name))
 
+  def getVariableId(name: Identifier): VariableId =
+    scopes.collectFirst(((scope: TypeScope) => scope.getVariable(name)).unlift).get
+
   def declareVariable(name: Identifier, variable: Variable): (TypeContext, VariableId) < Typing =
     scopes.head.getVariable(name) match
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
@@ -79,10 +82,10 @@ case class TypeContext(
           id
         )
 
-  def declareVariableForce(name: Identifier, variable: Variable): TypeContext =
+  def declareVariableForce(name: Identifier, tpe: Type): TypeContext =
     this.copy(
       scopes = scopes.head.withVariable(name, VariableId.assume(variables.size)) +: scopes.tail,
-      variables = variables :+ variable
+      variables = variables :+ Variable(name, tpe, false, false)
     )
 
   def updateVariable(name: Identifier, variable: Variable): TypeContext =
@@ -96,12 +99,12 @@ case class TypeContext(
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
-    case TypeScope.Function(id, types, variables, captures) +: remaining =>
+    case TypeScope.Function(id, types, variables, localCaptures) +: remaining =>
       this.copy(
         scopes = remaining,
-        functions = this.functions.updated(name, FunctionDef(displayName, params, captures, body)),
+        functions = this.functions.updated(name, FunctionDef(displayName, params, localCaptures.map(getVariableId), body)),
         variables =
-          if captures.contains(displayName) then this.variables.updated(id.value, this.variables(id.value).copy(boxxed = true))
+          if localCaptures.contains(displayName) then this.variables.updated(id.value, this.variables(id.value).copy(boxxed = true))
           else this.variables
       )
     case _ => throw AssertionError("Tried to merge a block scope as a function scope")
@@ -203,49 +206,37 @@ object TypeContext:
     functions = Map.empty,
     variables = Chunk.Indexed.empty
   )
-  .declareVariableForce(Identifier("Unit"), Variable(Type.Unit, false, false))
-  .declareVariableForce(Identifier("println"), Variable(Type.Fun(Chunk(Type.Any), Type.Unit), false, false))
-  .declareVariableForce(Identifier("readInt"), Variable(Type.Fun(Chunk.empty, Type.Int), false, false))
-  .declareVariableForce(Identifier("readFloat"), Variable(Type.Fun(Chunk.empty, Type.Float), false, false))
+  .declareVariableForce(Identifier("Unit"), Type.Unit)
+  .declareVariableForce(Identifier("println"), Type.Fun(Chunk(Type.Any), Type.Unit))
+  .declareVariableForce(Identifier("readInt"), Type.Fun(Chunk.empty, Type.Int))
+  .declareVariableForce(Identifier("readFloat"), Type.Fun(Chunk.empty, Type.Float))
   .declareVariableForce(
     Identifier("length"),
-    Variable(
-      tpe = Type.TypeFun(
-        typeParams = Chunk(Identifier("A")),
-        output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
-      ),
-      mutable = false,
-      boxxed = false
-    )
+    Type.TypeFun(
+      typeParams = Chunk(Identifier("A")),
+      output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
+    ),
   )
   .declareVariableForce(
     Identifier("get"),
-    Variable(
-      tpe = Type.TypeFun(
-        typeParams = Chunk(Identifier("A")),
-        output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
-      ),
-      mutable = false,
-      boxxed = false
+    Type.TypeFun(
+      typeParams = Chunk(Identifier("A")),
+      output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
     )
   )
   .declareVariableForce(
     Identifier("Array"),
-    Variable(
-      tpe = Type.TypeFun(
-        typeParams = Chunk(Identifier("A")),
-        output = Type.Fun(
-          // TODO Use varargs once implemented
-          Chunk(
-            Type.Generic(Identifier("A")),
-            Type.Generic(Identifier("A")),
-            Type.Generic(Identifier("A"))
-          ),
-          Type.arrayOf(Type.Generic(Identifier("A")))
-        )
-      ),
-      mutable = false,
-      boxxed = false
+    Type.TypeFun(
+      typeParams = Chunk(Identifier("A")),
+      output = Type.Fun(
+        // TODO Use varargs once implemented
+        Chunk(
+          Type.Generic(Identifier("A")),
+          Type.Generic(Identifier("A")),
+          Type.Generic(Identifier("A"))
+        ),
+        Type.arrayOf(Type.Generic(Identifier("A")))
+      )
     )
   )
   

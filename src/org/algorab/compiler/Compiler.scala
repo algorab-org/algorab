@@ -109,7 +109,9 @@ object Compiler:
     val bodyPos = Compilation.nextPosition.now + argsInstrs.size + 1
     val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
 
-    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, function.captures, bodyPos + bodyInstrs.size + 1)).now
+    val localCaptures = function.captures.map(id => Compilation.getVariable(id).now.localName)
+
+    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + 1)).now
     Compilation.emitAll(argsInstrs).now
     Compilation.emitAll(bodyInstrs).now
     Compilation.emit(Instruction.Return).now

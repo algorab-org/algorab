@@ -5,6 +5,7 @@ import org.algorab.typer.TypeContext
 import org.algorab.typer.VariableId
 import org.algorab.ast.Identifier
 import org.algorab.typer.FunctionDef
+import org.algorab.typer.Variable
 
 type Compilation = Env[TypeContext] & Compilation.NoContext
 
@@ -28,5 +29,8 @@ object Compilation:
   def functions: Map[Identifier, FunctionDef] < Compilation =
     Env.use[TypeContext](_.functions)
 
+  def getVariable(id: VariableId): Variable < Compilation =
+    Env.use[TypeContext](_.variables(id.value))
+
   def isBoxxed(id: VariableId): Boolean < Compilation =
-    Env.use[TypeContext](_.variables(id.value).boxxed)
+    getVariable(id).map(_.boxxed)
