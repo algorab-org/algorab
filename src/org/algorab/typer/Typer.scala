@@ -190,7 +190,7 @@ object Typer:
           tpd.Type.Float -> tpd.Type.Float
         )(tpd.Expr.Mul.apply).now
       case untpd.Expr.Div(left, right) =>
-        assertBinaryOp(left, right, tpd.Type.Int, tpd.Type.Float)(tpd.Expr.IntDiv(_, _, tpd.Type.Float)).now
+        assertBinaryOp(left, right, tpd.Type.Int, tpd.Type.Float)(tpd.Expr.Div(_, _, tpd.Type.Float)).now
       case untpd.Expr.IntDiv(left, right) =>
         assertBinaryOp(left, right, tpd.Type.Int, tpd.Type.Float)(tpd.Expr.IntDiv(_, _, tpd.Type.Int)).now
       case untpd.Expr.Mod(left, right) =>
