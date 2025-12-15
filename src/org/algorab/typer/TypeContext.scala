@@ -85,7 +85,7 @@ case class TypeContext(
   def declareVariableForce(name: Identifier, tpe: Type): TypeContext =
     this.copy(
       scopes = scopes.head.withVariable(name, VariableId.assume(variables.size)) +: scopes.tail,
-      variables = variables :+ Variable(name, tpe, false, false)
+      variables = variables :+ Variable(name, tpe, false, false, true)
     )
 
   def updateVariable(name: Identifier, variable: Variable): TypeContext =
@@ -99,13 +99,24 @@ case class TypeContext(
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
-    case TypeScope.Function(id, types, variables, localCaptures) +: remaining =>
+    case TypeScope.Function(id, types, _, localCaptures) +: remaining =>
+      val globalCaptures = localCaptures.map(getVariableId)
+      
+      val (hasForwardCapture, updatedVariables) = globalCaptures.foldLeft((false, this.variables)):
+        case ((hasFC, variables), id) =>
+          val variable = variables(id.value)
+          if variable.initialized then (hasFC, variables)
+          else (true, variables.updated(id.value, variable.copy(boxxed = true)))
+      
+      val declaringVariable = updatedVariables(id.value).copy(functionId = Present(name))
+      val declaringBoxxed =
+        if hasForwardCapture then declaringVariable.copy(boxxed = true)
+        else declaringVariable
+      
       this.copy(
         scopes = remaining,
-        functions = this.functions.updated(name, FunctionDef(displayName, params, localCaptures.map(getVariableId), body)),
-        variables =
-          if localCaptures.contains(displayName) then this.variables.updated(id.value, this.variables(id.value).copy(boxxed = true))
-          else this.variables
+        functions = this.functions.updated(name, FunctionDef(displayName, params, globalCaptures, body, id)),
+        variables = updatedVariables.updated(id.value, declaringBoxxed)
       )
     case _ => throw AssertionError("Tried to merge a block scope as a function scope")
 
@@ -257,8 +268,6 @@ object TypeContext:
   def declareType(name: Identifier, tpe: Type): Unit < Typing = modify(_.declareType(name, tpe))
 
   def updateType(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateType(name, tpe))
-
-  def getVariable(name: Identifier): Option[(VariableId, Variable)] < Typing = modifyReturn(_.getVariable(name))
 
   def getVariableOrFail(name: Identifier): (VariableId, Variable) < Typing = modifyReturn(_.getVariableOrFail(name))
 

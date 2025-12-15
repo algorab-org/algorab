@@ -102,8 +102,29 @@ object Typer:
       case untpd.Type.Tuple(elements) =>
         tpd.Type.Tuple(elements.map(resolveType(_).now))
 
-  def typeProgram(expr: untpd.Expr): (TypeContext, tpd.Expr) < Typing =
-    typeExpr(expr).map(typedExpr => Var.use[TypeContext]((_, typedExpr)))
+  def boxCyclicClosures(context: TypeContext): TypeContext =
+    def rec(variables: Chunk[Variable], functions: Map[Identifier, FunctionDef], visited: Set[Identifier], funId: Identifier, funDef: FunctionDef): (Chunk[Variable], Set[Identifier]) =
+      if visited.contains(funId) then
+        val variable = variables(funDef.varId.value)
+        (variables.updated(funDef.varId.value, variable.copy(boxxed = true)), visited)
+      else
+        val capturedVariables = funDef.captures.map(id => variables(id.value))
+        capturedVariables.foldLeft((variables, visited + funId)):
+          case ((variables, visited), variable) =>
+            variable.functionId match
+              case Absent => (variables, visited)
+              case Present(capturedFunId) =>
+                rec(variables, functions, visited, capturedFunId, functions(capturedFunId))
+
+
+    val updatedVariables = context.functions.foldLeft(context.variables):
+      case (variables, (funId, funDef)) => rec(variables, context.functions, Set.empty, funId, funDef)._1
+
+    context.copy(variables = updatedVariables)
+
+  def typeProgram(expr: untpd.Expr): (TypeContext, tpd.Expr) < Typing = direct:
+    val typedExpr = typeExpr(expr).now
+    (Var.use[TypeContext](boxCyclicClosures).now, typedExpr)
   
   def typeExpr(expr: untpd.Expr): tpd.Expr < Typing = direct:
     expr match
@@ -168,7 +189,7 @@ object Typer:
         val resolvedType = resolveType(tpe).now
         val typedExpr = TypeContext.inNewBlockScope(typeExpr(expr)).now
         
-        if resolvedType == tpd.Type.Inferred then TypeContext.updateVariable(name, Variable(name, typedExpr.exprType, mutable, false)).now
+        if resolvedType == tpd.Type.Inferred then TypeContext.updateVariable(name, Variable(name, typedExpr.exprType, mutable, false, true)).now
         else assertExprType(typedExpr, resolvedType).now
 
         val (id, _) = TypeContext.getVariableOrFail(name).now
@@ -236,7 +257,7 @@ object Typer:
 
             TypeContext.inNewFunctionScope(id, name, params.map(_._1)): internalName =>
               direct:
-                resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(name, tpe, false, false)).now)
+                resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(name, tpe, false, false, true)).now)
 
                 val typedBody = typeExpr(body).now
 
@@ -244,7 +265,7 @@ object Typer:
                   val inferredType =
                     if typeParams.isEmpty then tpd.Type.Fun(paramTypes, typedBody.exprType)
                     else tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, typedBody.exprType))
-                  TypeContext.updateVariable(name, Variable(name, inferredType,false,false)).now
+                  TypeContext.updateVariable(name, Variable(name, inferredType,false,false, true)).now
                 else
                   assertExprType(typedBody, resolvedRetType).now
                 
@@ -265,13 +286,13 @@ object Typer:
           case untpd.Expr.ValDef(name, tpe, _, mutable) => 
             val resolvedType = resolveType(tpe).now
             Chunk((
-              TypeContext.declareVariable(name, Variable(name, resolvedType, mutable, false)).now,
+              TypeContext.declareVariable(name, Variable(name, resolvedType, mutable, false, false)).now,
               name
             ))
           case funDef: untpd.Expr.FunDef =>
             val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
             Chunk((
-              TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false)).now,
+              TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false)).now,
               funDef.name
             ))
           case _ =>
@@ -309,11 +330,11 @@ object Typer:
           case iterableType@tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
             TypeContext.inNewBlockScope:
               direct:
-                val iteratorId = TypeContext.declareVariable(iterator, Variable(iterator, elemType,false,false)).now
+                val iteratorId = TypeContext.declareVariable(iterator, Variable(iterator, elemType,false,false, true)).now
                 val typedBody = Var.use[TypeContext](iterContext => Var.set(iterContext).flatMap(_ => typeExpr(body))).now
               
                 val indexName = TypeContext.newUniqueVarName(Identifier("$i")).now
-                val indexId = TypeContext.declareVariable(indexName, Variable(indexName, tpd.Type.Int, true, false)).now
+                val indexId = TypeContext.declareVariable(indexName, Variable(indexName, tpd.Type.Int, true, false, true)).now
 
                 val (lengthId, _) = TypeContext.getVariableOrFail(Identifier("length")).now
                 val (getId, _) = TypeContext.getVariableOrFail(Identifier("get")).now
