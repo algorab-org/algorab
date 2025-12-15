@@ -64,8 +64,8 @@ object VM:
           case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VBool(a >= b))
         }.now
       case Instruction.Minus => matchOrError(RuntimeContext.pop.now) {
-          case Value.VInt(value)   => RuntimeContext.push(Value.VInt(value))
-          case Value.VFloat(value) => RuntimeContext.push(Value.VFloat(value))
+          case Value.VInt(value)   => RuntimeContext.push(Value.VInt(-value))
+          case Value.VFloat(value) => RuntimeContext.push(Value.VFloat(-value))
         }.now
       case Instruction.Add => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
           case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VInt(a + b))
