@@ -55,13 +55,17 @@ object Lexer:
     def column: Int < Parse[Char] = Parse.position.map(_ - lineStart)
 
   val parseString: Token < Parse[Char] =
-    Parse.literal('\"')
-      .andThen(
-        Parse.repeatUntil(
-          Parse.require(Parse.any),
-          Parse.peek(Parse.not('\\')).andThen(Parse.literal('\"'))
-        )
-      )
+    Parse.spaced(
+      Parse.literal('\"')
+        .andThen(
+          Parse.repeatUntil(
+            Parse.require(Parse.any),
+            Parse.peek(Parse.not('\\')).andThen(Parse.literal('\"'))
+          )
+        ),
+      isWhitespace = _ => false,
+      overrideOuter = true
+    )
       .map(chunk => Token.LString(chunk.mkString.translateEscapes))
 
   val parseTerm: Token < Parse[Char] = Parse.firstOf(
