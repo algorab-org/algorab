@@ -35,8 +35,13 @@ object Main extends KyoApp:
       //              |
       //              |println(f(5))""".stripMargin
 
-      val code = """println(x)
-                   |val x = 5""".stripMargin
+      val code = """--- uninitialized variables ---
+                   |val x: Int = 0
+                   |val y: Float = 0
+                   |println(x)
+                   |println(y)""".stripMargin
+      
+      // Console.printLine(parse(code)).now
 
       Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now
       Console.printLine("======================").now

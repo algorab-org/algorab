@@ -44,7 +44,7 @@ case class TypeContext(
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              if !captured && !variable.initialized then
+              if !captured && !variable.initialized && false then
                 (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
               else
                 (updatedScopes ++ scopes, Result.succeed((id, variable)))
@@ -53,7 +53,7 @@ case class TypeContext(
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              if !captured && !variable.initialized then
+              if !captured && !variable.initialized && false then
                 (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
               else
                 (updatedScopes ++ scopes, Result.succeed((id, variable)))
@@ -230,6 +230,7 @@ object TypeContext:
   .declareVariableForce(Identifier("println"), Type.Fun(Chunk(Type.Any), Type.Unit))
   .declareVariableForce(Identifier("readInt"), Type.Fun(Chunk.empty, Type.Int))
   .declareVariableForce(Identifier("readFloat"), Type.Fun(Chunk.empty, Type.Float))
+  .declareVariableForce(Identifier("toFloat"), Type.Fun(Chunk(Type.Int), Type.Float))
   .declareVariableForce(
     Identifier("length"),
     Type.TypeFun(
@@ -312,7 +313,6 @@ object TypeContext:
 
   def isSubtype(tpe: Type, expected: Type): Boolean < Typing = (tpe, expected) match
     case (_, Type.Any)          => true
-    case (Type.Int, Type.Float) => true
     case (_, Type.Inferred)     => true
     case _                      => tpe == expected
 

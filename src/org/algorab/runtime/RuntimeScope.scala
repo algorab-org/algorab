@@ -23,6 +23,9 @@ object RuntimeScope:
     Identifier("readFloat") -> Value.BuiltInFunction(args =>
       Console.readLine.map(str => Value.VFloat(str.toFloat))
     ),
+    Identifier("toFloat") -> Value.BuiltInFunction(args =>
+      Value.VFloat(args.head.asInt.toFloat)  
+    ),
     //TODO Change length and Array once OOP and multifile are implemented
     Identifier("length") -> Value.BuiltInFunction(args =>
       Value.VInt(args.head.asArray.length)

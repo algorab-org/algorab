@@ -13,19 +13,34 @@ object Typer:
     if expected.exists(TypeContext.isSubtype(tpe, _).now) then ()
     else Typing.fail(TypeFailure.Mismatch(tpe, expected*)).now
 
-  def assertExprType(expr: tpd.Expr, expected: tpd.Type*): Unit < Typing =
-    assertSubtype(expr.exprType, expected*)
+  def cast(expr: tpd.Expr, expected: tpd.Type*): Maybe[tpd.Expr] < Typing =
+    Kyo.findFirst(expected)(tpe =>
+      TypeContext.isSubtype(expr.exprType, tpe).map( isSub =>
+        if isSub then
+          Present(expr)
+        else if expr.exprType == tpd.Type.Int && tpe == tpd.Type.Float then
+          TypeContext
+            .getVariableOrFail(Identifier("toFloat"))
+            .map((toFloatId, variable) =>
+              Present(tpd.Expr.Apply(
+                expr = tpd.Expr.VarCall(toFloatId, Identifier("toFloat"), variable.tpe),
+                args = Chunk(expr),
+                exprType = tpd.Type.Float
+              ))
+            )
+          
+        else
+          Absent
+      )
+    )
+
+  def castOrFail(expr: tpd.Expr, expected: tpd.Type*): tpd.Expr < Typing =
+    cast(expr, expected*).map:
+      case Absent => Typing.failAndAbort(TypeFailure.Mismatch(expr.exprType, expected*))
+      case Present(finalExpr) => finalExpr
 
   def assertBinaryOp(left: untpd.Expr, right: untpd.Expr, expected: tpd.Type*)(op: (tpd.Expr, tpd.Expr) => tpd.Expr): tpd.Expr < Typing = direct:
-    val typedLeft = typeExpr(left).now
-    val typedRight = typeExpr(right).now
-
-    Typing.abortIfFail(
-      assertExprType(typedLeft, expected*)
-        .andThen(assertExprType(typedRight, expected*))
-    ).now
-
-    op(typedLeft, typedRight)
+    op(typeAndCast(left, expected*).now, typeAndCast(right, expected*).now)
 
   def assertDependentBinaryOp(
       left: untpd.Expr,
@@ -36,14 +51,16 @@ object Typer:
 
     val result = Kyo.findFirst(expected)(tpl =>
       for
-        leftOk <- TypeContext.isSubtype(typedLeft.exprType, tpl._1)
-        rightOk <- TypeContext.isSubtype(typedRight.exprType, tpl._1)
+        leftCast <- cast(typedLeft, tpl._1)
+        rightCast <- cast(typedRight, tpl._1)
       yield
-        if leftOk && rightOk then Present(tpl._2) else Absent
+        (leftCast, rightCast) match
+          case (Present(l), Present(r)) => Present((l, r, tpl._2))
+          case _ => Absent
     ).now
 
     result match
-      case Present(resultType) => op(typedLeft, typedRight, resultType)
+      case Present((leftCast, rightCast, resultType)) => op(leftCast, rightCast, resultType)
       case Absent =>
         val operandTypes = typedLeft.exprType.zip(typedRight.exprType)
         val expectedTypes = expected.map(tpe => tpe._1.zip(tpe._1))
@@ -55,18 +72,18 @@ object Typer:
   def assertBooleanOp(left: untpd.Expr, right: untpd.Expr)(op: (tpd.Expr, tpd.Expr, tpd.Type) => tpd.Expr): tpd.Expr < Typing =
     assertBinaryOp(left, right, tpd.Type.Boolean)(op(_, _, tpd.Type.Boolean))
 
-  def typeAndAssert(expr: untpd.Expr, expected: tpd.Type*): tpd.Expr < Typing = direct:
-    val typedExpr = typeExpr(expr).now
-    Typing.abortIfFail(assertExprType(typedExpr, expected*)).now
-    typedExpr
+  def typeAndCast(expr: untpd.Expr, expected: tpd.Type*): tpd.Expr < Typing =
+    typeExpr(expr).map(castOrFail(_, expected*))
 
   def typeAndAssertRelated(exprA: untpd.Expr, exprB: untpd.Expr): (tpd.Expr, tpd.Expr) < Typing = direct:
     val typedA = typeExpr(exprA).now
     val typedB = typeExpr(exprB).now
-    if TypeContext.isSubtype(typedA.exprType, typedB.exprType).now
-      || TypeContext.isSubtype(typedB.exprType, typedA.exprType).now
-    then (typedA, typedB)
-    else Typing.failAndAbort(TypeFailure.Mismatch(typedA.exprType, typedB.exprType)).now
+
+    cast(typedA, typedB.exprType).now match
+      case Present(castedA) => (castedA, typedB)
+      case Absent => cast(typedB, typedA.exprType).now match
+        case Present(castedB) => (typedA, castedB)
+        case Absent => Typing.failAndAbort(TypeFailure.Mismatch(typedA.exprType, typedB.exprType)).now
 
   def declareTypeParamsAndResolveFunTypes(funDef: untpd.Expr.FunDef): (
     Chunk[(Identifier, Identifier)],
@@ -133,7 +150,7 @@ object Typer:
       case untpd.Expr.LFloat(value)  => tpd.Expr.LFloat(value, tpd.Type.Float)
       case untpd.Expr.LChar(value)   => tpd.Expr.LChar(value, tpd.Type.Char)
       case untpd.Expr.LString(value) => tpd.Expr.LString(value, tpd.Type.String)
-      case untpd.Expr.Not(expr)      => tpd.Expr.Not(typeAndAssert(expr, tpd.Type.Boolean).now, tpd.Type.Boolean)
+      case untpd.Expr.Not(expr)      => tpd.Expr.Not(typeAndCast(expr, tpd.Type.Boolean).now, tpd.Type.Boolean)
       case untpd.Expr.Equal(left, right) =>
         val (typedLeft, typedRight) = typeAndAssertRelated(left, right).now
         tpd.Expr.Equal(typedLeft, typedRight, tpd.Type.Boolean)
@@ -149,7 +166,7 @@ object Typer:
       case untpd.Expr.GreaterEqual(left, right) =>
         assertComparison(left, right)(tpd.Expr.GreaterEqual.apply).now
       case untpd.Expr.Plus(expr) =>
-        typeAndAssert(expr, tpd.Type.Int, tpd.Type.Float).now
+        typeAndCast(expr, tpd.Type.Int, tpd.Type.Float).now
       case untpd.Expr.Minus(expr) =>
         val typedExpr = typeExpr(expr).now
         typedExpr.exprType match
@@ -189,18 +206,20 @@ object Typer:
         val resolvedType = resolveType(tpe).now
         val typedExpr = TypeContext.inNewBlockScope(typeExpr(expr)).now
         
-        if resolvedType == tpd.Type.Inferred then TypeContext.updateVariable(name, Variable(name, typedExpr.exprType, mutable, false, true)).now
-        else assertExprType(typedExpr, resolvedType).now
+        val castedExpr =
+          if resolvedType == tpd.Type.Inferred then
+            TypeContext.updateVariable(name, Variable(name, typedExpr.exprType, mutable, false, true)).now
+            typedExpr
+          else castOrFail(typedExpr, resolvedType).now
 
         val (id, _) = TypeContext.getVariableOrFail(name).now
 
-        tpd.Expr.Assign(id, name, typedExpr, tpd.Type.Unit)
+        tpd.Expr.Assign(id, name, castedExpr, tpd.Type.Unit)
       case untpd.Expr.Assign(name, expr) =>
         val typedExpr = typeExpr(expr).now
         val (id, variable) = TypeContext.getVariableOrFail(name).now
         if variable.mutable then
-          Typing.abortIfFail(assertExprType(typedExpr, variable.tpe)).now
-          tpd.Expr.Assign(id, name, typedExpr, tpd.Type.Unit)
+          tpd.Expr.Assign(id, name, castOrFail(typedExpr, variable.tpe).now, tpd.Type.Unit)
         else
           Typing.failAndAbort(TypeFailure.ImmutableVariableAssignment(name)).now
       case untpd.Expr.Apply(expr, args) =>
@@ -208,8 +227,8 @@ object Typer:
         val typedArgs = args.map(typeExpr(_).now)
         typedExpr.exprType match
           case tpd.Type.Fun(params, output) =>
-            typedArgs.zip(params).foreach(assertExprType(_, _).now)
-            tpd.Expr.Apply(typedExpr, typedArgs, output)
+            val castedArgs = typedArgs.zip(params).map(castOrFail(_, _).now)
+            tpd.Expr.Apply(typedExpr, castedArgs, output)
 
           case tpd.Type.TypeFun(typeParams, funType@tpd.Type.Fun(params, output)) =>
             val resolvedTypes = params
@@ -261,16 +280,18 @@ object Typer:
 
                 val typedBody = typeExpr(body).now
 
-                if resolvedRetType == tpd.Type.Inferred then
-                  val inferredType =
-                    if typeParams.isEmpty then tpd.Type.Fun(paramTypes, typedBody.exprType)
-                    else tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, typedBody.exprType))
-                  TypeContext.updateVariable(name, Variable(name, inferredType,false,false, true)).now
-                else
-                  assertExprType(typedBody, resolvedRetType).now
+                val castedBody =
+                  if resolvedRetType == tpd.Type.Inferred then
+                    val inferredType =
+                      if typeParams.isEmpty then tpd.Type.Fun(paramTypes, typedBody.exprType)
+                      else tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, typedBody.exprType))
+                    TypeContext.updateVariable(name, Variable(name, inferredType,false,false, true)).now
+                    typedBody
+                  else
+                    castOrFail(typedBody, resolvedRetType).now
                 
                 (
-                  typedBody,
+                  castedBody,
                   tpd.Expr.Assign(
                     id = id,
                     name = name,
@@ -303,15 +324,15 @@ object Typer:
         tpd.Expr.Block(declarations, typedExprs, blockType)
       case untpd.Expr.If(cond, ifTrue, ifFalse) =>
         val typedCond = typeExpr(cond).now
-        assertExprType(typedCond, tpd.Type.Boolean).now
+        val castedCond = castOrFail(typedCond, tpd.Type.Boolean).now
         val typedIfTrue = TypeContext.inNewBlockScope(typeExpr(ifTrue)).now
         val typedIfFalse = TypeContext.inNewBlockScope(typeExpr(ifFalse)).now
 
         //TODO support inheritance
         if TypeContext.isSubtype(typedIfTrue.exprType, typedIfFalse.exprType).now then
-          tpd.Expr.If(typedCond, typedIfTrue, typedIfFalse, typedIfFalse.exprType)
+          tpd.Expr.If(castedCond, typedIfTrue, typedIfFalse, typedIfFalse.exprType)
         else if TypeContext.isSubtype(typedIfFalse.exprType, typedIfTrue.exprType).now then
-          tpd.Expr.If(typedCond, typedIfTrue, typedIfFalse, typedIfTrue.exprType)
+          tpd.Expr.If(castedCond, typedIfTrue, typedIfFalse, typedIfTrue.exprType)
         else
           Typing.failAndAbort(
             TypeFailure.Mismatch(
@@ -321,9 +342,9 @@ object Typer:
           ).now
       case untpd.Expr.While(cond, body) =>
         val typedCond = typeExpr(cond).now
-        assertExprType(typedCond, tpd.Type.Boolean).now
+        val castedCond = castOrFail(typedCond, tpd.Type.Boolean).now
         val typedBody = TypeContext.inNewBlockScope(typeExpr(body)).now
-        tpd.Expr.While(typedCond, typedBody, tpd.Type.Unit)
+        tpd.Expr.While(castedCond, typedBody, tpd.Type.Unit)
       case untpd.Expr.For(iterator, iterable, body) =>
         val typedIterable = typeExpr(iterable).now
         typedIterable.exprType match
