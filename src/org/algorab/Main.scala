@@ -10,13 +10,13 @@ object Main extends KyoApp:
 
   run:
     direct:
-      // val code = Using.resource(Source.fromFile("test/resources/golden/good/evalOrder.algo"))(_.mkString)
+      val code = Using.resource(Source.fromFile("test/resources/golden/good/ifComplicated.algo"))(_.mkString)
 
-      val code = """val y: Int = 5
-                   |def f(x: Int): Int = x + y
-                   |
-                   |
-                   |println(f(4))""".stripMargin
+      // val code = """val y: Int = 5
+      //              |def f(x: Int): Int = x + y
+      //              |
+      //              |
+      //              |println(f(4))""".stripMargin
       
       // Console.printLine(parse(code)).now
 

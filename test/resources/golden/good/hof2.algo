@@ -6,4 +6,4 @@ def f(x: Int): Int =
   g(10)
 
 -- 22
-f(6)
+println(f(6))

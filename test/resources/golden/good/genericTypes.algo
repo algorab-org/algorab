@@ -7,6 +7,6 @@ def id[A](x: A): A =
   -- A
   id[A](x)
 
-id[Int](5)
-id[String]("abc")
-id[Boolean](true)
+println(id[Int](5))
+println(id[String]("abc"))
+println(id[Boolean](true))
