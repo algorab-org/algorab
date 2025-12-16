@@ -12,4 +12,6 @@ case class Variable(
   boxxed: Boolean,
   initialized: Boolean,
   functionId: Maybe[Identifier] = Absent
-)
+):
+
+  def isFunDef: Boolean = functionId.isDefined

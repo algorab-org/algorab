@@ -206,11 +206,13 @@ object Typer:
         val resolvedType = resolveType(tpe).now
         val typedExpr = TypeContext.inNewBlockScope(typeExpr(expr)).now
         
-        val castedExpr =
+        val (finalType, castedExpr) =
           if resolvedType == tpd.Type.Inferred then
-            TypeContext.updateVariable(name, Variable(name, typedExpr.exprType, mutable, false, true)).now
-            typedExpr
-          else castOrFail(typedExpr, resolvedType).now
+            (typedExpr.exprType, typedExpr)
+          else
+            (resolvedType, castOrFail(typedExpr, resolvedType).now)
+
+        TypeContext.updateVariable(name, Variable(name, finalType, mutable, false, true)).now
 
         val (id, _) = TypeContext.getVariableOrFail(name).now
 
@@ -269,10 +271,11 @@ object Typer:
               .now
           case tpe => Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.TypeFun(Chunk.empty, tpd.Type.Inferred))).now
       case funDef@untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
+        val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
+        
         TypeContext.inNewBlockScope:
           direct:
             val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, _) = declareTypeParamsAndResolveFunTypes(funDef).now
-            val (id, _) = TypeContext.getVariableOrFail(name).now
 
             TypeContext.inNewFunctionScope(id, name, params.map(_._1)): internalName =>
               direct:
@@ -280,16 +283,23 @@ object Typer:
 
                 val typedBody = typeExpr(body).now
 
-                val castedBody =
+                val funVariable = Var.use[TypeContext](_.variables(id.value)).now
+
+                val (finalType, castedBody) =
                   if resolvedRetType == tpd.Type.Inferred then
                     val inferredType =
                       if typeParams.isEmpty then tpd.Type.Fun(paramTypes, typedBody.exprType)
                       else tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, typedBody.exprType))
-                    TypeContext.updateVariable(name, Variable(name, inferredType,false,false, true)).now
-                    typedBody
+                    (inferredType, typedBody)
                   else
-                    castOrFail(typedBody, resolvedRetType).now
-                
+                    (funVariable.tpe, castOrFail(typedBody, resolvedRetType).now)
+
+                Var.updateDiscard[TypeContext](ctx =>
+                  ctx.copy(
+                    variables = ctx.variables.updated(id.value, funVariable.copy(tpe = finalType, initialized = true))
+                  )
+                ).now
+
                 (
                   castedBody,
                   tpd.Expr.Assign(
@@ -313,7 +323,7 @@ object Typer:
           case funDef: untpd.Expr.FunDef =>
             val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
             Chunk((
-              TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false)).now,
+              TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false, Present(Identifier.assume(null)))).now,
               funDef.name
             ))
           case _ =>

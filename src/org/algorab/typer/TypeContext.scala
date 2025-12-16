@@ -30,6 +30,9 @@ case class TypeContext(
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
   def getVariable(name: Identifier): (TypeContext, Result[TypeFailure, (VariableId, Variable)]) =
+
+    def isIllegalForwardReference(variable: Variable, captured: Boolean): Boolean =
+      !variable.initialized && !variable.isFunDef
     
     @tailrec
     def rec(
@@ -44,7 +47,7 @@ case class TypeContext(
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              if !captured && !variable.initialized && false then
+              if isIllegalForwardReference(variable, captured) then
                 (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
               else
                 (updatedScopes ++ scopes, Result.succeed((id, variable)))
@@ -53,7 +56,7 @@ case class TypeContext(
             case Some(id) =>
               var variable = this.variables(id.value)
               if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              if !captured && !variable.initialized && false then
+              if isIllegalForwardReference(variable, captured) then
                 (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
               else
                 (updatedScopes ++ scopes, Result.succeed((id, variable)))
@@ -185,42 +188,6 @@ object TypeContext:
           Identifier("Array") -> Type.Array
         ),
         variables = Map.empty
-        /*variables = Map(
-          Identifier("Unit") -> Variable(Type.Unit, false),
-          Identifier("println") -> Variable(Type.Fun(Chunk(Type.Any), Type.Unit), false),
-          Identifier("readInt") -> Variable(Type.Fun(Chunk.empty, Type.Int), false),
-          Identifier("readFloat") -> Variable(Type.Fun(Chunk.empty, Type.Float), false),
-          // TODO Change length and Array once OOP and multifile are implemented
-          Identifier("length") -> Variable(
-            tpe = Type.TypeFun(
-              typeParams = Chunk(Identifier("A")),
-              output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
-            ),
-            mutable = false
-          ),
-          Identifier("get") -> Variable(
-            tpe = Type.TypeFun(
-              typeParams = Chunk(Identifier("A")),
-              output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
-            ),
-            mutable = false
-          ),
-          Identifier("Array") -> Variable(
-            tpe = Type.TypeFun(
-              typeParams = Chunk(Identifier("A")),
-              output = Type.Fun(
-                // TODO Use varargs once implemented
-                Chunk(
-                  Type.Generic(Identifier("A")),
-                  Type.Generic(Identifier("A")),
-                  Type.Generic(Identifier("A"))
-                ),
-                Type.arrayOf(Type.Generic(Identifier("A")))
-              )
-            ),
-            mutable = false
-          )
-        )*/
       )
     ),
     functions = Map.empty,
