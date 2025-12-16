@@ -2,6 +2,6 @@
 def id[A](x: A): A = x
 val f = id
 val g = id[String]
-f("hey")
-f(5)
-g("hey")
+println(f("hey"))
+println(f(5))
+println(g("hey"))

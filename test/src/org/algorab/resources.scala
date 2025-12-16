@@ -7,6 +7,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.Files
 import java.util.stream.Collectors
+import java.util.NoSuchElementException
 import scala.collection.JavaConverters.*
 import kyo.*
 import scala.quoted.*
@@ -28,12 +29,25 @@ object resources:
     val ls = Files.list(path)
     Chunk.from(ls.collect(Collectors.toList()).asScala)
 
-  def readResource(path: Path): String =
-    Using.resource(Source.fromInputStream(Files.newInputStream(path), "UTF-8"))(_.mkString)
+  def readResource(path: String): String =
+    Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream(path)))(_.mkString)
 
-  def runGoldenTest(code: String): Unit =
-    val result = compile(code)
-    assert(!result.isFailure)
+  def readResourceLines(path: String): Iterable[String] =
+    Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream(path)))(_.getLines().toSeq)
+
+  def runGoldenTest(code: String, input: Iterable[String], expectedOutput: Maybe[String]): Unit =
+    import AllowUnsafe.embrace.danger
+    val result = KyoApp.Unsafe.runAndBlock(1.minute) {
+      Console.withOut(Console.withIn(input)(runCode(code))).map((out, r) =>
+          r.map((out, _))
+      )
+    }.flatten
+
+    assert(result.isSuccess)
+    val out = result.getOrElse(throw NoSuchElementException("Result"))._1
+
+    assert(expectedOutput.forall(str => str.strip == out.stdOut.strip))
+    
 
   transparent inline def goldenTests(): Unit =
     ${goldenTestsImpl()}
@@ -41,13 +55,25 @@ object resources:
   def goldenTestsImpl()(using Quotes): Expr[Unit] =
     import quotes.reflect.*
 
-    val cases: Chunk[Expr[Unit]] = listResources("/golden/good").map(file =>
-      val fileName = Expr(file.getFileName().toString)
-      val name = Expr(file.getFileName().toString().dropRight(5))
+    val cases: Chunk[Expr[Unit]] = listResources("/golden/good").filter(_.toString.endsWith(".algo")).map(file =>
+      val fileStr = file.getFileName().toString
+      val fileName = Expr(fileStr)
+      val outputFile = fileStr.substring(0, fileStr.length - 5) + ".output"
+      val outputName = Expr(outputFile)
+      val hasOutput = Expr(Files.exists(file.resolveSibling(outputFile)))
+      val inputFile = fileStr.substring(0, fileStr.length - 5) + ".input"
+      val inputName = Expr(inputFile)
+      val hasInput = Expr(Files.exists(file.resolveSibling(inputFile)))
       '{
         test($fileName):
-          val code = Using.resource(Source.fromInputStream(classOf[GoldenTests].getResourceAsStream("/golden/good/" + $fileName)))(_.mkString)
-          runGoldenTest(code)
+          val code = readResource("/golden/good/" + $fileName)
+          val expectedOutput =
+            if $hasOutput then Present(readResource("/golden/good/" + $outputName))
+            else Absent
+          val input =
+            if $hasInput then readResourceLines("/golden/good/" + $inputName)
+            else Seq.empty
+          runGoldenTest(code, input, expectedOutput)
       }
     )
 

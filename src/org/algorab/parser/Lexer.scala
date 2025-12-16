@@ -55,13 +55,17 @@ object Lexer:
     def column: Int < Parse[Char] = Parse.position.map(_ - lineStart)
 
   val parseString: Token < Parse[Char] =
-    Parse.literal('\"')
-      .andThen(
-        Parse.repeatUntil(
-          Parse.require(Parse.any),
-          Parse.peek(Parse.not('\\')).andThen(Parse.literal('\"'))
-        )
-      )
+    Parse.spaced(
+      Parse.literal('\"')
+        .andThen(
+          Parse.repeatUntil(
+            Parse.require(Parse.any),
+            Parse.peek(Parse.not('\\')).andThen(Parse.literal('\"'))
+          )
+        ),
+      isWhitespace = _ => false,
+      overrideOuter = true
+    )
       .map(chunk => Token.LString(chunk.mkString.translateEscapes))
 
   val parseTerm: Token < Parse[Char] = Parse.firstOf(
@@ -72,12 +76,8 @@ object Lexer:
         Parse.anyIn("eE"),
         Parse.int
       ).map((mantissa, _, exponent) => Token.LFloat(mantissa * math.pow(10, exponent))),
-      Parse.inOrder(
-        Parse.int,
-        Parse.literal('.'),
-        Parse.int
-      ).map((intPart, _, decPart) =>
-        s"$intPart.$decPart".toDoubleOption match
+      Parse.regex(raw"-?[0-9]+\.[0-9]+").map(str =>
+        str.toString.toDoubleOption match
           case None => Parse.fail("Invalid float literal")
           case Some(value) => Token.LFloat(value)
       )

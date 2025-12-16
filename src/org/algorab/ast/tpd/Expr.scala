@@ -3,6 +3,7 @@ package org.algorab.ast.tpd
 import kyo.Chunk
 import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Type
+import org.algorab.typer.VariableId
 
 enum Expr:
   case LBool(value: Boolean, exprType: Type)
@@ -19,7 +20,6 @@ enum Expr:
   case Greater(left: Expr, right: Expr, exprType: Type)
   case GreaterEqual(left: Expr, right: Expr, exprType: Type)
 
-  case Plus(expr: Expr, exprType: Type)
   case Minus(expr: Expr, exprType: Type)
   case Add(left: Expr, right: Expr, exprType: Type)
   case Sub(left: Expr, right: Expr, exprType: Type)
@@ -30,16 +30,14 @@ enum Expr:
   case And(left: Expr, right: Expr, exprType: Type)
   case Or(left: Expr, right: Expr, exprType: Type)
 
-  case VarCall(name: Identifier, exprType: Type)
-  case ValDef(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean, exprType: Type)
-  case Assign(name: Identifier, expr: Expr, exprType: Type)
+  case VarCall(id: VariableId, name: Identifier, exprType: Type)
+  case ValDef(id: VariableId, name: Identifier, tpe: Type, expr: Expr, exprType: Type)
+  case Assign(id: VariableId, name: Identifier, expr: Expr, exprType: Type)
   case Apply(expr: Expr, args: Chunk[Expr], exprType: Type)
-  case FunDef(name: Identifier, params: Chunk[(Identifier, Type)], retType: Type, body: Expr, exprType: Type)
-
-  case Block(expressions: Chunk[Expr], exprType: Type)
+  case FunRef(internalName: Identifier, exprType: Type)
+  case Block(declarations: Chunk[(VariableId, Identifier)], expressions: Chunk[Expr], exprType: Type)
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, exprType: Type)
   case While(cond: Expr, body: Expr, exprType: Type)
-  case For(iterator: Identifier, iterable: Expr, body: Expr, exprType: Type)
 
   def exprType: Type
 
@@ -56,7 +54,6 @@ enum Expr:
     case LessEqual(left, right, _) => LessEqual(left, right, tpe)
     case Greater(left, right, _) => Greater(left, right, tpe)
     case GreaterEqual(left, right, _) => GreaterEqual(left, right, tpe)
-    case Plus(expr, _) => Plus(expr, tpe)
     case Minus(expr, _) => Minus(expr, tpe)
     case Add(left, right, _) => Add(left, right, tpe)
     case Sub(left, right, _) => Sub(left, right, tpe)
@@ -66,13 +63,11 @@ enum Expr:
     case Mod(left, right, _) => Mod(left, right, tpe)
     case And(left, right, _) => And(left, right, tpe)
     case Or(left, right, _) => Or(left, right, tpe)
-    case VarCall(name, _) => VarCall(name, tpe)
-    case ValDef(name, typ, expr, mutable, _) => ValDef(name, typ, expr, mutable, tpe)
-    case Assign(name, expr, _) => Assign(name, expr, tpe)
+    case VarCall(id, name, _) => VarCall(id, name, tpe)
+    case ValDef(id, name, typ, expr, _) => ValDef(id, name, typ, expr, tpe)
+    case Assign(id, name, expr, _) => Assign(id, name, expr, tpe)
     case Apply(expr, args, _) => Apply(expr, args, tpe)
-    case FunDef(name, params, retType, body, _) => FunDef(name, params, retType, body, tpe)
-    case Block(expressions, _) => Block(expressions, tpe)
+    case FunRef(internalName, _) => FunRef(internalName, tpe)
+    case Block(declarations, expressions, _) => Block(declarations, expressions, tpe)
     case If(cond, ifTrue, ifFalse, _) => If(cond, ifTrue, ifFalse, tpe)
     case While(cond, body, _) => While(cond, body, tpe)
-    case For(iterator, iterable, body, _) => For(iterator, iterable, body, tpe)
-  

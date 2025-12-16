@@ -16,3 +16,4 @@ enum TypeFailure:
   case TooManyTypeArguments(got: Chunk[untpd.Type], expected: Chunk[Identifier])
   case CannotInferType(name: Identifier)
   case ImmutableVariableAssignment(name: Identifier)
+  case IllegalForwardReference(name: Identifier)

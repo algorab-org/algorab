@@ -1,0 +1,12 @@
+mut val n = 0
+
+while n <= 100 do
+  val div3 = n % 3 == 0
+  val div5 = n % 5 == 0
+
+  if div3 and div5 then println("FizzBuzz")
+  else if div3     then println("Fizz")
+  else if div5     then println("Buzz")
+  else println(n)
+
+  n = n + 1

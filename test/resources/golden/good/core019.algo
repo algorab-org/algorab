@@ -4,8 +4,7 @@ println(i)
 while i > 76 do
   i = i - 1
   println(i)
-  mut val i: Int = i + 7
-  println(i)
+  println(i + 7)
 println(i)
 if i > 4 then
   mut val i: Int = 4

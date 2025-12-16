@@ -1,0 +1,11 @@
+-- Currying
+def add(x: Int): Int => Int =
+  def addX(y: Int): Int = x + y
+  addX
+
+-- 9
+println(add(5)(4))
+
+-- 48
+val f = add(8)
+println(f(40))

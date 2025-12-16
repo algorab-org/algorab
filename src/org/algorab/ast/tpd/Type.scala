@@ -41,3 +41,4 @@ object Type:
   val Char: Type = Class(Identifier("Char"))
   val String: Type = Class(Identifier("String"))
   val Array: Type = Class(Identifier("Array"))
+  def arrayOf(tpe: Type): Type = Type.Apply(Array, Chunk(tpe))

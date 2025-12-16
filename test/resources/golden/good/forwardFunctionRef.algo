@@ -1,0 +1,4 @@
+def f(n: Int): Int = g(n)
+def g(n: Int): Int = 5 * n
+
+println(f(5))
