@@ -38,8 +38,34 @@ object Compiler:
       case Expr.Div(left, right, _)    => compileBinaryOp(left, right, Instruction.Div).now
       case Expr.IntDiv(left, right, _) => compileBinaryOp(left, right, Instruction.IntDiv).now
       case Expr.Mod(left, right, _)    => compileBinaryOp(left, right, Instruction.Mod).now
-      case Expr.And(left, right, _)    => compileBinaryOp(left, right, Instruction.And).now
-      case Expr.Or(left, right, _)     => compileBinaryOp(left, right, Instruction.Or).now
+      case Expr.And(left, right, _)    =>
+        compileExpr(left).now
+
+        val rightStart = Compilation.nextPosition.now + 1
+        val compiledRight = Compilation.run(rightStart)(compileExpr(right)).now
+
+        val rightEnd = rightStart + compiledRight.size + 1
+        val andEnd = rightEnd + 1
+
+        Compilation.emit(Instruction.JumpIf(rightStart, rightEnd)).now
+        Compilation.emitAll(compiledRight).now
+        Compilation.emit(Instruction.Jump(andEnd)).now
+        Compilation.emit(Instruction.Push(Value.VBool(false))).now
+
+      case Expr.Or(left, right, _)     =>
+        compileExpr(left).now
+        
+        val rightStart = Compilation.nextPosition.now + 1
+        val compiledRight = Compilation.run(rightStart)(compileExpr(right)).now
+
+        val rightEnd = rightStart + compiledRight.size + 1
+        val orEnd = rightEnd + 1
+
+        Compilation.emit(Instruction.JumpIf(rightEnd, rightStart)).now
+        Compilation.emitAll(compiledRight).now
+        Compilation.emit(Instruction.Jump(orEnd)).now
+        Compilation.emit(Instruction.Push(Value.VBool(true))).now
+
       case Expr.VarCall(id, name, _)       =>
         val boxxed = Compilation.isBoxxed(id).now
         Compilation.emit(Instruction.load(name, boxxed)).now

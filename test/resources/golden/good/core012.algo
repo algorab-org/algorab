@@ -5,6 +5,7 @@ println(x + y)
 println(x - y)
 println(x * y)
 println(45 / 2)
+println(45 // 2)
 println(78 % 3)
 
 val z: Float = -9.3
