@@ -9,8 +9,8 @@ import org.algorab.typer.TypeContext
 object Compiler:
 
   def compileBinaryOp(left: Expr, right: Expr, instruction: Instruction): Unit < Compilation = direct:
-    compileExpr(right).now
     compileExpr(left).now
+    compileExpr(right).now
     Compilation.emit(instruction).now
 
   def compileExpr(expr: Expr): Unit < Compilation = direct:
@@ -80,7 +80,7 @@ object Compiler:
         compileExpr(expr).now
         Compilation.emit(Instruction.assign(name, boxxed)).now
       case Expr.Apply(expr, args, _) =>
-        Kyo.foreachDiscard(args.reverse)(compileExpr).now
+        Kyo.foreachDiscard(args)(compileExpr).now
         compileExpr(expr).now
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 

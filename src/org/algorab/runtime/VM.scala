@@ -40,79 +40,79 @@ object VM:
           RuntimeContext.pop.now != RuntimeContext.pop.now
         )).now
       case Instruction.Less => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VBool(a < b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VBool(a < b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VBool(a < b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VBool(a < b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VBool(a < b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VBool(a < b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VBool(a < b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VBool(a < b))
         }.now
       case Instruction.LessEqual => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VBool(a <= b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VBool(a <= b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VBool(a <= b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VBool(a <= b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VBool(a <= b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VBool(a <= b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VBool(a <= b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VBool(a <= b))
         }.now
       case Instruction.Greater => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VBool(a > b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VBool(a > b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VBool(a > b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VBool(a > b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VBool(a > b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VBool(a > b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VBool(a > b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VBool(a > b))
         }.now
       case Instruction.GreaterEqual => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VBool(a >= b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VBool(a >= b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VBool(a >= b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VBool(a >= b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VBool(a >= b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VBool(a >= b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VBool(a >= b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VBool(a >= b))
         }.now
       case Instruction.Minus => matchOrError(RuntimeContext.pop.now) {
           case Value.VInt(value)   => RuntimeContext.push(Value.VInt(-value))
           case Value.VFloat(value) => RuntimeContext.push(Value.VFloat(-value))
         }.now
       case Instruction.Add => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VInt(a + b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VFloat(a + b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VFloat(a + b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VFloat(a + b))
-          // case (Value.VString(b), Value.VString(b)) => RuntimeContext.push(Value.VString(a + b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a + b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a + b))
+          // case (Value.VString(a), Value.VString(a)) => RuntimeContext.push(Value.VString(a + b))
         }.now
       case Instruction.Sub => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VInt(a - b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VFloat(a - b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VFloat(a - b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VFloat(a - b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a - b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a - b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a - b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a - b))
         }.now
       case Instruction.Mul => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VInt(a * b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VFloat(a * b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VFloat(a * b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VFloat(a * b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a * b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a * b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a * b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a * b))
         }.now
       case Instruction.Div => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VFloat(a.toDouble / b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VFloat(a / b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VFloat(a / b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VFloat(a / b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VFloat(a.toDouble / b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a / b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a / b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a / b))
         }.now
       case Instruction.IntDiv => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VInt(a / b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VInt((a / b).toInt))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VInt((a / b).toInt))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VInt((a / b).toInt))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a / b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VInt((a / b).toInt))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VInt((a / b).toInt))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VInt((a / b).toInt))
         }.now
       case Instruction.Mod => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(a), Value.VInt(b))     => RuntimeContext.push(Value.VInt(a % b))
-          case (Value.VFloat(a), Value.VFloat(b)) => RuntimeContext.push(Value.VFloat(a % b))
-          case (Value.VInt(a), Value.VFloat(b))   => RuntimeContext.push(Value.VFloat(a % b))
-          case (Value.VFloat(a), Value.VInt(b))   => RuntimeContext.push(Value.VFloat(a % b))
+          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a % b))
+          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a % b))
+          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a % b))
+          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a % b))
         }.now
       case Instruction.And => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VBool(a), Value.VBool(b)) => RuntimeContext.push(Value.VBool(a && b))
+          case (Value.VBool(b), Value.VBool(a)) => RuntimeContext.push(Value.VBool(a && b))
         }.now
       case Instruction.Or => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VBool(a), Value.VBool(b)) => RuntimeContext.push(Value.VBool(a || b))
+          case (Value.VBool(b), Value.VBool(a)) => RuntimeContext.push(Value.VBool(a || b))
         }.now
       case Instruction.Apply(paramCount) =>
         val function = RuntimeContext.pop.now
-        val args = Chunk.range(0, paramCount.value).map(_ => RuntimeContext.pop.now)
+        val args = Chunk.range(0, paramCount.value).map(_ => RuntimeContext.pop.now).reverse
 
         matchOrError(function) {
           case Value.UserDefinedFunction(start, capturedVars) =>

@@ -1,0 +1,22 @@
+def f(x: Int, y: Int): Unit = println("f")
+
+def left(): Int =
+  println("left")
+  3
+
+def right(): Int =
+  println("right")
+  4
+
+println(left() + right())
+println(left() - right())
+println(left() * right())
+println(left() / right())
+println(left() // right())
+println(left() < right())
+println(left() > right())
+println(left() <= right())
+println(left() >= right())
+println(left() == right())
+println(left() != right())
+println(f(left(), right()))
