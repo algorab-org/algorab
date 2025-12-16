@@ -1,0 +1,118 @@
+name: Algorab CI
+
+on: [push, pull_request]
+
+jobs:
+  # This job is meant to be nearly independent from the others.
+  # It gets its own cache and only gives the other jobs the local Ivy2 repository as artifact.
+  kyo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/sbt-setup
+
+      - name: Grab source
+        run: git clone --branch main https://github.com/Iltotore/kyo.git kyo-src
+
+      - name: Get Kyo commit
+        id: kyo-sha
+        run: |
+          cd kyo-src
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      - name: Cache Kyo targets
+        uses: actions/cache@v4
+        with:
+          path: |
+            kyo-src/target
+            kyo-src/**/target
+            kyo-src/project/target
+            kyo-src/project/**/target
+          key: ${{ runner.os }}-kyo-${{ steps.kyo-sha.outputs.sha }}
+          restore-keys: |
+            ${{ runner.os }}-kyo-
+
+      - name: Local packaging & publishing
+        run: |
+          cd kyo-src
+          sbt publishLocal
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ivy2-local
+          path: ~/.ivy2/local
+          retention-days: 1
+
+  # The jobs below are directly & only related to our repository.
+
+  prepare:
+    needs: kyo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
+      
+      - name: Prepare Mill
+        run: ./millw --no-server __.compile
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mill-build
+          path: out
+          retention-days: 1
+  
+  # The actual CI jobs. Finally.
+
+  check:
+    needs: [kyo, prepare]
+    runs-on: ubuntu-latest
+    continue-on-error: true # Ideally, this would be a temporary measure.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: mill-build
+          path: out
+      - name: Checking
+        run: ./millw checkFormat
+
+  test:
+    needs: [kyo, prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
+      
+      - uses: actions/download-artifact@v5
+        with:
+          name: mill-build
+          path: out
+      - name: Testing
+        run: ./millw test
+
+  package:
+    needs: [kyo, prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/mill-setup
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: mill-build
+          path: out
+      - name: Packaging
+        run: ./millw assembly
+
+        # Artifact uploading
+      
+      - uses: tj-actions/branch-names@v9
+        id: branch-name
+      - name: Format branch name
+        id: format-branch-name
+        run: echo "formatted_branch=$(echo ${{ steps.branch-name.outputs.current_branch }} | tr -s '/' '-')" >> $GITHUB_OUTPUT
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: algorab-artifacts-${{ steps.format-branch-name.outputs.formatted_branch }}-${{ github.run_number }}
+          path: 'out/assembly.dest/*.jar'
