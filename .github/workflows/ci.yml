@@ -11,6 +11,7 @@ jobs:
       
       - name: Prepare Mill
         run: ./millw --no-server __.compile
+      
       - uses: actions/upload-artifact@v4
         with:
           name: mill-build
@@ -24,11 +25,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/mill-setup
-
       - uses: actions/download-artifact@v5
         with:
           name: mill-build
           path: out
+      
       - name: Checking
         run: ./millw checkFormat
 
@@ -38,11 +39,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/mill-setup
-      
       - uses: actions/download-artifact@v5
         with:
           name: mill-build
           path: out
+      
       - name: Testing
         run: ./millw test
 
@@ -52,15 +53,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/mill-setup
-
       - uses: actions/download-artifact@v5
         with:
           name: mill-build
           path: out
+
       - name: Packaging
         run: ./millw assembly
 
-        # Artifact uploading
+        # --- Artifact uploading ---
       
       - uses: tj-actions/branch-names@v9
         id: branch-name
