@@ -25,7 +25,7 @@ object resources:
       jarFS.getPath(strings(1))
 
   def listResources(folder: String): Chunk[Path] =
-    val path = getResourcePath(Main.getClass.getResource(folder))
+    val path = getResourcePath(this.getClass.getResource(folder))
     val ls = Files.list(path)
     Chunk.from(ls.collect(Collectors.toList()).asScala)
 

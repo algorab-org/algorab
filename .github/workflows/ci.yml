@@ -31,7 +31,7 @@ jobs:
           path: out
       
       - name: Checking
-        run: ./millw checkFormat
+        run: ./millw __.checkFormat
 
   test:
     needs: [prepare]
@@ -45,7 +45,7 @@ jobs:
           path: out
       
       - name: Testing
-        run: ./millw test
+        run: ./millw __.test
 
   package:
     needs: [prepare]
@@ -59,7 +59,7 @@ jobs:
           path: out
 
       - name: Packaging
-        run: ./millw assembly
+        run: ./millw cli.assembly
 
         # --- Artifact uploading ---
       
@@ -72,4 +72,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: algorab-artifacts-${{ steps.format-branch-name.outputs.formatted_branch }}-${{ github.run_number }}
-          path: 'out/assembly.dest/*.jar'
+          path: 'out/cli/assembly.dest/*.jar'
