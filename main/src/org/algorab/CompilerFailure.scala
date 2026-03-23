@@ -1,13 +1,13 @@
 package org.algorab
 
-import org.algorab.typer.TypeFailure
 import kyo.ParseFailure
+import org.algorab.typer.TypeFailure
 
 type CompilerFailure = ParseFailure | TypeFailure
 
 extension (failure: CompilerFailure)
   def toPrettyString: String = failure match
-    case ParseFailure(msg, pos) => 
+    case ParseFailure(msg, pos) =>
       s"Parse error at $pos - $msg"
     case TypeFailure.Mismatch(got, expected @ _*) =>
       val expectedStr =
