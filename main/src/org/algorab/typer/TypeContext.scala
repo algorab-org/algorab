@@ -105,8 +105,6 @@ case class TypeContext(
       variables = variables.updated(scopes.head.variables(name).value, variable)
     )
 
-  def getFunction(name: Identifier): Option[FunctionDef] = functions.get(name)
-
   def mergeBlock(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
@@ -250,8 +248,6 @@ object TypeContext:
   def declareVariable(name: Identifier, variable: Variable): VariableId < Typing = modifyReturn(_.declareVariable(name, variable))
 
   def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
-
-  def getFunction(name: Identifier): Option[FunctionDef] < Typing = Var.use(_.getFunction(name))
 
   def newUniqueTypeName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueTypeName(name))
 
