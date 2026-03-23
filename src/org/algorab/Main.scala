@@ -1,9 +1,9 @@
 package org.algorab
 
+import java.io.File
 import kyo.*
 import org.algorab.parser.Lexer
 import scala.io.Source
-import java.io.File
 import scala.util.Using
 
 object Main extends KyoApp:
@@ -17,7 +17,7 @@ object Main extends KyoApp:
       //              |
       //              |
       //              |println(f(4))""".stripMargin
-      
+
       // Console.printLine(parse(code)).now
 
       // Console.printLine(compile(code).map(_.zipWithIndex.map((instr, i) => s"$i: $instr").mkString("\n"))).now

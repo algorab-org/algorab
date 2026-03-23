@@ -1,9 +1,9 @@
 package org.algorab.runtime
 
 import kyo.*
+import org.algorab.ast.Identifier
 import org.algorab.compiler.Instruction
 import org.algorab.compiler.Value
-import org.algorab.ast.Identifier
 
 object VM:
 
@@ -12,27 +12,27 @@ object VM:
 
   def interpretInstr(instruction: Instruction): Unit < Runtime = direct:
     instruction match
-      case Instruction.Push(value)   => RuntimeContext.push(value).now
-      case Instruction.Declare(name) => RuntimeContext.declareVariable(name).now
+      case Instruction.Push(value)      => RuntimeContext.push(value).now
+      case Instruction.Declare(name)    => RuntimeContext.declareVariable(name).now
       case Instruction.DeclareBox(name) => RuntimeContext.declareBox(name).now
       case Instruction.Assign(name) =>
         RuntimeContext.assignVariable(name, RuntimeContext.pop.now).now
       case Instruction.AssignBox(name) =>
         RuntimeContext.getVariable(name).now.setBox(RuntimeContext.pop.now)
-      case Instruction.Load(name) => RuntimeContext.push(RuntimeContext.getVariable(name).now).now
+      case Instruction.Load(name)    => RuntimeContext.push(RuntimeContext.getVariable(name).now).now
       case Instruction.LoadBox(name) => RuntimeContext.push(RuntimeContext.getVariable(name).now.unbox).now
       case Instruction.LoadFunction(name) =>
         val function = RuntimeContext.getFunction(name).now
         val capturedVars = function.captures.foldLeft(Map.empty[Identifier, Value])((map, varName) =>
-          map.updated(varName, RuntimeContext.getVariable(varName).now)  
+          map.updated(varName, RuntimeContext.getVariable(varName).now)
         )
-        
+
         RuntimeContext.push(Value.UserDefinedFunction(
           function.start,
           capturedVars
         )).now
 
-      case Instruction.Not        => RuntimeContext.push(Value.VBool(!RuntimeContext.pop.now.asBool)).now
+      case Instruction.Not => RuntimeContext.push(Value.VBool(!RuntimeContext.pop.now.asBool)).now
       case Instruction.Equal => RuntimeContext.push(Value.VBool(
           RuntimeContext.pop.now == RuntimeContext.pop.now
         )).now
@@ -138,7 +138,7 @@ object VM:
         RuntimeContext.push(returnValue).now
       case Instruction.PushScope => RuntimeContext.pushScope.now
       case Instruction.PopScope  => RuntimeContext.popScope.now
-      case Instruction.FunctionStart(internalName, displayName, captures, next) => 
+      case Instruction.FunctionStart(internalName, displayName, captures, next) =>
         val functionDef = FunctionDef(
           displayName,
           captures,

@@ -24,16 +24,16 @@ object RuntimeScope:
       Console.readLine.map(str => Value.VFloat(str.toDouble))
     ),
     Identifier("toFloat") -> Value.BuiltInFunction(args =>
-      Value.VFloat(args.head.asInt.toDouble)  
+      Value.VFloat(args.head.asInt.toDouble)
     ),
-    //TODO Change length and Array once OOP and multifile are implemented
+    // TODO Change length and Array once OOP and multifile are implemented
     Identifier("length") -> Value.BuiltInFunction(args =>
       Value.VInt(args.head.asArray.length)
     ),
     Identifier("get") -> Value.BuiltInFunction(args =>
-      args(0).asArray(args(1).asInt)  
+      args(0).asArray(args(1).asInt)
     ),
     Identifier("Array") -> Value.BuiltInFunction(args =>
-      Value.VArray(args.toArray)  
+      Value.VArray(args.toArray)
     )
   ))

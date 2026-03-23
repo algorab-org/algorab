@@ -1,8 +1,8 @@
 package org.algorab.compiler
 
 import kyo.*
-import org.algorab.ast.tpd.Expr
 import org.algorab.ast.Identifier
+import org.algorab.ast.tpd.Expr
 import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
 
@@ -38,7 +38,7 @@ object Compiler:
       case Expr.Div(left, right, _)    => compileBinaryOp(left, right, Instruction.Div).now
       case Expr.IntDiv(left, right, _) => compileBinaryOp(left, right, Instruction.IntDiv).now
       case Expr.Mod(left, right, _)    => compileBinaryOp(left, right, Instruction.Mod).now
-      case Expr.And(left, right, _)    =>
+      case Expr.And(left, right, _) =>
         compileExpr(left).now
 
         val rightStart = Compilation.nextPosition.now + 1
@@ -52,9 +52,9 @@ object Compiler:
         Compilation.emit(Instruction.Jump(andEnd)).now
         Compilation.emit(Instruction.Push(Value.VBool(false))).now
 
-      case Expr.Or(left, right, _)     =>
+      case Expr.Or(left, right, _) =>
         compileExpr(left).now
-        
+
         val rightStart = Compilation.nextPosition.now + 1
         val compiledRight = Compilation.run(rightStart)(compileExpr(right)).now
 
@@ -66,7 +66,7 @@ object Compiler:
         Compilation.emit(Instruction.Jump(orEnd)).now
         Compilation.emit(Instruction.Push(Value.VBool(true))).now
 
-      case Expr.VarCall(id, name, _)       =>
+      case Expr.VarCall(id, name, _) =>
         val boxxed = Compilation.isBoxxed(id).now
         Compilation.emit(Instruction.load(name, boxxed)).now
       case Expr.ValDef(id, name, _, expr, _) =>
@@ -74,7 +74,7 @@ object Compiler:
         Compilation.emit(Instruction.declare(name, boxxed)).now
         compileExpr(expr).now
         Compilation.emit(Instruction.assign(name, boxxed)).now
-        
+
       case Expr.Assign(id, name, expr, _) =>
         val boxxed = Compilation.isBoxxed(id).now
         compileExpr(expr).now
@@ -85,7 +85,7 @@ object Compiler:
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
       case Expr.FunRef(name, _) => Compilation.emit(Instruction.LoadFunction(name)).now
-      case Expr.Block(declarations, expressions, _)                  =>
+      case Expr.Block(declarations, expressions, _) =>
         Compilation.emit(Instruction.PushScope).now
         declarations.foreach((id, name) =>
           val boxxed = Compilation.isBoxxed(id).now
@@ -98,7 +98,7 @@ object Compiler:
 
         val ifTrueStart = Compilation.nextPosition.now + 1
         val ifTrueInstrs = Compilation.run(ifTrueStart)(compileExpr(ifTrue)).now
-        
+
         val ifFalseStart = ifTrueStart + ifTrueInstrs.size + 1
         val ifFalseInstrs = Compilation.run(ifFalseStart)(compileExpr(ifFalse)).now
 
@@ -123,7 +123,6 @@ object Compiler:
         Compilation.emit(Instruction.JumpIf(bodyStart, loopEnd)).now
         Compilation.emitAll(bodyInstrs).now
         Compilation.emit(Instruction.Jump(condStart)).now
-
 
   def compileFunction(internalName: Identifier, function: FunctionDef): Unit < Compilation = direct:
     val argsInstrs = function.params.flatMap(arg =>

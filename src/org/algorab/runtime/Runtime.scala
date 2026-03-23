@@ -1,7 +1,7 @@
 package org.algorab.runtime
 
-import kyo.*
 import java.io.IOException
+import kyo.*
 
 type Runtime = Var[RuntimeContext] & Runtime.Execution
 

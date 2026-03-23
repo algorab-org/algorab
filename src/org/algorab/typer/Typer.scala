@@ -15,7 +15,7 @@ object Typer:
 
   def cast(expr: tpd.Expr, expected: tpd.Type*): Maybe[tpd.Expr] < Typing =
     Kyo.findFirst(expected)(tpe =>
-      TypeContext.isSubtype(expr.exprType, tpe).map( isSub =>
+      TypeContext.isSubtype(expr.exprType, tpe).map(isSub =>
         if isSub then
           Present(expr)
         else if expr.exprType == tpd.Type.Int && tpe == tpd.Type.Float then
@@ -28,7 +28,6 @@ object Typer:
                 exprType = tpd.Type.Float
               ))
             )
-          
         else
           Absent
       )
@@ -36,7 +35,7 @@ object Typer:
 
   def castOrFail(expr: tpd.Expr, expected: tpd.Type*): tpd.Expr < Typing =
     cast(expr, expected*).map:
-      case Absent => Typing.failAndAbort(TypeFailure.Mismatch(expr.exprType, expected*))
+      case Absent             => Typing.failAndAbort(TypeFailure.Mismatch(expr.exprType, expected*))
       case Present(finalExpr) => finalExpr
 
   def assertBinaryOp(left: untpd.Expr, right: untpd.Expr, expected: tpd.Type*)(op: (tpd.Expr, tpd.Expr) => tpd.Expr): tpd.Expr < Typing = direct:
@@ -53,10 +52,9 @@ object Typer:
       for
         leftCast <- cast(typedLeft, tpl._1)
         rightCast <- cast(typedRight, tpl._1)
-      yield
-        (leftCast, rightCast) match
-          case (Present(l), Present(r)) => Present((l, r, tpl._2))
-          case _ => Absent
+      yield (leftCast, rightCast) match
+        case (Present(l), Present(r)) => Present((l, r, tpl._2))
+        case _                        => Absent
     ).now
 
     result match
@@ -82,15 +80,15 @@ object Typer:
     cast(typedA, typedB.exprType).now match
       case Present(castedA) => (castedA, typedB)
       case Absent => cast(typedB, typedA.exprType).now match
-        case Present(castedB) => (typedA, castedB)
-        case Absent => Typing.failAndAbort(TypeFailure.Mismatch(typedA.exprType, typedB.exprType)).now
+          case Present(castedB) => (typedA, castedB)
+          case Absent           => Typing.failAndAbort(TypeFailure.Mismatch(typedA.exprType, typedB.exprType)).now
 
   def declareTypeParamsAndResolveFunTypes(funDef: untpd.Expr.FunDef): (
-    Chunk[(Identifier, Identifier)],
-    Chunk[(Identifier, tpd.Type)],
-    Chunk[tpd.Type],
-    tpd.Type,
-    tpd.Type
+      Chunk[(Identifier, Identifier)],
+      Chunk[(Identifier, tpd.Type)],
+      Chunk[tpd.Type],
+      tpd.Type,
+      tpd.Type
   ) < Typing = direct:
     val uniqueTypeParams = funDef.typeParams.map(tp => (tp, TypeContext.newUniqueTypeName(tp).now))
     uniqueTypeParams.foreach((originalName, newName) =>
@@ -102,14 +100,21 @@ object Typer:
     val resolvedRetType = resolveType(funDef.retType).now
 
     if funDef.typeParams.isEmpty then (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, tpd.Type.Fun(paramTypes, resolvedRetType))
-    else (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, resolvedRetType)))
+    else
+      (
+        uniqueTypeParams,
+        resolvedParams,
+        paramTypes,
+        resolvedRetType,
+        tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, resolvedRetType))
+      )
 
   def resolveType(tpe: untpd.Type): tpd.Type < Typing = direct:
     tpe match
       case untpd.Type.Inferred => tpd.Type.Inferred
       case untpd.Type.Ref(name) => TypeContext.getType(name).now match
-        case Some(resolvedType) => resolvedType
-        case None => Typing.failAndAbort(TypeFailure.UnknownType(name)).now
+          case Some(resolvedType) => resolvedType
+          case None               => Typing.failAndAbort(TypeFailure.UnknownType(name)).now
       case untpd.Type.Apply(base, args) =>
         tpd.Type.Apply(resolveType(base).now, args.map(resolveType(_).now))
       case untpd.Type.Fun(params, output) =>
@@ -120,7 +125,13 @@ object Typer:
         tpd.Type.Tuple(elements.map(resolveType(_).now))
 
   def boxCyclicClosures(context: TypeContext): TypeContext =
-    def rec(variables: Chunk[Variable], functions: Map[Identifier, FunctionDef], visited: Set[Identifier], funId: Identifier, funDef: FunctionDef): (Chunk[Variable], Set[Identifier]) =
+    def rec(
+        variables: Chunk[Variable],
+        functions: Map[Identifier, FunctionDef],
+        visited: Set[Identifier],
+        funId: Identifier,
+        funDef: FunctionDef
+    ): (Chunk[Variable], Set[Identifier]) =
       if visited.contains(funId) then
         val variable = variables(funDef.varId.value)
         (variables.updated(funDef.varId.value, variable.copy(boxxed = true)), visited)
@@ -133,7 +144,6 @@ object Typer:
               case Present(capturedFunId) =>
                 rec(variables, functions, visited, capturedFunId, functions(capturedFunId))
 
-
     val updatedVariables = context.functions.foldLeft(context.variables):
       case (variables, (funId, funDef)) => rec(variables, context.functions, Set.empty, funId, funDef)._1
 
@@ -142,7 +152,7 @@ object Typer:
   def typeProgram(expr: untpd.Expr): (TypeContext, tpd.Expr) < Typing = direct:
     val typedExpr = typeExpr(expr).now
     (Var.use[TypeContext](boxCyclicClosures).now, typedExpr)
-  
+
   def typeExpr(expr: untpd.Expr): tpd.Expr < Typing = direct:
     expr match
       case untpd.Expr.LBool(value)   => tpd.Expr.LBool(value, tpd.Type.Boolean)
@@ -172,7 +182,7 @@ object Typer:
         typedExpr.exprType match
           case tpd.Type.Int   => tpd.Expr.Minus(typedExpr, tpd.Type.Int)
           case tpd.Type.Float => tpd.Expr.Minus(typedExpr, tpd.Type.Float)
-          case _          => Typing.failAndAbort(TypeFailure.Mismatch(typedExpr.exprType, tpd.Type.Int, tpd.Type.Float)).now
+          case _              => Typing.failAndAbort(TypeFailure.Mismatch(typedExpr.exprType, tpd.Type.Int, tpd.Type.Float)).now
 
       case untpd.Expr.Add(left, right) =>
         assertDependentBinaryOp(left, right)(
@@ -205,7 +215,7 @@ object Typer:
       case untpd.Expr.ValDef(name, tpe, expr, mutable) =>
         val resolvedType = resolveType(tpe).now
         val typedExpr = TypeContext.inNewBlockScope(typeExpr(expr)).now
-        
+
         val (finalType, castedExpr) =
           if resolvedType == tpd.Type.Inferred then
             (typedExpr.exprType, typedExpr)
@@ -232,14 +242,15 @@ object Typer:
             val castedArgs = typedArgs.zip(params).map(castOrFail(_, _).now)
             tpd.Expr.Apply(typedExpr, castedArgs, output)
 
-          case tpd.Type.TypeFun(typeParams, funType@tpd.Type.Fun(params, output)) =>
+          case tpd.Type.TypeFun(typeParams, funType @ tpd.Type.Fun(params, output)) =>
             val resolvedTypes = params
               .zip(typedArgs)
               .collect:
                 case (tpd.Type.Generic(name), arg) if typeParams.contains(name) => (name, arg.exprType)
               .groupMap(_._1)(_._2)
               .map((typeParam, types) =>
-                (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now))
+                (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now)
+              )
 
             val replacements = resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)
 
@@ -266,13 +277,13 @@ object Typer:
                     .zip(types)
                     .map((paramName, tpe) => (paramName, resolveType(tpe).now))
                     .toMap
-                  
+
                   typedExpr.withType(output.replaceGeneric(replacements).now)
               .now
           case tpe => Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.TypeFun(Chunk.empty, tpd.Type.Inferred))).now
-      case funDef@untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
+      case funDef @ untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
         val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
-        
+
         TypeContext.inNewBlockScope:
           direct:
             val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, _) = declareTypeParamsAndResolveFunTypes(funDef).now
@@ -311,10 +322,10 @@ object Typer:
                 )
             .now
         .now
-        
+
       case untpd.Expr.Block(expressions) =>
         val declarations = expressions.flatMap:
-          case untpd.Expr.ValDef(name, tpe, _, mutable) => 
+          case untpd.Expr.ValDef(name, tpe, _, mutable) =>
             val resolvedType = resolveType(tpe).now
             Chunk((
               TypeContext.declareVariable(name, Variable(name, resolvedType, mutable, false, false)).now,
@@ -338,7 +349,7 @@ object Typer:
         val typedIfTrue = TypeContext.inNewBlockScope(typeExpr(ifTrue)).now
         val typedIfFalse = TypeContext.inNewBlockScope(typeExpr(ifFalse)).now
 
-        //TODO support inheritance
+        // TODO support inheritance
         if TypeContext.isSubtype(typedIfTrue.exprType, typedIfFalse.exprType).now then
           tpd.Expr.If(castedCond, typedIfTrue, typedIfFalse, typedIfFalse.exprType)
         else if TypeContext.isSubtype(typedIfFalse.exprType, typedIfTrue.exprType).now then
@@ -358,19 +369,19 @@ object Typer:
       case untpd.Expr.For(iterator, iterable, body) =>
         val typedIterable = typeExpr(iterable).now
         typedIterable.exprType match
-          case iterableType@tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
+          case iterableType @ tpd.Type.Apply(tpd.Type.Array, Chunk(elemType)) =>
             TypeContext.inNewBlockScope:
               direct:
-                val iteratorId = TypeContext.declareVariable(iterator, Variable(iterator, elemType,false,false, true)).now
+                val iteratorId = TypeContext.declareVariable(iterator, Variable(iterator, elemType, false, false, true)).now
                 val typedBody = Var.use[TypeContext](iterContext => Var.set(iterContext).flatMap(_ => typeExpr(body))).now
-              
+
                 val indexName = TypeContext.newUniqueVarName(Identifier("$i")).now
                 val indexId = TypeContext.declareVariable(indexName, Variable(indexName, tpd.Type.Int, true, false, true)).now
 
                 val (lengthId, _) = TypeContext.getVariableOrFail(Identifier("length")).now
                 val (getId, _) = TypeContext.getVariableOrFail(Identifier("get")).now
 
-                //TODO Once OOP is implemented, use something like an `Iterable` interface or/and a `forEach` method.
+                // TODO Once OOP is implemented, use something like an `Iterable` interface or/and a `forEach` method.
                 tpd.Expr.Block(
                   declarations = Chunk((indexId, indexName)),
                   expressions = Chunk(

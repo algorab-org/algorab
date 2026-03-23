@@ -1,14 +1,14 @@
 package org.algorab.runtime
 
 import kyo.Chunk
-import org.algorab.compiler.Value
-import org.algorab.compiler.InstrPosition
 import org.algorab.ast.Identifier
+import org.algorab.compiler.InstrPosition
+import org.algorab.compiler.Value
 
 case class RuntimeFrame(
-  nextInstruction: InstrPosition,
-  stack: Chunk[Value],
-  scopes: Chunk[RuntimeScope]
+    nextInstruction: InstrPosition,
+    stack: Chunk[Value],
+    scopes: Chunk[RuntimeScope]
 ):
 
   def jump(nextInstruction: InstrPosition): RuntimeFrame =
@@ -48,15 +48,15 @@ case class RuntimeFrame(
           head.copy(variables = head.variables.updated(name, value)) +: tail
         else
           head +: rec(tail)
-      
+
       case _ => throw AssertionError(s"Unknown variable: $name")
 
     this.copy(scopes = rec(scopes))
-      
+
 object RuntimeFrame:
 
   val root: RuntimeFrame = RuntimeFrame(
     nextInstruction = InstrPosition(0),
     stack = Chunk.empty,
-    scopes = Chunk(RuntimeScope.builtins),
+    scopes = Chunk(RuntimeScope.builtins)
   )

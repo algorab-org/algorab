@@ -2,15 +2,15 @@ package org.algorab.typer
 
 import kyo.*
 import org.algorab.ast.Identifier
-import org.algorab.ast.tpd.Type
-import scala.annotation.tailrec
 import org.algorab.ast.tpd.Expr
+import org.algorab.ast.tpd.Type
 import scala.annotation.nowarn
+import scala.annotation.tailrec
 
 case class TypeContext(
-  scopes: Chunk[TypeScope],
-  functions: Map[Identifier, FunctionDef],
-  variables: Chunk[Variable]
+    scopes: Chunk[TypeScope],
+    functions: Map[Identifier, FunctionDef],
+    variables: Chunk[Variable]
 ):
 
   def getType(name: Identifier): Option[Type] =
@@ -33,33 +33,33 @@ case class TypeContext(
 
     def isIllegalForwardReference(variable: Variable, captured: Boolean): Boolean =
       !variable.initialized && !variable.isFunDef
-    
+
     @tailrec
     def rec(
-      scopes: Chunk[TypeScope],
-      updatedScopes: Chunk[TypeScope],
-      captured: Boolean
+        scopes: Chunk[TypeScope],
+        updatedScopes: Chunk[TypeScope],
+        captured: Boolean
     ): (Chunk[TypeScope], Result[TypeFailure, (VariableId, Variable)]) = scopes match
       case head +: tail =>
         head match
           case TypeScope.Block(_, variables) => variables.get(name) match
-            case None => rec(tail, updatedScopes :+ head, captured)
-            case Some(id) =>
-              var variable = this.variables(id.value)
-              if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              if isIllegalForwardReference(variable, captured) then
-                (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
-              else
-                (updatedScopes ++ scopes, Result.succeed((id, variable)))
+              case None => rec(tail, updatedScopes :+ head, captured)
+              case Some(id) =>
+                var variable = this.variables(id.value)
+                if captured && variable.mutable then variable = variable.copy(boxxed = true)
+                if isIllegalForwardReference(variable, captured) then
+                  (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
+                else
+                  (updatedScopes ++ scopes, Result.succeed((id, variable)))
           case TypeScope.Function(fid, types, variables, captures) => variables.get(name) match
-            case None => rec(tail, updatedScopes :+ TypeScope.Function(fid, types, variables, captures + name), true)
-            case Some(id) =>
-              var variable = this.variables(id.value)
-              if captured && variable.mutable then variable = variable.copy(boxxed = true)
-              if isIllegalForwardReference(variable, captured) then
-                (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
-              else
-                (updatedScopes ++ scopes, Result.succeed((id, variable)))
+              case None => rec(tail, updatedScopes :+ TypeScope.Function(fid, types, variables, captures + name), true)
+              case Some(id) =>
+                var variable = this.variables(id.value)
+                if captured && variable.mutable then variable = variable.copy(boxxed = true)
+                if isIllegalForwardReference(variable, captured) then
+                  (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
+                else
+                  (updatedScopes ++ scopes, Result.succeed((id, variable)))
 
       case _ => (updatedScopes ++ scopes, Result.fail(TypeFailure.UnknownVariable(name)))
 
@@ -71,12 +71,12 @@ case class TypeContext(
       case _ =>
         (this.copy(scopes = updatedScopes), variable)
 
-  @nowarn("msg=exhaustive") //Because it is, actually.
+  @nowarn("msg=exhaustive") // Because it is, actually.
   def getVariableOrFail(name: Identifier): (TypeContext, (VariableId, Variable)) < Typing =
     getVariable(name) match
       case (newCtx, Result.Success(value)) => (newCtx, value)
-      case (_, Result.Failure(failure))        => Typing.failAndAbort(failure)
-      case (_, Result.Panic(error)) => throw error
+      case (_, Result.Failure(failure))    => Typing.failAndAbort(failure)
+      case (_, Result.Panic(error))        => throw error
 
   def getVariableId(name: Identifier): VariableId =
     scopes.collectFirst(((scope: TypeScope) => scope.getVariable(name)).unlift).get
@@ -84,7 +84,7 @@ case class TypeContext(
   def declareVariable(name: Identifier, variable: Variable): (TypeContext, VariableId) < Typing =
     scopes.head.getVariable(name) match
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
-      case None    =>
+      case None =>
         val id = VariableId.assume(variables.size)
         (
           this.copy(
@@ -113,18 +113,18 @@ case class TypeContext(
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
     case TypeScope.Function(id, types, _, localCaptures) +: remaining =>
       val globalCaptures = localCaptures.map(getVariableId)
-      
+
       val (hasForwardCapture, updatedVariables) = globalCaptures.foldLeft((false, this.variables)):
         case ((hasFC, variables), id) =>
           val variable = variables(id.value)
           if variable.initialized then (hasFC, variables)
           else (true, variables.updated(id.value, variable.copy(boxxed = true)))
-      
+
       val declaringVariable = updatedVariables(id.value).copy(functionId = Present(name))
       val declaringBoxxed =
         if hasForwardCapture then declaringVariable.copy(boxxed = true)
         else declaringVariable
-      
+
       this.copy(
         scopes = remaining,
         functions = this.functions.updated(name, FunctionDef(displayName, params, globalCaptures, body, id)),
@@ -193,41 +193,40 @@ object TypeContext:
     functions = Map.empty,
     variables = Chunk.Indexed.empty
   )
-  .declareVariableForce(Identifier("Unit"), Type.Unit)
-  .declareVariableForce(Identifier("println"), Type.Fun(Chunk(Type.Any), Type.Unit))
-  .declareVariableForce(Identifier("readInt"), Type.Fun(Chunk.empty, Type.Int))
-  .declareVariableForce(Identifier("readFloat"), Type.Fun(Chunk.empty, Type.Float))
-  .declareVariableForce(Identifier("toFloat"), Type.Fun(Chunk(Type.Int), Type.Float))
-  .declareVariableForce(
-    Identifier("length"),
-    Type.TypeFun(
-      typeParams = Chunk(Identifier("A")),
-      output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
-    ),
-  )
-  .declareVariableForce(
-    Identifier("get"),
-    Type.TypeFun(
-      typeParams = Chunk(Identifier("A")),
-      output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
-    )
-  )
-  .declareVariableForce(
-    Identifier("Array"),
-    Type.TypeFun(
-      typeParams = Chunk(Identifier("A")),
-      output = Type.Fun(
-        // TODO Use varargs once implemented
-        Chunk(
-          Type.Generic(Identifier("A")),
-          Type.Generic(Identifier("A")),
-          Type.Generic(Identifier("A"))
-        ),
-        Type.arrayOf(Type.Generic(Identifier("A")))
+    .declareVariableForce(Identifier("Unit"), Type.Unit)
+    .declareVariableForce(Identifier("println"), Type.Fun(Chunk(Type.Any), Type.Unit))
+    .declareVariableForce(Identifier("readInt"), Type.Fun(Chunk.empty, Type.Int))
+    .declareVariableForce(Identifier("readFloat"), Type.Fun(Chunk.empty, Type.Float))
+    .declareVariableForce(Identifier("toFloat"), Type.Fun(Chunk(Type.Int), Type.Float))
+    .declareVariableForce(
+      Identifier("length"),
+      Type.TypeFun(
+        typeParams = Chunk(Identifier("A")),
+        output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A")))), Type.Int)
       )
     )
-  )
-  
+    .declareVariableForce(
+      Identifier("get"),
+      Type.TypeFun(
+        typeParams = Chunk(Identifier("A")),
+        output = Type.Fun(Chunk(Type.arrayOf(Type.Generic(Identifier("A"))), Type.Int), Type.Generic(Identifier("A")))
+      )
+    )
+    .declareVariableForce(
+      Identifier("Array"),
+      Type.TypeFun(
+        typeParams = Chunk(Identifier("A")),
+        output = Type.Fun(
+          // TODO Use varargs once implemented
+          Chunk(
+            Type.Generic(Identifier("A")),
+            Type.Generic(Identifier("A")),
+            Type.Generic(Identifier("A"))
+          ),
+          Type.arrayOf(Type.Generic(Identifier("A")))
+        )
+      )
+    )
 
   def modify(f: TypeContext => TypeContext < Typing): Unit < Typing =
     Var.use[TypeContext](f)
@@ -266,12 +265,18 @@ object TypeContext:
         .andThen(body)
     )
 
-  def inNewFunctionScope(id: VariableId, displayName: Identifier, params: Chunk[Identifier])(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
+  def inNewFunctionScope(
+      id: VariableId,
+      displayName: Identifier,
+      params: Chunk[Identifier]
+  )(body: Identifier => (Expr, Expr) < Typing): Expr < Typing = direct:
     val name = newUniqueFunctionName(displayName).now
-    val ctx = Var.updateDiscard[TypeContext](ctx => ctx.copy(
-      scopes = TypeScope.Function(id, Map.empty, Map.empty, Set.empty) +: ctx.scopes,
-      functions = ctx.functions.updated(name, null) //Reserve name to avoid duplication of internal name
-    )).now
+    val ctx = Var.updateDiscard[TypeContext](ctx =>
+      ctx.copy(
+        scopes = TypeScope.Function(id, Map.empty, Map.empty, Set.empty) +: ctx.scopes,
+        functions = ctx.functions.updated(name, null) // Reserve name to avoid duplication of internal name
+      )
+    ).now
 
     val (funBody, funDecl) = body(name).now
     Var.updateDiscard[TypeContext](_.popFunction(name, displayName, params, funBody)).now
@@ -279,9 +284,9 @@ object TypeContext:
     funDecl
 
   def isSubtype(tpe: Type, expected: Type): Boolean < Typing = (tpe, expected) match
-    case (_, Type.Any)          => true
-    case (_, Type.Inferred)     => true
-    case _                      => tpe == expected
+    case (_, Type.Any)      => true
+    case (_, Type.Inferred) => true
+    case _                  => tpe == expected
 
   def union(typeA: Type, typeB: Type): Type < Typing = (typeA, typeB) match
     case (Type.Nothing, _)      => typeB

@@ -46,7 +46,7 @@ object Parser:
     "Invalid term"
   )
 
-  //foo[A, B] => TypeApply(VarCall("foo"), Chunk(Type.Ref("A"), Type.Ref("B")))
+  // foo[A, B] => TypeApply(VarCall("foo"), Chunk(Type.Ref("A"), Type.Ref("B")))
 
   // lazy val parseApply: Expr < Parse[Token] = Parse.firstOf(
   //   Parse.inOrder(
@@ -59,7 +59,7 @@ object Parser:
   //     parseTerm,
   //     Parse.literal(Token.SquareOpen),
   //     Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
-  //     Parse.literal(Token.SquareClosed) 
+  //     Parse.literal(Token.SquareClosed)
   //   ).map((function, _, types, _) => Expr.TypeApply(function, types)),
   // )
 
@@ -76,7 +76,7 @@ object Parser:
           Parse.literal(Token.SquareOpen),
           Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
           Parse.literal(Token.SquareClosed)
-        ).map((_, types, _) => Expr.TypeApply(_, types)),
+        ).map((_, types, _) => Expr.TypeApply(_, types))
       )
     )
   ).map((expr, apps) => apps.foldLeft(expr)((expr, app) => app(expr)))
@@ -148,7 +148,7 @@ object Parser:
       Parse.literal(Token.ParenOpen),
       Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
       Parse.literal(Token.ParenClosed)
-    ).map(types => 
+    ).map(types =>
       types.length match
         case 0 => Parse.fail("Expected type")
         case 1 => types.head
@@ -166,21 +166,22 @@ object Parser:
     parseTypeTerm
   )
 
-  @nowarn("msg=not.*?exhaustive") //Bug in exhaustivity check
+  @nowarn("msg=not.*?exhaustive") // Bug in exhaustivity check
   lazy val parseType: Type < Parse[Token] = Parse.separatedBy(
     Parse.firstOf(
       Parse.inOrder(Parse.literal(Token.ParenOpen), Parse.literal(Token.ParenClosed)).unit,
-      parseTypeApply,
+      parseTypeApply
     ),
     Parse.literal(Token.DoubleArrow)
   ).map:
-    case Chunk() => Parse.fail("Type expected")
+    case Chunk()     => Parse.fail("Type expected")
     case types :+ () => Parse.fail("A function cannot return `()`. Use `Unit` instead")
-    case types :+ (last: Type) => types.foldRight(last)((left, right) => left match
-      case () => Type.Fun(Chunk.empty, right)
-      case Type.Tuple(params) => Type.Fun(params, right)
-      case other: Type => Type.Fun(Chunk(other), right)
-    )
+    case types :+ (last: Type) => types.foldRight(last)((left, right) =>
+        left match
+          case ()                 => Type.Fun(Chunk.empty, right)
+          case Type.Tuple(params) => Type.Fun(params, right)
+          case other: Type        => Type.Fun(Chunk(other), right)
+      )
 
   lazy val parseValDef: Expr < Parse[Token] =
     Parse.inOrder(
@@ -193,8 +194,8 @@ object Parser:
       ),
       Parse.require(Parse.literal(Token.Equal)),
       Parse.require(parseBlockOrExpr)
-    ).map((mutable, _, name, tpe,  _, expr) => Expr.ValDef(name, tpe, expr, mutable))
-  
+    ).map((mutable, _, name, tpe, _, expr) => Expr.ValDef(name, tpe, expr, mutable))
+
   lazy val parseFunDef: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.Def),
@@ -231,7 +232,7 @@ object Parser:
       // Body
       Parse.require(Parse.literal(Token.Equal)),
       Parse.require(parseBlockOrExpr)
-    ).map((_, name, typeParamsOpt, params, _, retType, _, body) => 
+    ).map((_, name, typeParamsOpt, params, _, retType, _, body) =>
       val typeParams = typeParamsOpt.getOrElse(Chunk())
       Expr.FunDef(name, typeParams, params.map((id, _, tpe) => (id, tpe)), retType, body)
     )

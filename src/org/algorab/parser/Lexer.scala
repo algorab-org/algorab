@@ -73,7 +73,7 @@ object Lexer:
   val parseDecimal: Double < Parse[Char] =
     Parse.regex(raw"[0-9]+\.[0-9]+").map(str =>
       str.toString.toDoubleOption match
-        case None => Parse.fail("Invalid float literal")
+        case None        => Parse.fail("Invalid float literal")
         case Some(value) => value
     )
 

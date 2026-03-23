@@ -3,16 +3,16 @@ package org.algorab
 import kyo.*
 import org.algorab.ast.tpd
 import org.algorab.ast.untpd
+import org.algorab.compiler.Compilation
 import org.algorab.compiler.Compiler
+import org.algorab.compiler.InstrPosition
 import org.algorab.compiler.Instruction
 import org.algorab.parser.Lexer
 import org.algorab.parser.Parser
-import org.algorab.typer.Typing
-import org.algorab.typer.Typer
-import org.algorab.compiler.Compilation
 import org.algorab.runtime.Runtime
 import org.algorab.runtime.VM
-import org.algorab.compiler.InstrPosition
+import org.algorab.typer.Typer
+import org.algorab.typer.Typing
 
 private[algorab] def assertionError(msg: String): Nothing =
   throw AssertionError(msg)

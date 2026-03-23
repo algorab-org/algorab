@@ -1,10 +1,10 @@
 package org.algorab.typer
 
-import org.algorab.CompilerFailure
-import org.algorab.ast.untpd
-import org.algorab.ast.tpd
-import org.algorab.ast.Identifier
 import kyo.Chunk
+import org.algorab.CompilerFailure
+import org.algorab.ast.Identifier
+import org.algorab.ast.tpd
+import org.algorab.ast.untpd
 
 enum TypeFailure:
   case Mismatch(got: tpd.Type, expected: tpd.Type*)

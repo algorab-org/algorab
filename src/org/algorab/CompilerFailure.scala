@@ -1,6 +1,6 @@
 package org.algorab
 
-import org.algorab.typer.TypeFailure
 import kyo.ParseFailure
+import org.algorab.typer.TypeFailure
 
 type CompilerFailure = ParseFailure | TypeFailure

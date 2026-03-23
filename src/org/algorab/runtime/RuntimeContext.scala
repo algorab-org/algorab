@@ -2,12 +2,12 @@ package org.algorab.runtime
 
 import kyo.*
 import org.algorab.ast.Identifier
-import org.algorab.compiler.Value
 import org.algorab.compiler.InstrPosition
+import org.algorab.compiler.Value
 
 case class RuntimeContext(
-  frames: Chunk[RuntimeFrame],
-  functions: Map[Identifier, FunctionDef]
+    frames: Chunk[RuntimeFrame],
+    functions: Map[Identifier, FunctionDef]
 ):
 
   def modifyHeadFrame(f: RuntimeFrame => RuntimeFrame): RuntimeContext =
@@ -36,13 +36,13 @@ case class RuntimeContext(
 
   def pushFrame(frame: RuntimeFrame): RuntimeContext =
     this.copy(frames = frame +: frames)
-  
+
   def popFrame: RuntimeContext =
     this.copy(frames = frames.tail)
 
   def getVariable(name: Identifier): Option[Value] =
     frames.collectFirst(((frame: RuntimeFrame) => frame.getVariable(name)).unlift)
-    
+
   def declareVariable(name: Identifier): RuntimeContext =
     modifyHeadFrame(_.declareVariable(name))
 
@@ -53,7 +53,7 @@ case class RuntimeContext(
     modifyHeadFrame(_.assignVariable(name, value))
 
   def getFunction(name: Identifier): Option[FunctionDef] = functions.get(name)
-  
+
   def declareFunction(name: Identifier, function: FunctionDef): RuntimeContext =
     this.copy(functions = functions.updated(name, function))
 
@@ -78,7 +78,7 @@ object RuntimeContext:
   def jump(nextInstruction: InstrPosition): Unit < Runtime = modify(_.jump(nextInstruction))
 
   def push(value: Value): Unit < Runtime = modify(_.push(value))
-  
+
   def pop: Value < Runtime = modifyReturn(_.pop)
 
   def pushScope: Unit < Runtime = modify(_.pushScope)
@@ -87,7 +87,7 @@ object RuntimeContext:
 
   def pushFrame(frame: RuntimeFrame): Unit < Runtime =
     modify(_.pushFrame(frame))
-  
+
   def popFrame: Unit < Runtime = modify(_.popFrame)
 
   def getVariable(name: Identifier): Value < Runtime =
