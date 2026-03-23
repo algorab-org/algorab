@@ -67,16 +67,23 @@ object Parser:
     parseTerm,
     Parse.repeat(
       Parse.firstOf(
+        // variable(...,...)
         Parse.inOrder(
           Parse.literal(Token.ParenOpen),
           Parse.separatedBy(parseExpr, Parse.literal(Token.Comma)),
           Parse.literal(Token.ParenClosed)
         ).map((_, args, _) => Expr.Apply(_, args)),
+        // variable[...,...]
         Parse.inOrder(
           Parse.literal(Token.SquareOpen),
           Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
           Parse.literal(Token.SquareClosed)
-        ).map((_, types, _) => Expr.TypeApply(_, types))
+        ).map((_, types, _) => Expr.TypeApply(_, types)),
+        // variable.member
+        Parse.inOrder(
+          Parse.literal(Token.Dot),
+          Parse.require(parseIdentifier)
+        ).map((_, member) => Expr.Select(_, member))
       )
     )
   ).map((expr, apps) => apps.foldLeft(expr)((expr, app) => app(expr)))
@@ -266,15 +273,38 @@ object Parser:
       Parse.require(Parse.literal(Token.Do)),
       Parse.require(parseBlockOrExpr)
     ).map((_, cond, _, body) => Expr.While(cond, body))
+  
+  lazy val parseClass: Expr < Parse[Token] =
+    Parse.inOrder(
+      Parse.literal(Token.Class),
+      Parse.require(parseIdentifier),
+      // Optional generic type parameters: class Foo[A, B]:
+      Parse.attempt(
+        Parse.between(
+          Parse.literal(Token.SquareOpen),
+          Parse.separatedBy(Parse.require(parseIdentifier), Parse.literal(Token.Comma)),
+          Parse.literal(Token.SquareClosed)
+        )
+      ),
+      Parse.require(Parse.literal(Token.Equal)),
+      // Body: same indented block structure used everywhere else
+      parseBlockOrExpr
+    ).map((_, name, typeParamsOpt, _, body) =>
+      val typeParams = typeParamsOpt.getOrElse(Chunk())
+      // WARNING : GENERIC TYPES ARE CURRENTLY TODO
+      if typeParams.nonEmpty then
+        throw NotImplementedError("Generic class types are not yet implemented")
+      Expr.ClassDef(name, body.expressions)
+    )
 
-  lazy val parseBlockBody: Expr < Parse[Token] =
+  lazy val parseBlockBody: Expr.Block < Parse[Token] =
     Parse.separatedBy(
       parseExpr,
       Parse.literal(Token.Newline),
       allowTrailing = true
     ).map(Expr.Block.apply)
 
-  lazy val parseBlockOrExpr: Expr < Parse[Token] =
+  lazy val parseBlockOrExpr: Expr.Block < Parse[Token] =
     Parse.between(
       Parse.literal(Token.Indent),
       parseBlockBody,
@@ -288,7 +318,8 @@ object Parser:
     parseIf,
     parseFor,
     parseWhile,
-    parseBool
+    parseBool,
+    parseClass
   )
 
   val parseAst: Expr < Parse[Token] = Parse.entireInput(

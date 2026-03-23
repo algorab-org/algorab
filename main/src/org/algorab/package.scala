@@ -23,6 +23,7 @@ def parse(code: String): ParseResult[untpd.Expr] =
     lexResult.out match
       case Absent => ParseResult(lexResult.errors, Absent, lexResult.fatal)
       case Present(tokens) =>
+        // println(pprint(tokens.zipWithIndex.map((a, b) => (b, a))))
         val parseResult = Parse.runResult(tokens)(Parser.parseAst).now
         parseResult.copy(errors = lexResult.errors ++ parseResult.errors)
   .eval
@@ -32,6 +33,7 @@ def compile(code: String): Result[Chunk[CompilerFailure], Chunk[Instruction]] =
   parsed.out match
     case Absent => Result.Failure(parsed.errors)
     case Present(expr) =>
+      println(pprint(expr))
       Typer.typeProgram(expr)
         .map((ctx, expr) => Env.run(ctx)(Compiler.compileProgram(expr)))
         .handle(

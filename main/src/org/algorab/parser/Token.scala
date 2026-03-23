@@ -53,3 +53,4 @@ enum Token derives CanEqual:
   case Def
   case Val
   case Mut
+  case Class

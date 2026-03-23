@@ -1,0 +1,12 @@
+class Foo =
+  val x = 5
+  println("hey")
+
+  def sayAge(): Unit =
+    println(x)
+
+val foo = Foo()
+val foo2 = Foo()
+foo.sayAge()
+foo.sayAge()
+foo2.sayAge()
