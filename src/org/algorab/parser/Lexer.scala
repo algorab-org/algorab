@@ -54,6 +54,29 @@ object Lexer:
 
     def column: Int < Parse[Char] = Parse.position.map(_ - lineStart)
 
+  val parseInt: Int < Parse[Char] =
+    Parse.read: in =>
+      val num = in.remaining.takeWhile(_.isDigit)
+      Maybe
+        .fromOption(num.mkString.toIntOption)
+        .toResult(Result.fail(Chunk(ParseFailure("Invalid int", in.position))))
+        .map(res => (in.advance(num.length), res))
+
+  val parseExponent: Int < Parse[Char] =
+    Parse.read: in =>
+      val num = in.remaining.takeWhile(c => c.isDigit || c == '-' || c == '+')
+      Maybe
+        .fromOption(num.mkString.toIntOption)
+        .toResult(Result.fail(Chunk(ParseFailure("Invalid exponent", in.position))))
+        .map(res => (in.advance(num.length), res))
+
+  val parseDecimal: Double < Parse[Char] =
+    Parse.regex(raw"[0-9]+\.[0-9]+").map(str =>
+      str.toString.toDoubleOption match
+        case None => Parse.fail("Invalid float literal")
+        case Some(value) => value
+    )
+
   val parseString: Token < Parse[Char] =
     Parse.spaced(
       Parse.literal('\"')
@@ -72,17 +95,13 @@ object Lexer:
     Parse.boolean.map(Token.LBool.apply),
     Parse.firstOf(
       Parse.inOrder(
-        Parse.decimal,
+        Parse.firstOf(parseDecimal, parseInt.map(_.toDouble)),
         Parse.anyIn("eE"),
-        Parse.int
+        parseExponent
       ).map((mantissa, _, exponent) => Token.LFloat(mantissa * math.pow(10, exponent))),
-      Parse.regex(raw"-?[0-9]+\.[0-9]+").map(str =>
-        str.toString.toDoubleOption match
-          case None => Parse.fail("Invalid float literal")
-          case Some(value) => Token.LFloat(value)
-      )
+      parseDecimal.map(Token.LFloat.apply)
     ),
-    Parse.int.map(Token.LInt.apply),
+    parseInt.map(Token.LInt.apply),
     parseString,
     Parse.identifier.map(str => Token.Ident(Identifier.assume(str.toString)))
   )
