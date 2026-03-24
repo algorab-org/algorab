@@ -149,6 +149,29 @@ object Typer:
 
     context.copy(variables = updatedVariables)
 
+  def typeDeclaration(expr: untpd.Expr): Chunk[(VariableId, Identifier)] < Typing = direct:
+    expr match
+      case untpd.Expr.ValDef(name, tpe, _, mutable) =>
+        val resolvedType = resolveType(tpe).now
+        Chunk((
+          TypeContext.declareVariable(name, Variable(name, resolvedType, mutable, false, false)).now,
+          name
+        ))
+      case funDef: untpd.Expr.FunDef =>
+        val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
+        Chunk((
+          TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false, functionId = Present(Identifier.assume(null)))).now,
+          funDef.name
+        ))
+      case untpd.Expr.ClassDef(name, body) =>
+        Chunk((
+          TypeContext.declareVariable(name, Variable(name, tpd.Type.Class(name), false, false, false, classId = Present(Identifier.assume(null)))).now,
+          name
+        ))
+
+      case _ =>
+        Chunk.empty
+
   def typeProgram(expr: untpd.Expr): (TypeContext, tpd.Expr) < Typing = direct:
     val typedExpr = typeExpr(expr).now
     (Var.use[TypeContext](boxCyclicClosures).now, typedExpr)
@@ -259,6 +282,11 @@ object Typer:
               typedArgs,
               output.replaceGeneric(replacements).now
             )
+
+          case tpd.Type.Class(name) =>
+            if typedArgs.size == 0 then tpd.Expr.Apply(typedExpr, typedArgs, tpd.Type.Instance(name))
+            else Typing.failAndAbort(TypeFailure.WrongArgumentCount(typedArgs.size, 0)).now
+
           case tpe =>
             Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Fun(typedArgs.map(_.exprType), tpd.Type.Inferred))).now
       case untpd.Expr.TypeApply(expr, types) =>
@@ -316,29 +344,43 @@ object Typer:
                   tpd.Expr.Assign(
                     id = id,
                     name = name,
-                    expr = tpd.Expr.FunRef(internalName, tpd.Type.Unit),
+                    expr = tpd.Expr.FunRef(internalName, tpd.Type.Fun(resolvedParams.map(_._2), finalType)),
                     exprType = tpd.Type.Unit
                   )
                 )
             .now
         .now
 
+      case untpd.Expr.ClassDef(name, body) =>
+        val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
+        
+        TypeContext.inNewClassScope(id, name): internalName =>
+          direct:
+            val declarations = body.flatMap(typeDeclaration(_).now)
+            val typedBody = body.map(typeExpr(_).now)
+
+            (
+              typedBody,
+              tpd.Expr.Assign(
+                id = id,
+                name = name,
+                expr = tpd.Expr.ClassRef(internalName, tpd.Type.Class(internalName)),
+                exprType = tpd.Type.Unit
+              )
+            )
+        .now
+
+      case untpd.Expr.Select(expr, name) => 
+        val typedExpr = typeExpr(expr).now
+        typedExpr.exprType match
+          case tpd.Type.Instance(className) =>
+            val (id, member) = TypeContext.getDeclarationOrFail(className, name).now
+            tpd.Expr.Select(id, typedExpr, name, member.tpe)
+          case tpe =>
+            Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Any)).now
+
       case untpd.Expr.Block(expressions) =>
-        val declarations = expressions.flatMap:
-          case untpd.Expr.ValDef(name, tpe, _, mutable) =>
-            val resolvedType = resolveType(tpe).now
-            Chunk((
-              TypeContext.declareVariable(name, Variable(name, resolvedType, mutable, false, false)).now,
-              name
-            ))
-          case funDef: untpd.Expr.FunDef =>
-            val (_, _, _, _, funType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(funDef)).now
-            Chunk((
-              TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false, Present(Identifier.assume(null)))).now,
-              funDef.name
-            ))
-          case _ =>
-            Chunk.empty
+        val declarations = expressions.flatMap(typeDeclaration(_).now)
 
         val typedExprs = expressions.map(typeExpr(_).now)
         val blockType = if typedExprs.isEmpty then tpd.Type.Unit else typedExprs.last.exprType

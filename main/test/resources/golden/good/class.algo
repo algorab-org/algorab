@@ -1,12 +1,13 @@
-class Foo =
-  val x = 5
-  println("hey")
+class Counter =
+  mut val x = 0
 
-  def sayAge(): Unit =
-    println(x)
+  def increment(): Unit =
+    x = x + 1
 
-val foo = Foo()
-val foo2 = Foo()
-foo.sayAge()
-foo.sayAge()
-foo2.sayAge()
+val counter = Counter()
+val counter2 = Counter()
+println(counter.x)
+println(counter2.x)
+counter.increment()
+println(counter.x)
+println(counter2.x)
