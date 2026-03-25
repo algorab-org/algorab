@@ -18,10 +18,14 @@ extension (failure: CompilerFailure)
       s"Unknown variable: ${name.value}"
     case TypeFailure.UnknownType(name) =>
       s"Unknown type: ${name.value}"
+    case TypeFailure.UnknownMember(className, memberName) =>
+      s"Unknown member: $className#$memberName"
     case TypeFailure.VariableAlreadyDefined(name) =>
       s"Variable already defined: ${name.value}"
     case TypeFailure.TypeAlreadyDefined(name) =>
       s"Type already defined: ${name.value}"
+    case TypeFailure.WrongArgumentCount(got, expected) =>
+      s"Wrong number of argument: expected $expected, got $got"
     case TypeFailure.MissingTypeArguments(missing) =>
       s"Missing type arguments: ${missing.map(_.value).mkString(", ")}"
     case TypeFailure.TooManyTypeArguments(got, expected) =>
