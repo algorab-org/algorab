@@ -11,6 +11,9 @@ enum Instruction derives CanEqual:
   case Load(name: Identifier)
   case LoadBox(name: Identifier)
   case LoadFunction(name: Identifier)
+  case LoadClass(name: Identifier)
+  case Select(name: Identifier)
+  case SelectBox(name: Identifier)
 
   case Not
   case Equal
@@ -37,6 +40,7 @@ enum Instruction derives CanEqual:
   case PushScope
   case PopScope
   case FunctionStart(internalName: Identifier, displayName: Identifier, captures: Set[Identifier], next: InstrPosition)
+  case ClassStart(internalName: Identifier, displayName: Identifier, next: InstrPosition)
 
 object Instruction:
   def declare(name: Identifier, boxxed: Boolean): Instruction =
@@ -50,3 +54,7 @@ object Instruction:
   def load(name: Identifier, boxxed: Boolean): Instruction =
     if boxxed then Instruction.LoadBox(name)
     else Instruction.Load(name)
+
+  def select(name: Identifier, boxxed: Boolean): Instruction =
+    if boxxed then Instruction.SelectBox(name)
+    else Instruction.Select(name)

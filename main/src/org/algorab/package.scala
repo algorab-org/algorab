@@ -47,4 +47,5 @@ def runCode(code: String): Result[Chunk[CompilerFailure], Unit] < Runtime.Execut
   compile(code) match
     case Result.Failure(failures) => Result.Failure(failures)
     case Result.Success(instructions) =>
+      println(pprint(instructions))
       Runtime.run(VM.interpretAll(instructions)).map(Result.Success.apply)

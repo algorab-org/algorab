@@ -5,6 +5,7 @@ import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Expr
 import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
+import org.algorab.typer.ClassTypeDef
 
 object Compiler:
 
@@ -85,6 +86,12 @@ object Compiler:
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
       case Expr.FunRef(name, _) => Compilation.emit(Instruction.LoadFunction(name)).now
+      case Expr.ClassRef(name, _) => Compilation.emit(Instruction.LoadClass(name)).now
+      case Expr.Select(id, expr, name, _) =>
+        val boxxed = Compilation.isBoxxed(id).now
+        compileExpr(expr).now
+        Compilation.emit(Instruction.select(name, boxxed)).now
+
       case Expr.Block(declarations, expressions, _) =>
         Compilation.emit(Instruction.PushScope).now
         declarations.foreach((id, name) =>
@@ -141,6 +148,14 @@ object Compiler:
     Compilation.emitAll(bodyInstrs).now
     Compilation.emit(Instruction.Return).now
 
+  def compileClass(internalName: Identifier, clazz: ClassTypeDef): Unit < Compilation = direct:
+    val initPos = Compilation.nextPosition.now + 1
+    val initInstrs = Compilation.run(initPos)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
+    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + initInstrs.size + 1)).now
+    Compilation.emitAll(initInstrs).now
+    Compilation.emit(Instruction.Return).now
+
   def compileProgram(main: Expr): Unit < Compilation = direct:
     Compilation.functions.now.foreach(compileFunction(_, _).now)
+    Compilation.classes.now.foreach(compileClass(_, _).now)
     compileExpr(main).now

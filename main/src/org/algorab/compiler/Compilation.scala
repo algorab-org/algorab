@@ -6,6 +6,7 @@ import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
 import org.algorab.typer.Variable
 import org.algorab.typer.VariableId
+import org.algorab.typer.ClassTypeDef
 
 type Compilation = Env[TypeContext] & Compilation.NoContext
 
@@ -28,6 +29,9 @@ object Compilation:
 
   def functions: Map[Identifier, FunctionDef] < Compilation =
     Env.use[TypeContext](_.functions)
+
+  def classes: Map[Identifier, ClassTypeDef] < Compilation =
+    Env.use[TypeContext](_.classes)
 
   def getVariable(id: VariableId): Variable < Compilation =
     Env.use[TypeContext](_.variables(id.value))
