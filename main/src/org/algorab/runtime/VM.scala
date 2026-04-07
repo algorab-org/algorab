@@ -82,7 +82,7 @@ object VM:
           case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a + b))
           case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a + b))
           case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a + b))
-          // case (Value.VString(a), Value.VString(a)) => RuntimeContext.push(Value.VString(a + b))
+          case (Value.VString(b), Value.VString(a)) => RuntimeContext.push(Value.VString(a + b))
         }.now
       case Instruction.Sub => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
           case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a - b))

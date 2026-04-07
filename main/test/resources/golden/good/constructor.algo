@@ -1,0 +1,8 @@
+class User(name: String) =
+  def greetings(): String = "I'm " + name + "."
+
+val alice = User("Alice")
+val bob = User("Bob")
+
+println(alice.greetings())
+println(bob.greetings())

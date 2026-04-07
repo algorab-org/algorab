@@ -163,9 +163,11 @@ object Typer:
           TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false, functionId = Present(Identifier.assume(null)))).now,
           funDef.name
         ))
-      case untpd.Expr.ClassDef(name, body) =>
+      case untpd.Expr.ClassDef(name, parameters, body) =>
+        val resolvedTypes = parameters.map((_, tpe) => resolveType(tpe).now)
+        val constructorType = tpd.Type.Fun(resolvedTypes, tpd.Type.Instance(name))
         Chunk((
-          TypeContext.declareVariable(name, Variable(name, tpd.Type.Class(name), false, false, false, classId = Present(Identifier.assume(null)))).now,
+          TypeContext.declareVariable(name, Variable(name, tpd.Type.Class(name, constructorType), false, false, false, classId = Present(Identifier.assume(null)))).now,
           name
         ))
 
@@ -210,7 +212,8 @@ object Typer:
       case untpd.Expr.Add(left, right) =>
         assertDependentBinaryOp(left, right)(
           tpd.Type.Int -> tpd.Type.Int,
-          tpd.Type.Float -> tpd.Type.Float
+          tpd.Type.Float -> tpd.Type.Float,
+          tpd.Type.String -> tpd.Type.String
         )(tpd.Expr.Add.apply).now
       case untpd.Expr.Sub(left, right) =>
         assertDependentBinaryOp(left, right)(
@@ -260,35 +263,36 @@ object Typer:
       case untpd.Expr.Apply(expr, args) =>
         val typedExpr = typeExpr(expr).now
         val typedArgs = args.map(typeExpr(_).now)
-        typedExpr.exprType match
-          case tpd.Type.Fun(params, output) =>
-            val castedArgs = typedArgs.zip(params).map(castOrFail(_, _).now)
-            tpd.Expr.Apply(typedExpr, castedArgs, output)
+        def rec(tpe: tpd.Type): tpd.Expr < Typing = direct:
+          tpe match
+            case tpd.Type.Fun(params, output) =>
+              val castedArgs = typedArgs.zip(params).map(castOrFail(_, _).now)
+              tpd.Expr.Apply(typedExpr, castedArgs, output)
 
-          case tpd.Type.TypeFun(typeParams, funType @ tpd.Type.Fun(params, output)) =>
-            val resolvedTypes = params
-              .zip(typedArgs)
-              .collect:
-                case (tpd.Type.Generic(name), arg) if typeParams.contains(name) => (name, arg.exprType)
-              .groupMap(_._1)(_._2)
-              .map((typeParam, types) =>
-                (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now)
+            case tpd.Type.TypeFun(typeParams, funType @ tpd.Type.Fun(params, output)) =>
+              val resolvedTypes = params
+                .zip(typedArgs)
+                .collect:
+                  case (tpd.Type.Generic(name), arg) if typeParams.contains(name) => (name, arg.exprType)
+                .groupMap(_._1)(_._2)
+                .map((typeParam, types) =>
+                  (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now)
+                )
+
+              val replacements = resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)
+
+              tpd.Expr.Apply(
+                typedExpr.withType(funType.replaceGeneric(replacements)),
+                typedArgs,
+                output.replaceGeneric(replacements).now
               )
 
-            val replacements = resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)
+            case tpd.Type.Class(name, constructor) => rec(constructor).now
 
-            tpd.Expr.Apply(
-              typedExpr.withType(funType.replaceGeneric(replacements)),
-              typedArgs,
-              output.replaceGeneric(replacements).now
-            )
-
-          case tpd.Type.Class(name) =>
-            if typedArgs.size == 0 then tpd.Expr.Apply(typedExpr, typedArgs, tpd.Type.Instance(name))
-            else Typing.failAndAbort(TypeFailure.WrongArgumentCount(typedArgs.size, 0)).now
-
-          case tpe =>
-            Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Fun(typedArgs.map(_.exprType), tpd.Type.Inferred))).now
+            case tpe =>
+              Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Fun(typedArgs.map(_.exprType), tpd.Type.Inferred))).now
+        
+        rec(typedExpr.exprType).now
       case untpd.Expr.TypeApply(expr, types) =>
         val typedExpr = typeExpr(expr).now
         typedExpr.exprType match
@@ -351,11 +355,15 @@ object Typer:
             .now
         .now
 
-      case untpd.Expr.ClassDef(name, body) =>
+      case untpd.Expr.ClassDef(name, parameters, body) =>
         val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
         
         TypeContext.inNewClassScope(id, name): internalName =>
           direct:
+            val resolvedParams = parameters.map((id, tpe) => (id, resolveType(tpe).now))
+            val constructorType = tpd.Type.Fun(resolvedParams.map(_._2), tpd.Type.Instance(internalName))
+            resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(name, tpe, false, false, true)).now)
+            
             val declarations = body.flatMap(typeDeclaration(_).now)
             val typedBody = body.map(typeExpr(_).now)
 
@@ -364,7 +372,7 @@ object Typer:
               tpd.Expr.Assign(
                 id = id,
                 name = name,
-                expr = tpd.Expr.ClassRef(internalName, tpd.Type.Class(internalName)),
+                expr = tpd.Expr.ClassRef(internalName, tpd.Type.Class(internalName, constructorType)),
                 exprType = tpd.Type.Unit
               )
             )

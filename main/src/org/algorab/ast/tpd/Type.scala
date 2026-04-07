@@ -7,7 +7,7 @@ enum Type derives CanEqual:
   case Nothing
   case Inferred
   case Generic(name: Identifier)
-  case Class(name: Identifier)
+  case Class(name: Identifier, constructor: Type)
   case Instance(name: Identifier)
   case Apply(base: Type, args: Chunk[Type])
   case Fun(params: Chunk[Type], output: Type)
@@ -24,7 +24,7 @@ enum Type derives CanEqual:
     case Nothing                     => Type.Nothing
     case Inferred                    => Type.Inferred
     case Generic(n)                  => replacements.getOrElse(n, this)
-    case Class(name)                 => Type.Class(name)
+    case Class(name, constructor)    => Type.Class(name, constructor)
     case Instance(name)              => Type.Instance(name)
     case Apply(base, args)           => Type.Apply(base.replaceGeneric(replacements), args.map(_.replaceGeneric(replacements)))
     case Fun(params, output)         => Type.Fun(params.map(_.replaceGeneric(replacements)), output.replaceGeneric(replacements))

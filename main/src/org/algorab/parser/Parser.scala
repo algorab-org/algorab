@@ -286,15 +286,31 @@ object Parser:
           Parse.literal(Token.SquareClosed)
         )
       ),
+      // Optional constructor parameters: class Foo(x: Int, y: String):
+      Parse.attempt(
+        Parse.between(
+          Parse.literal(Token.ParenOpen),
+          Parse.separatedBy(
+            Parse.inOrder(
+              parseIdentifier,
+              Parse.literal(Token.Colon),
+              Parse.require(parseType)
+            ).map((id, _, tpe) => (id, tpe)),
+            Parse.literal(Token.Comma)
+          ),
+          Parse.literal(Token.ParenClosed)
+        )
+      ),
+      // Equal sign before body: class Foo = ...
       Parse.require(Parse.literal(Token.Equal)),
       // Body: same indented block structure used everywhere else
       parseBlockOrExpr
-    ).map((_, name, typeParamsOpt, _, body) =>
+    ).map((_, name, typeParamsOpt, parametersOpt, _, body) =>
       val typeParams = typeParamsOpt.getOrElse(Chunk())
       // WARNING : GENERIC TYPES ARE CURRENTLY TODO
       if typeParams.nonEmpty then
         throw NotImplementedError("Generic class types are not yet implemented")
-      Expr.ClassDef(name, body.expressions)
+      Expr.ClassDef(name, parametersOpt.getOrElse(Chunk.empty), body.expressions)
     )
 
   lazy val parseBlockBody: Expr.Block < Parse[Token] =
