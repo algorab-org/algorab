@@ -139,12 +139,15 @@ object Compiler:
     )
     val bodyPos = Compilation.nextPosition.now + argsInstrs.size + 1
     val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
+    val epilogueInstrCount = if function.body.exprType == org.algorab.ast.tpd.Type.Unit then 2 else 1
 
     val localCaptures = function.captures.map(id => Compilation.getVariable(id).now.localName)
 
-    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + 1)).now
+    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + epilogueInstrCount)).now
     Compilation.emitAll(argsInstrs).now
     Compilation.emitAll(bodyInstrs).now
+    if function.body.exprType == org.algorab.ast.tpd.Type.Unit then
+      Compilation.emit(Instruction.Push(Value.VUnit)).now
     Compilation.emit(Instruction.Return).now
 
   def compileClass(internalName: Identifier, clazz: ClassTypeDef): Unit < Compilation = direct:
