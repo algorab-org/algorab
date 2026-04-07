@@ -5,8 +5,6 @@ class Counter =
     x = x + 1
     5 -- TODO remove
 
-  this -- TODO remove
-
 val counter = Counter()
 val counter2 = Counter()
 println(counter.x)

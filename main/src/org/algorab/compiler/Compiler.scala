@@ -154,10 +154,11 @@ object Compiler:
         else Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.DeclareField(tpl._1)))
     )).now
     val initInstrs = Compilation.run(initPos + defInstrs.size)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
-    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + initInstrs.size + 1)).now
+    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + initInstrs.size + 2)).now
     
     Compilation.emitAll(defInstrs).now
     Compilation.emitAll(initInstrs).now
+    Compilation.emit(Instruction.loadThis).now
     Compilation.emit(Instruction.Return).now
 
   def compileProgram(main: Expr): Unit < Compilation = direct:
