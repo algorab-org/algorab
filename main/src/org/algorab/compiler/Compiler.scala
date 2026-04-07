@@ -3,11 +3,22 @@ package org.algorab.compiler
 import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Expr
+import org.algorab.ast.tpd.Type
 import org.algorab.typer.ClassTypeDef
 import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
 
 object Compiler:
+
+  private val thisIdentifier = Identifier("this")
+
+  private def functionEpilogue(function: FunctionDef): Chunk[Instruction] =
+    if function.body.exprType == Type.Unit then
+      Chunk(Instruction.Push(Value.VUnit), Instruction.Return)
+    else
+      Chunk(Instruction.Return)
+
+  private val classEpilogue: Chunk[Instruction] = Chunk(Instruction.loadThis, Instruction.Return)
 
   def compileBinaryOp(left: Expr, right: Expr, instruction: Instruction): Unit < Compilation = direct:
     compileExpr(left).now
@@ -139,30 +150,27 @@ object Compiler:
     )
     val bodyPos = Compilation.nextPosition.now + argsInstrs.size + 1
     val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
-    val epilogueInstrCount = if function.body.exprType == org.algorab.ast.tpd.Type.Unit then 2 else 1
+    val epilogueInstrs = functionEpilogue(function)
 
     val localCaptures = function.captures.map(id => Compilation.getVariable(id).now.localName)
 
-    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + epilogueInstrCount)).now
+    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + epilogueInstrs.size)).now
     Compilation.emitAll(argsInstrs).now
     Compilation.emitAll(bodyInstrs).now
-    if function.body.exprType == org.algorab.ast.tpd.Type.Unit then
-      Compilation.emit(Instruction.Push(Value.VUnit)).now
-    Compilation.emit(Instruction.Return).now
+    Compilation.emitAll(epilogueInstrs).now
 
   def compileClass(internalName: Identifier, clazz: ClassTypeDef): Unit < Compilation = direct:
     val initPos = Compilation.nextPosition.now + 1
     val defInstrs = Compilation.run(initPos)(Kyo.foreachDiscard(clazz.declarations)(tpl =>
-        if tpl._1 == Identifier("this") then Kyo.unit
+        if tpl._1 == thisIdentifier then Kyo.unit
         else Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.DeclareField(tpl._1)))
     )).now
     val initInstrs = Compilation.run(initPos + defInstrs.size)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
-    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + initInstrs.size + 2)).now
+    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + initInstrs.size + classEpilogue.size)).now
     
     Compilation.emitAll(defInstrs).now
     Compilation.emitAll(initInstrs).now
-    Compilation.emit(Instruction.loadThis).now
-    Compilation.emit(Instruction.Return).now
+    Compilation.emitAll(classEpilogue).now
 
   def compileProgram(main: Expr): Unit < Compilation = direct:
     println(pprint(main))
