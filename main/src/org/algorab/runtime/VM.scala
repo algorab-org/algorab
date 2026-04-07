@@ -4,6 +4,7 @@ import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.compiler.Instruction
 import org.algorab.compiler.Value
+import scala.collection.mutable
 
 object VM:
 
@@ -31,6 +32,15 @@ object VM:
           function.start,
           capturedVars
         )).now
+
+      case Instruction.LoadClass(name) => 
+        val classDef = RuntimeContext.getClass(name).now
+        RuntimeContext.push(Value.VClass(name, classDef.initStart)).now
+
+      case Instruction.DeclareField(name) => RuntimeContext.pop.now.putField(name, null).now
+      case Instruction.AssignField(name) =>
+        RuntimeContext.pop.now.putField(name, RuntimeContext.pop.now).now
+      case Instruction.Select(name) => RuntimeContext.push(RuntimeContext.pop.now.getField(name)).now
 
       case Instruction.Not => RuntimeContext.push(Value.VBool(!RuntimeContext.pop.now.asBool)).now
       case Instruction.Equal => RuntimeContext.push(Value.VBool(
@@ -115,15 +125,22 @@ object VM:
         val args = Chunk.range(0, paramCount.value).map(_ => RuntimeContext.pop.now).reverse
 
         matchOrError(function) {
+          case Value.VClass(name, initStart) =>
+              val frame = RuntimeFrame(
+                initStart,
+                args,
+                Chunk(RuntimeScope(Map(Identifier("this") -> Value.VInstance(name, mutable.Map.empty))))
+              )
+
+              RuntimeContext.pushFrame(frame)
           case Value.UserDefinedFunction(start, capturedVars) =>
-            direct:
               val frame = RuntimeFrame(
                 start,
                 args,
                 Chunk(RuntimeScope(capturedVars))
               )
 
-              RuntimeContext.pushFrame(frame).now
+              RuntimeContext.pushFrame(frame)
           case Value.BuiltInFunction(f) => f(args).map(RuntimeContext.push)
         }.now
       case Instruction.Jump(position) => RuntimeContext.jump(position).now
@@ -147,9 +164,18 @@ object VM:
 
         RuntimeContext.declareFunction(internalName, functionDef).now
         RuntimeContext.jump(next).now
+      case Instruction.ClassStart(internalName, displayName, next) =>
+        val classDef = ClassDef(
+          displayName,
+          RuntimeContext.nextInstruction.now
+        )
+
+        RuntimeContext.declareClass(internalName, classDef).now
+        RuntimeContext.jump(next).now
 
   def interpretAll(instructions: Chunk[Instruction]): Unit < Runtime = direct:
     while instructions.sizeCompare(RuntimeContext.nextInstruction.now.value) > 0 do
       val next = RuntimeContext.nextInstruction.now
+      println(s"Next: $next")
       RuntimeContext.jump(RuntimeContext.nextInstruction.now + 1).now
       interpretInstr(instructions(next.value)).now

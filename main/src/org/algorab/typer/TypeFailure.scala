@@ -19,3 +19,4 @@ enum TypeFailure:
   case CannotInferType(name: Identifier)
   case ImmutableVariableAssignment(name: Identifier)
   case IllegalForwardReference(name: Identifier)
+  case ThisOutsideClass

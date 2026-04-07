@@ -1,8 +1,11 @@
 class Counter =
   mut val x = 0
 
-  def increment(): Unit =
+  def increment(): Int =
     x = x + 1
+    5 -- TODO remove
+
+  this -- TODO remove
 
 val counter = Counter()
 val counter2 = Counter()

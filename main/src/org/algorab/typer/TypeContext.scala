@@ -71,8 +71,7 @@ case class TypeContext(
           case TypeScope.Class(_, types, variables) => variables.get(name) match
               case None => (updatedScopes ++ scopes, Result.fail(TypeFailure.UnknownVariable(name)))
               case Some(id) =>
-                var variable = this.variables(id.value)
-                if captured && variable.mutable then variable = variable.copy(boxxed = true)
+                val variable = this.variables(id.value)
                 if isIllegalForwardReference(variable, captured) then
                   (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
                 else
@@ -103,10 +102,12 @@ case class TypeContext(
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
       case None =>
         val id = VariableId.assume(variables.size)
+        val field = scopes.head.isClassScope
+        println(s"Declare variable $name in scope ${scopes.head.getClass}, field = $field")
         (
           this.copy(
             scopes = scopes.head.withVariable(name, id) +: scopes.tail,
-            variables = variables :+ variable
+            variables = variables :+ variable.copy(field = field)
           ),
           id
         )
@@ -119,7 +120,7 @@ case class TypeContext(
 
   def updateVariable(name: Identifier, variable: Variable): TypeContext =
     this.copy(
-      variables = variables.updated(scopes.head.variables(name).value, variable)
+      variables = variables.updated(scopes.head.variables(name).value, variable.copy(field = scopes.head.isClassScope))
     )
 
   def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
@@ -132,7 +133,15 @@ case class TypeContext(
 
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
     case TypeScope.Function(id, types, _, localCaptures) +: remaining =>
-      val globalCaptures = localCaptures.map(getVariableId)
+      var hasField = false
+      var globalCaptures = localCaptures
+        .map(getVariableId)
+        .filterNot: id =>
+          val isField = variables(id.value).field
+          if isField then hasField = true
+          isField
+
+      if hasField then globalCaptures = globalCaptures + getVariableId(Identifier("this"))
 
       val (hasForwardCapture, updatedVariables) = globalCaptures.foldLeft((false, this.variables)):
         case ((hasFC, variables), id) =>
@@ -330,9 +339,13 @@ object TypeContext:
     val name = newUniqueTypeName(displayName).now
     val ctx = Var.updateDiscard[TypeContext](ctx =>
       ctx.copy(
-        scopes = TypeScope.Class(id, Map.empty, Map.empty) +: ctx.scopes,
+        scopes = TypeScope.Class(
+          id = id,
+          types = Map(name -> Type.Instance(name)),
+          variables = Map.empty
+        ) +: ctx.scopes,
         classes = ctx.classes.updated(name, null) // Reserve name to avoid duplication of internal name
-      )
+      ).declareVariableForce(Identifier("this"), Type.Instance(name))
     ).now
 
     val (classBody, classDecl) = body(name).now

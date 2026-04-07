@@ -11,6 +11,7 @@ case class Variable(
     mutable: Boolean,
     boxxed: Boolean,
     initialized: Boolean,
+    field: Boolean = false,
     functionId: Maybe[Identifier] = Absent,
     classId: Maybe[Identifier] = Absent
 ):

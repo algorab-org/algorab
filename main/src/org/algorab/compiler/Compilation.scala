@@ -35,6 +35,3 @@ object Compilation:
 
   def getVariable(id: VariableId): Variable < Compilation =
     Env.use[TypeContext](_.variables(id.value))
-
-  def isBoxxed(id: VariableId): Boolean < Compilation =
-    getVariable(id).map(_.boxxed)

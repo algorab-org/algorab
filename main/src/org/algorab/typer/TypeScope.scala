@@ -32,3 +32,5 @@ enum TypeScope:
       Function(id, types, variables.updated(name, variable), captures)
     case Class(id, types, variables) =>
       Class(id, types, variables.updated(name, variable))
+
+  def isClassScope: Boolean = this.isInstanceOf[TypeScope.Class]
