@@ -165,15 +165,20 @@ object Compiler:
         if tpl._1 == thisIdentifier then Kyo.unit
         else Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.DeclareField(tpl._1)))
     )).now
-    val initInstrs = Compilation.run(initPos + defInstrs.size)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
-    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + initInstrs.size + classEpilogue.size)).now
+
+    val paramInstrs = Compilation.run(initPos + defInstrs.size)(Kyo.foreachDiscard(clazz.parameters)(name =>
+      Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.AssignField(name)))
+    )).now
+
+    val initInstrs = Compilation.run(initPos + defInstrs.size + paramInstrs.size)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
+    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + paramInstrs.size + initInstrs.size + classEpilogue.size)).now
     
     Compilation.emitAll(defInstrs).now
+    Compilation.emitAll(paramInstrs).now
     Compilation.emitAll(initInstrs).now
     Compilation.emitAll(classEpilogue).now
 
   def compileProgram(main: Expr): Unit < Compilation = direct:
-    println(pprint(main))
     Compilation.functions.now.foreach(compileFunction(_, _).now)
     Compilation.classes.now.foreach(compileClass(_, _).now)
     compileExpr(main).now

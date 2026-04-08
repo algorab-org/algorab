@@ -65,6 +65,9 @@ enum Value derives CanEqual:
     case VArray(values)               => values.mkString("Array(", ", ", ")")
     case VBox(boxxed)                 => boxxed.convertToString
     case VClass(className, _)         => s"<class $className>"
-    case VInstance(className, fields) => fields.map((id, value) => s"$id = ${value.convertToString}").mkString(s"$className(", ", ", ")")
+    case VInstance(className, fields) => fields.filterNot(_._1 == Identifier("this")).map((id, value) =>
+      if value == null then s"$id = null"
+      else s"$id = ${value.convertToString}"
+    ).mkString(s"$className(", ", ", ")")
     case UserDefinedFunction(_, _)    => "<function>"
     case BuiltInFunction(_)           => "<builtin function>"

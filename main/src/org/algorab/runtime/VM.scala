@@ -126,6 +126,7 @@ object VM:
 
         matchOrError(function) {
           case Value.VClass(name, initStart) =>
+
               val frame = RuntimeFrame(
                 initStart,
                 args,
@@ -176,6 +177,5 @@ object VM:
   def interpretAll(instructions: Chunk[Instruction]): Unit < Runtime = direct:
     while instructions.sizeCompare(RuntimeContext.nextInstruction.now.value) > 0 do
       val next = RuntimeContext.nextInstruction.now
-      println(s"Next: $next")
       RuntimeContext.jump(RuntimeContext.nextInstruction.now + 1).now
       interpretInstr(instructions(next.value)).now

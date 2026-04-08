@@ -103,7 +103,6 @@ case class TypeContext(
       case None =>
         val id = VariableId.assume(variables.size)
         val field = scopes.head.isClassScope
-        println(s"Declare variable $name in scope ${scopes.head.getClass}, field = $field")
         (
           this.copy(
             scopes = scopes.head.withVariable(name, id) +: scopes.tail,
@@ -162,12 +161,12 @@ case class TypeContext(
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a function scope")
     case _ => throw AssertionError("Tried to merge non-existing function scope")
 
-  def popClass(name: Identifier, displayName: Identifier, init: Chunk[Expr]): TypeContext = scopes match
+  def popClass(name: Identifier, displayName: Identifier, parameters: Chunk[Identifier], init: Chunk[Expr]): TypeContext = scopes match
     case TypeScope.Class(id, types, variables) +: remaining =>
       val declaringVariable = this.variables(id.value).copy(initialized = true, classId = Present(name))
       this.copy(
         scopes = remaining,
-        classes = this.classes.updated(name, ClassTypeDef(displayName, variables, init, id)),
+        classes = this.classes.updated(name, ClassTypeDef(displayName, variables, parameters, init, id)),
         variables = this.variables.updated(id.value, declaringVariable)
       )
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a class scope")
@@ -334,7 +333,8 @@ object TypeContext:
 
   def inNewClassScope(
       id: VariableId,
-      displayName: Identifier
+      displayName: Identifier,
+      parameters: Chunk[Identifier]
   )(body: Identifier => (Chunk[Expr], Expr) < Typing): Expr < Typing = direct:
     val name = newUniqueTypeName(displayName).now
     val ctx = Var.updateDiscard[TypeContext](ctx =>
@@ -349,7 +349,7 @@ object TypeContext:
     ).now
 
     val (classBody, classDecl) = body(name).now
-    Var.updateDiscard[TypeContext](_.popClass(name, displayName, classBody)).now
+    Var.updateDiscard[TypeContext](_.popClass(name, displayName, parameters, classBody)).now
 
     classDecl
 

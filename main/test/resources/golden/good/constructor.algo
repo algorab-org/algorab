@@ -1,8 +1,10 @@
-class User(name: String) =
+class User(name: String, age: Int) =
   def greetings(): String = "I'm " + name + "."
 
-val alice = User("Alice")
-val bob = User("Bob")
+val alice = User("Alice", 23)
+val bob = User("Bob", 21)
 
 println(alice.greetings())
+println(alice.age)
 println(bob.greetings())
+println(bob.age)

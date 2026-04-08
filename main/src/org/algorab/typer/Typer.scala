@@ -358,7 +358,7 @@ object Typer:
       case untpd.Expr.ClassDef(name, parameters, body) =>
         val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
         
-        TypeContext.inNewClassScope(id, name): internalName =>
+        TypeContext.inNewClassScope(id, name, parameters.map(_._1)): internalName =>
           direct:
             val resolvedParams = parameters.map((id, tpe) => (id, resolveType(tpe).now))
             val constructorType = tpd.Type.Fun(resolvedParams.map(_._2), tpd.Type.Instance(internalName))
