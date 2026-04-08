@@ -35,7 +35,7 @@ enum Expr:
   case Apply(expr: Expr, args: Chunk[Expr])
   case TypeApply(expr: Expr, types: Chunk[Type])
   case FunDef(name: Identifier, typeParams: Chunk[Identifier], params: Chunk[(Identifier, Type)], retType: Type, body: Expr)
-  case ClassDef(name: Identifier, params: Chunk[(Identifier, Type)], body: Chunk[Expr])
+  case ClassDef(name: Identifier, typeParams: Chunk[Identifier], params: Chunk[(Identifier, Type)], body: Chunk[Expr])
   case Select(expr: Expr, name: Identifier)
 
   case Block(expressions: Chunk[Expr])

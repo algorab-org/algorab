@@ -341,11 +341,11 @@ object TypeContext:
       ctx.copy(
         scopes = TypeScope.Class(
           id = id,
-          types = Map(name -> Type.Instance(name)),
+          types = Map(name -> Type.Instance(name, Map.empty)),
           variables = Map.empty
         ) +: ctx.scopes,
         classes = ctx.classes.updated(name, null) // Reserve name to avoid duplication of internal name
-      ).declareVariableForce(Identifier("this"), Type.Instance(name))
+      ).declareVariableForce(Identifier("this"), Type.Instance(name, Map.empty))
     ).now
 
     val (classBody, classDecl) = body(name).now

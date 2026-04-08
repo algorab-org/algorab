@@ -6,6 +6,7 @@ import org.algorab.ast.Identifier
 import org.algorab.ast.tpd
 import org.algorab.ast.untpd
 import scala.annotation.meta.param
+import scala.languageFeature.experimental.macros
 
 object Typer:
 
@@ -163,9 +164,16 @@ object Typer:
           TypeContext.declareVariable(funDef.name, Variable(funDef.name, funType, false, false, false, functionId = Present(Identifier.assume(null)))).now,
           funDef.name
         ))
-      case untpd.Expr.ClassDef(name, parameters, body) =>
-        val resolvedTypes = parameters.map((_, tpe) => resolveType(tpe).now)
-        val constructorType = tpd.Type.Fun(resolvedTypes, tpd.Type.Instance(name))
+      case untpd.Expr.ClassDef(name, typeParams, parameters, body) =>
+        TypeContext.declareType(name, tpd.Type.Instance(name, Map.empty)).now
+        val (_, _, _, _, constructorType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(untpd.Expr.FunDef(
+              name = Identifier.assume(s"<$name constructor>"),
+              params = parameters,
+              typeParams = typeParams,
+              retType = untpd.Type.Ref(name),
+              body = untpd.Expr.Block(body)
+        ))).now
+
         Chunk((
           TypeContext.declareVariable(name, Variable(name, tpd.Type.Class(name, constructorType), false, false, false, classId = Present(Identifier.assume(null)))).now,
           name
@@ -305,24 +313,28 @@ object Typer:
         rec(typedExpr.exprType).now
       case untpd.Expr.TypeApply(expr, types) =>
         val typedExpr = typeExpr(expr).now
-        typedExpr.exprType match
-          case tpd.Type.TypeFun(typeParams, output) =>
-            val sizeCompare = types.sizeCompare(typeParams)
-            if sizeCompare < 0 then
-              Typing.failAndAbort(TypeFailure.MissingTypeArguments(typeParams.take(types.size))).now
-            else if sizeCompare > 0 then
-              Typing.failAndAbort(TypeFailure.TooManyTypeArguments(types, typeParams)).now
-            else
-              TypeContext.inNewBlockScope:
-                direct:
-                  val replacements = typeParams
-                    .zip(types)
-                    .map((paramName, tpe) => (paramName, resolveType(tpe).now))
-                    .toMap
+        def rec(tpe: tpd.Type): tpd.Expr < Typing = direct:
+          tpe match
+            case tpd.Type.TypeFun(typeParams, output) =>
+              val sizeCompare = types.sizeCompare(typeParams)
+              if sizeCompare < 0 then
+                Typing.failAndAbort(TypeFailure.MissingTypeArguments(typeParams.take(types.size))).now
+              else if sizeCompare > 0 then
+                Typing.failAndAbort(TypeFailure.TooManyTypeArguments(types, typeParams)).now
+              else
+                TypeContext.inNewBlockScope:
+                  direct:
+                    val replacements = typeParams
+                      .zip(types)
+                      .map((paramName, tpe) => (paramName, resolveType(tpe).now))
+                      .toMap
 
-                  typedExpr.withType(output.replaceGeneric(replacements).now)
-              .now
-          case tpe => Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.TypeFun(Chunk.empty, tpd.Type.Inferred))).now
+                    typedExpr.withType(output.replaceGeneric(replacements).now)
+                .now
+            case tpd.Type.Class(name, constructor) => rec(constructor).now
+            case tpe => Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.TypeFun(Chunk.empty, tpd.Type.Inferred))).now 
+          
+        rec(typedExpr.exprType).now
       case funDef @ untpd.Expr.FunDef(name, typeParams, params, retType, body) =>
         val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
 
@@ -365,13 +377,18 @@ object Typer:
             .now
         .now
 
-      case untpd.Expr.ClassDef(name, parameters, body) =>
+      case untpd.Expr.ClassDef(name, typeParams, parameters, body) =>
         val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
         
         TypeContext.inNewClassScope(id, name, parameters.map(_._1)): internalName =>
           direct:
-            val resolvedParams = parameters.map((id, tpe) => (id, resolveType(tpe).now))
-            val constructorType = tpd.Type.Fun(resolvedParams.map(_._2), tpd.Type.Instance(internalName))
+            val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, constructorType) = declareTypeParamsAndResolveFunTypes(untpd.Expr.FunDef(
+              name = Identifier.assume(s"<$name constructor>"),
+              typeParams = typeParams,
+              params = parameters,
+              retType = untpd.Type.Ref(internalName),
+              body = untpd.Expr.Block(body)
+            )).now
             resolvedParams.foreach((name, tpe) => TypeContext.declareVariable(name, Variable(name, tpe, false, false, true)).now)
             
             val declarations = body.flatMap(typeDeclaration(_).now)
@@ -391,9 +408,9 @@ object Typer:
       case untpd.Expr.Select(expr, name) => 
         val typedExpr = typeExpr(expr).now
         typedExpr.exprType match
-          case tpd.Type.Instance(className) =>
+          case tpd.Type.Instance(className, replacements) =>
             val (id, member) = TypeContext.getDeclarationOrFail(className, name).now
-            tpd.Expr.Select(id, typedExpr, name, member.tpe)
+            tpd.Expr.Select(id, typedExpr, name, member.tpe.replaceGeneric(replacements))
           case tpe =>
             Typing.failAndAbort(TypeFailure.Mismatch(tpe, tpd.Type.Any)).now
 

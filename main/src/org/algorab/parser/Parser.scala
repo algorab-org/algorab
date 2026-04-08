@@ -290,16 +290,11 @@ object Parser:
         Parse.literal(Token.Equal).andThen(parseBlockOrExpr)
       )
     ).map((_, name, typeParamsOpt, parametersOpt, maybeBody) =>
-
       // Generic types
       val typeParams = typeParamsOpt.getOrElse(Chunk.empty)
-      // WARNING : GENERIC TYPES ARE CURRENTLY TODO
-      if typeParams.nonEmpty then
-        throw NotImplementedError("Generic class types are not yet implemented")
-
       // Body may or may not be present
       val body = maybeBody.fold(Chunk.empty)(_.expressions)
-      Expr.ClassDef(name, parametersOpt.getOrElse(Chunk.empty), body)
+      Expr.ClassDef(name, typeParams, parametersOpt.getOrElse(Chunk.empty), body)
     )
 
   lazy val parseBlockBody: Expr.Block < Parse[Token] =
