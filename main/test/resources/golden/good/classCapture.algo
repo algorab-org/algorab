@@ -1,0 +1,14 @@
+mut val x = 5
+
+class Foo =
+  val y: Int = x
+  def z(): Int = x
+
+val foo1 = Foo()
+x = 2
+val foo2 = Foo()
+
+println(foo1.y)
+println(foo1.z())
+println(foo2.y)
+println(foo2.z())

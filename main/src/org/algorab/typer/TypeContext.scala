@@ -68,10 +68,11 @@ case class TypeContext(
                   (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
                 else
                   (updatedScopes ++ scopes, Result.succeed((id, variable)))
-          case TypeScope.Class(_, types, variables) => variables.get(name) match
-              case None => (updatedScopes ++ scopes, Result.fail(TypeFailure.UnknownVariable(name)))
+          case TypeScope.Class(cid, types, variables, captures) => variables.get(name) match
+              case None => rec(tail, updatedScopes :+ TypeScope.Class(cid, types, variables, captures + name), true)
               case Some(id) =>
-                val variable = this.variables(id.value)
+                var variable = this.variables(id.value)
+                if captured && variable.mutable then variable = variable.copy(boxxed = true)
                 if isIllegalForwardReference(variable, captured) then
                   (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
                 else
@@ -162,11 +163,12 @@ case class TypeContext(
     case _          => throw AssertionError("Tried to merge non-existing function scope")
 
   def popClass(name: Identifier, displayName: Identifier, parameters: Chunk[Identifier], init: Chunk[Expr]): TypeContext = scopes match
-    case TypeScope.Class(id, types, variables) +: remaining =>
+    case TypeScope.Class(id, types, variables, localCaptures) +: remaining =>
+      val globalCaptures = localCaptures.map(getVariableId)
       val declaringVariable = this.variables(id.value).copy(initialized = true, classId = Present(name))
       this.copy(
         scopes = remaining,
-        classes = this.classes.updated(name, ClassTypeDef(displayName, variables, parameters, init, id)),
+        classes = this.classes.updated(name, ClassTypeDef(displayName, variables, parameters, globalCaptures, init, id)),
         variables = this.variables.updated(id.value, declaringVariable)
       )
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a class scope")
@@ -343,7 +345,8 @@ object TypeContext:
         scopes = TypeScope.Class(
           id = id,
           types = Map(name -> Type.Instance(name, Map.empty)),
-          variables = Map.empty
+          variables = Map.empty,
+          captures = Set.empty
         ) +: ctx.scopes,
         classes = ctx.classes.updated(name, null) // Reserve name to avoid duplication of internal name
       ).declareVariableForce(Identifier("this"), Type.Instance(name, Map.empty))
