@@ -46,23 +46,6 @@ object Parser:
     "Invalid term"
   )
 
-  // foo[A, B] => TypeApply(VarCall("foo"), Chunk(Type.Ref("A"), Type.Ref("B")))
-
-  // lazy val parseApply: Expr < Parse[Token] = Parse.firstOf(
-  //   Parse.inOrder(
-  //     parseTerm,
-  //     Parse.literal(Token.ParenOpen),
-  //     Parse.separatedBy(parseExpr, Parse.literal(Token.Comma)),
-  //     Parse.literal(Token.ParenClosed)
-  //   ).map((function, _, args, _) => Expr.Apply(function, args)),
-  //   Parse.inOrder(
-  //     parseTerm,
-  //     Parse.literal(Token.SquareOpen),
-  //     Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
-  //     Parse.literal(Token.SquareClosed)
-  //   ).map((function, _, types, _) => Expr.TypeApply(function, types)),
-  // )
-
   lazy val parseApply: Expr < Parse[Token] = Parse.inOrder(
     parseTerm,
     Parse.repeat(
@@ -301,16 +284,22 @@ object Parser:
           Parse.literal(Token.ParenClosed)
         )
       ),
-      // Equal sign before body: class Foo = ...
-      Parse.require(Parse.literal(Token.Equal)),
-      // Body: same indented block structure used everywhere else
-      parseBlockOrExpr
-    ).map((_, name, typeParamsOpt, parametersOpt, _, body) =>
-      val typeParams = typeParamsOpt.getOrElse(Chunk())
+
+      // Class can be empty
+      Parse.attempt(
+        Parse.literal(Token.Equal).andThen(parseBlockOrExpr)
+      )
+    ).map((_, name, typeParamsOpt, parametersOpt, maybeBody) =>
+
+      // Generic types
+      val typeParams = typeParamsOpt.getOrElse(Chunk.empty)
       // WARNING : GENERIC TYPES ARE CURRENTLY TODO
       if typeParams.nonEmpty then
         throw NotImplementedError("Generic class types are not yet implemented")
-      Expr.ClassDef(name, parametersOpt.getOrElse(Chunk.empty), body.expressions)
+
+      // Body may or may not be present
+      val body = maybeBody.fold(Chunk.empty)(_.expressions)
+      Expr.ClassDef(name, parametersOpt.getOrElse(Chunk.empty), body)
     )
 
   lazy val parseBlockBody: Expr.Block < Parse[Token] =

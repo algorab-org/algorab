@@ -1,0 +1,4 @@
+class Box(value: Int)
+
+val box = Box(5)
+println(box.value)
