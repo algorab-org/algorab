@@ -266,26 +266,36 @@ object Typer:
         def rec(tpe: tpd.Type): tpd.Expr < Typing = direct:
           tpe match
             case tpd.Type.Fun(params, output) =>
-              val castedArgs = typedArgs.zip(params).map(castOrFail(_, _).now)
-              tpd.Expr.Apply(typedExpr, castedArgs, output)
+              val paramCount = params.size
+              val argCount = args.size
+              if paramCount == argCount then
+                val castedArgs = typedArgs.zip(params).map(castOrFail(_, _).now)
+                tpd.Expr.Apply(typedExpr, castedArgs, output)
+              else
+                Typing.failAndAbort(TypeFailure.WrongArgumentCount(argCount, paramCount)).now
 
             case tpd.Type.TypeFun(typeParams, funType @ tpd.Type.Fun(params, output)) =>
-              val resolvedTypes = params
-                .zip(typedArgs)
-                .collect:
-                  case (tpd.Type.Generic(name), arg) if typeParams.contains(name) => (name, arg.exprType)
-                .groupMap(_._1)(_._2)
-                .map((typeParam, types) =>
-                  (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now)
+              val paramCount = params.size
+              val argCount = args.size
+              if paramCount == argCount then
+                val resolvedTypes = params
+                  .zip(typedArgs)
+                  .collect:
+                    case (tpd.Type.Generic(name), arg) if typeParams.contains(name) => (name, arg.exprType)
+                  .groupMap(_._1)(_._2)
+                  .map((typeParam, types) =>
+                    (typeParam, Kyo.foldLeft(types)(tpd.Type.Nothing)(TypeContext.union).now)
+                  )
+
+                val replacements = resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)
+
+                tpd.Expr.Apply(
+                  typedExpr.withType(funType.replaceGeneric(replacements)),
+                  typedArgs,
+                  output.replaceGeneric(replacements).now
                 )
-
-              val replacements = resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)
-
-              tpd.Expr.Apply(
-                typedExpr.withType(funType.replaceGeneric(replacements)),
-                typedArgs,
-                output.replaceGeneric(replacements).now
-              )
+              else
+                Typing.failAndAbort(TypeFailure.WrongArgumentCount(argCount, paramCount)).now
 
             case tpd.Type.Class(name, constructor) => rec(constructor).now
 
