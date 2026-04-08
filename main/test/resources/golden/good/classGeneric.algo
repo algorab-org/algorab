@@ -1,0 +1,9 @@
+class Box[A](value: A)
+
+val boxInt = Box[Int](5)
+val valueInt: Int = boxInt.value
+println(valueInt)
+
+val boxString = Box("hey")
+val valueString: String = boxString.value
+println(valueString)

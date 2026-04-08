@@ -1,0 +1,11 @@
+class ImpliedThis =
+  val x = 1
+
+class SimpleThis =
+  val x = 2
+  this
+
+val impliedThis = ImpliedThis()
+val simpleThis = SimpleThis()
+println(impliedThis.x)
+println(simpleThis.x)

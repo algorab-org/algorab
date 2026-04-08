@@ -1,0 +1,13 @@
+class Counter =
+  mut val x = 0
+
+  def increment(): Unit =
+    x = x + 1
+
+val counter = Counter()
+val counter2 = Counter()
+println(counter.x)
+println(counter2.x)
+counter.increment()
+println(counter.x)
+println(counter2.x)

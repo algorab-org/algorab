@@ -11,7 +11,11 @@ case class Variable(
     mutable: Boolean,
     boxxed: Boolean,
     initialized: Boolean,
-    functionId: Maybe[Identifier] = Absent
+    field: Boolean = false,
+    functionId: Maybe[Identifier] = Absent,
+    classId: Maybe[Identifier] = Absent
 ):
 
   def isFunDef: Boolean = functionId.isDefined
+
+  def isClassDef: Boolean = classId.isDefined

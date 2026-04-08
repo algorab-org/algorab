@@ -3,10 +3,22 @@ package org.algorab.compiler
 import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.ast.tpd.Expr
+import org.algorab.ast.tpd.Type
+import org.algorab.typer.ClassTypeDef
 import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
 
 object Compiler:
+
+  private val thisIdentifier = Identifier("this")
+
+  private def functionEpilogue(function: FunctionDef): Chunk[Instruction] =
+    if function.body.exprType == Type.Unit then
+      Chunk(Instruction.Push(Value.VUnit), Instruction.Return)
+    else
+      Chunk(Instruction.Return)
+
+  private val classEpilogue: Chunk[Instruction] = Chunk(Instruction.loadThis, Instruction.Return)
 
   def compileBinaryOp(left: Expr, right: Expr, instruction: Instruction): Unit < Compilation = direct:
     compileExpr(left).now
@@ -67,29 +79,34 @@ object Compiler:
         Compilation.emit(Instruction.Push(Value.VBool(true))).now
 
       case Expr.VarCall(id, name, _) =>
-        val boxxed = Compilation.isBoxxed(id).now
-        Compilation.emit(Instruction.load(name, boxxed)).now
+        val variable = Compilation.getVariable(id).now
+        Compilation.emitAll(Instruction.load(name, variable.boxxed, variable.field)).now
       case Expr.ValDef(id, name, _, expr, _) =>
-        val boxxed = Compilation.isBoxxed(id).now
-        Compilation.emit(Instruction.declare(name, boxxed)).now
+        val variable = Compilation.getVariable(id).now
+        Compilation.emitAll(Instruction.declare(name, variable.boxxed, variable.field)).now
         compileExpr(expr).now
-        Compilation.emit(Instruction.assign(name, boxxed)).now
+        Compilation.emitAll(Instruction.assign(name, variable.boxxed, variable.field)).now
 
       case Expr.Assign(id, name, expr, _) =>
-        val boxxed = Compilation.isBoxxed(id).now
+        val variable = Compilation.getVariable(id).now
         compileExpr(expr).now
-        Compilation.emit(Instruction.assign(name, boxxed)).now
+        Compilation.emitAll(Instruction.assign(name, variable.boxxed, variable.field)).now
       case Expr.Apply(expr, args, _) =>
         Kyo.foreachDiscard(args)(compileExpr).now
         compileExpr(expr).now
         Compilation.emit(Instruction.Apply(ParamCount.assume(args.size))).now
 
-      case Expr.FunRef(name, _) => Compilation.emit(Instruction.LoadFunction(name)).now
+      case Expr.FunRef(name, _)   => Compilation.emit(Instruction.LoadFunction(name)).now
+      case Expr.ClassRef(name, _) => Compilation.emit(Instruction.LoadClass(name)).now
+      case Expr.Select(id, expr, name, _) =>
+        compileExpr(expr).now
+        Compilation.emit(Instruction.Select(name)).now
+
       case Expr.Block(declarations, expressions, _) =>
         Compilation.emit(Instruction.PushScope).now
         declarations.foreach((id, name) =>
-          val boxxed = Compilation.isBoxxed(id).now
-          Compilation.emit(Instruction.declare(name, boxxed)).now
+          val variable = Compilation.getVariable(id).now
+          Compilation.emitAll(Instruction.declare(name, variable.boxxed, variable.field)).now
         ).now
         Kyo.foreachDiscard(expressions)(compileExpr).now
         Compilation.emit(Instruction.PopScope).now
@@ -133,14 +150,39 @@ object Compiler:
     )
     val bodyPos = Compilation.nextPosition.now + argsInstrs.size + 1
     val bodyInstrs = Compilation.run(bodyPos)(compileExpr(function.body)).now
+    val epilogueInstrs = functionEpilogue(function)
 
     val localCaptures = function.captures.map(id => Compilation.getVariable(id).now.localName)
 
-    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + 1)).now
+    Compilation.emit(Instruction.FunctionStart(internalName, function.displayName, localCaptures, bodyPos + bodyInstrs.size + epilogueInstrs.size)).now
     Compilation.emitAll(argsInstrs).now
     Compilation.emitAll(bodyInstrs).now
-    Compilation.emit(Instruction.Return).now
+    Compilation.emitAll(epilogueInstrs).now
+
+  def compileClass(internalName: Identifier, clazz: ClassTypeDef): Unit < Compilation = direct:
+    val initPos = Compilation.nextPosition.now + 1
+    val defInstrs = Compilation.run(initPos)(Kyo.foreachDiscard(clazz.declarations)(tpl =>
+      if tpl._1 == thisIdentifier then Kyo.unit
+      else Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.DeclareField(tpl._1)))
+    )).now
+
+    val paramInstrs = Compilation.run(initPos + defInstrs.size)(Kyo.foreachDiscard(clazz.parameters)(name =>
+      Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.AssignField(name)))
+    )).now
+
+    val initInstrs = Compilation.run(initPos + defInstrs.size + paramInstrs.size)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
+    Compilation.emit(Instruction.ClassStart(
+      internalName,
+      clazz.displayName,
+      initPos + defInstrs.size + paramInstrs.size + initInstrs.size + classEpilogue.size
+    )).now
+
+    Compilation.emitAll(defInstrs).now
+    Compilation.emitAll(paramInstrs).now
+    Compilation.emitAll(initInstrs).now
+    Compilation.emitAll(classEpilogue).now
 
   def compileProgram(main: Expr): Unit < Compilation = direct:
     Compilation.functions.now.foreach(compileFunction(_, _).now)
+    Compilation.classes.now.foreach(compileClass(_, _).now)
     compileExpr(main).now

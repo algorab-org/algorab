@@ -7,9 +7,17 @@ import org.algorab.ast.tpd.Type
 import scala.annotation.nowarn
 import scala.annotation.tailrec
 
+/*
+val x = 5
+
+class Foo:
+  val y = x
+ */
+
 case class TypeContext(
     scopes: Chunk[TypeScope],
     functions: Map[Identifier, FunctionDef],
+    classes: Map[Identifier, ClassTypeDef],
     variables: Chunk[Variable]
 ):
 
@@ -60,6 +68,14 @@ case class TypeContext(
                   (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
                 else
                   (updatedScopes ++ scopes, Result.succeed((id, variable)))
+          case TypeScope.Class(_, types, variables) => variables.get(name) match
+              case None => (updatedScopes ++ scopes, Result.fail(TypeFailure.UnknownVariable(name)))
+              case Some(id) =>
+                val variable = this.variables(id.value)
+                if isIllegalForwardReference(variable, captured) then
+                  (updatedScopes ++ scopes, Result.fail(TypeFailure.IllegalForwardReference(name)))
+                else
+                  (updatedScopes ++ scopes, Result.succeed((id, variable)))
 
       case _ => (updatedScopes ++ scopes, Result.fail(TypeFailure.UnknownVariable(name)))
 
@@ -86,10 +102,11 @@ case class TypeContext(
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
       case None =>
         val id = VariableId.assume(variables.size)
+        val field = scopes.head.isClassScope
         (
           this.copy(
             scopes = scopes.head.withVariable(name, id) +: scopes.tail,
-            variables = variables :+ variable
+            variables = variables :+ variable.copy(field = field)
           ),
           id
         )
@@ -102,17 +119,28 @@ case class TypeContext(
 
   def updateVariable(name: Identifier, variable: Variable): TypeContext =
     this.copy(
-      variables = variables.updated(scopes.head.variables(name).value, variable)
+      variables = variables.updated(scopes.head.variables(name).value, variable.copy(field = scopes.head.isClassScope))
     )
 
-  def getFunction(name: Identifier): Option[FunctionDef] = functions.get(name)
+  def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
+    classes.get(className).flatMap(_.declarations.get(memberName)) match
+      case Some(decl) => (decl, this.variables(decl.value))
+      case None       => Typing.failAndAbort(TypeFailure.UnknownMember(className, memberName))
 
   def mergeBlock(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
     case TypeScope.Function(id, types, _, localCaptures) +: remaining =>
-      val globalCaptures = localCaptures.map(getVariableId)
+      var hasField = false
+      var globalCaptures = localCaptures
+        .map(getVariableId)
+        .filterNot: id =>
+          val isField = variables(id.value).field
+          if isField then hasField = true
+          isField
+
+      if hasField then globalCaptures = globalCaptures + getVariableId(Identifier("this"))
 
       val (hasForwardCapture, updatedVariables) = globalCaptures.foldLeft((false, this.variables)):
         case ((hasFC, variables), id) =>
@@ -130,7 +158,19 @@ case class TypeContext(
         functions = this.functions.updated(name, FunctionDef(displayName, params, globalCaptures, body, id)),
         variables = updatedVariables.updated(id.value, declaringBoxxed)
       )
-    case _ => throw AssertionError("Tried to merge a block scope as a function scope")
+    case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a function scope")
+    case _          => throw AssertionError("Tried to merge non-existing function scope")
+
+  def popClass(name: Identifier, displayName: Identifier, parameters: Chunk[Identifier], init: Chunk[Expr]): TypeContext = scopes match
+    case TypeScope.Class(id, types, variables) +: remaining =>
+      val declaringVariable = this.variables(id.value).copy(initialized = true, classId = Present(name))
+      this.copy(
+        scopes = remaining,
+        classes = this.classes.updated(name, ClassTypeDef(displayName, variables, parameters, init, id)),
+        variables = this.variables.updated(id.value, declaringVariable)
+      )
+    case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a class scope")
+    case _          => throw AssertionError("Tried to merge non-existing class scope")
 
   def newUniqueTypeName(baseName: Identifier): Identifier =
     val greatestId = scopes
@@ -191,6 +231,7 @@ object TypeContext:
       )
     ),
     functions = Map.empty,
+    classes = Map.empty,
     variables = Chunk.Indexed.empty
   )
     .declareVariableForce(Identifier("Unit"), Type.Unit)
@@ -251,7 +292,8 @@ object TypeContext:
 
   def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
 
-  def getFunction(name: Identifier): Option[FunctionDef] < Typing = Var.use(_.getFunction(name))
+  def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
+    Var.use(_.getDeclarationOrFail(className, memberName))
 
   def newUniqueTypeName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueTypeName(name))
 
@@ -265,6 +307,13 @@ object TypeContext:
         .andThen(body)
     )
 
+  /*
+    - Create new function name
+    - Reserve function name in context to avoid duplicate internal names for nested functions
+    - Create new function scope with empty captures and variables
+    - Run body to get function declaration and body
+    - Pop function scope, updating captures and variables as needed
+   */
   def inNewFunctionScope(
       id: VariableId,
       displayName: Identifier,
@@ -282,6 +331,28 @@ object TypeContext:
     Var.updateDiscard[TypeContext](_.popFunction(name, displayName, params, funBody)).now
 
     funDecl
+
+  def inNewClassScope(
+      id: VariableId,
+      displayName: Identifier,
+      parameters: Chunk[Identifier]
+  )(body: Identifier => (Chunk[Expr], Expr) < Typing): Expr < Typing = direct:
+    val name = newUniqueTypeName(displayName).now
+    val ctx = Var.updateDiscard[TypeContext](ctx =>
+      ctx.copy(
+        scopes = TypeScope.Class(
+          id = id,
+          types = Map(name -> Type.Instance(name, Map.empty)),
+          variables = Map.empty
+        ) +: ctx.scopes,
+        classes = ctx.classes.updated(name, null) // Reserve name to avoid duplication of internal name
+      ).declareVariableForce(Identifier("this"), Type.Instance(name, Map.empty))
+    ).now
+
+    val (classBody, classDecl) = body(name).now
+    Var.updateDiscard[TypeContext](_.popClass(name, displayName, parameters, classBody)).now
+
+    classDecl
 
   def isSubtype(tpe: Type, expected: Type): Boolean < Typing = (tpe, expected) match
     case (_, Type.Any)      => true

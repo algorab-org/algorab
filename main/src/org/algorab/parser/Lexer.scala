@@ -145,7 +145,8 @@ object Lexer:
     "in" -> Token.In,
     "def" -> Token.Def,
     "val" -> Token.Val,
-    "mut" -> Token.Mut
+    "mut" -> Token.Mut,
+    "class" -> Token.Class
   )
 
   val blockStart: Map[Token, Maybe[Token]] = Map(
@@ -156,7 +157,8 @@ object Lexer:
     Token.Do -> Absent,
     Token.If -> Present(Token.Then),
     Token.Then -> Present(Token.Else),
-    Token.Else -> Absent
+    Token.Else -> Absent,
+    Token.Equal -> Absent
   )
 
   val blockEnd: Chunk[Token] = Chunk.from(blockStart.values.flatten)

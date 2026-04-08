@@ -7,7 +7,8 @@ import org.algorab.compiler.Value
 
 case class RuntimeContext(
     frames: Chunk[RuntimeFrame],
-    functions: Map[Identifier, FunctionDef]
+    functions: Map[Identifier, FunctionDef],
+    classes: Map[Identifier, ClassDef]
 ):
 
   def modifyHeadFrame(f: RuntimeFrame => RuntimeFrame): RuntimeContext =
@@ -57,11 +58,17 @@ case class RuntimeContext(
   def declareFunction(name: Identifier, function: FunctionDef): RuntimeContext =
     this.copy(functions = functions.updated(name, function))
 
+  def getClass(name: Identifier): Option[ClassDef] = classes.get(name)
+
+  def declareClass(name: Identifier, classDef: ClassDef): RuntimeContext =
+    this.copy(classes = classes.updated(name, classDef))
+
 object RuntimeContext:
 
   val empty: RuntimeContext = RuntimeContext(
     frames = Chunk(RuntimeFrame.root),
-    functions = Map.empty
+    functions = Map.empty,
+    classes = Map.empty
   )
 
   def modify(f: RuntimeContext => RuntimeContext < Runtime): Unit < Runtime =
@@ -115,3 +122,13 @@ object RuntimeContext:
 
   def declareFunction(name: Identifier, function: FunctionDef): Unit < Runtime =
     modify(_.declareFunction(name, function))
+
+  def getClass(name: Identifier): ClassDef < Runtime =
+    Var.use[RuntimeContext](
+      _
+        .getClass(name)
+        .getOrElse(throw AssertionError(s"Unknown class: $name"))
+    )
+
+  def declareClass(name: Identifier, classDef: ClassDef): Unit < Runtime =
+    modify(_.declareClass(name, classDef))

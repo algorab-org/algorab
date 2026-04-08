@@ -4,6 +4,7 @@ import kyo.*
 import org.algorab.ast.Identifier
 import org.algorab.compiler.Instruction
 import org.algorab.compiler.Value
+import scala.collection.mutable
 
 object VM:
 
@@ -31,6 +32,15 @@ object VM:
           function.start,
           capturedVars
         )).now
+
+      case Instruction.LoadClass(name) =>
+        val classDef = RuntimeContext.getClass(name).now
+        RuntimeContext.push(Value.VClass(name, classDef.initStart)).now
+
+      case Instruction.DeclareField(name) => RuntimeContext.pop.now.putField(name, null).now
+      case Instruction.AssignField(name) =>
+        RuntimeContext.pop.now.putField(name, RuntimeContext.pop.now).now
+      case Instruction.Select(name) => RuntimeContext.push(RuntimeContext.pop.now.getField(name)).now
 
       case Instruction.Not => RuntimeContext.push(Value.VBool(!RuntimeContext.pop.now.asBool)).now
       case Instruction.Equal => RuntimeContext.push(Value.VBool(
@@ -68,11 +78,11 @@ object VM:
           case Value.VFloat(value) => RuntimeContext.push(Value.VFloat(-value))
         }.now
       case Instruction.Add => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a + b))
-          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a + b))
-          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a + b))
-          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a + b))
-          // case (Value.VString(a), Value.VString(a)) => RuntimeContext.push(Value.VString(a + b))
+          case (Value.VInt(b), Value.VInt(a))       => RuntimeContext.push(Value.VInt(a + b))
+          case (Value.VFloat(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VInt(b), Value.VFloat(a))     => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VFloat(b), Value.VInt(a))     => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VString(b), Value.VString(a)) => RuntimeContext.push(Value.VString(a + b))
         }.now
       case Instruction.Sub => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
           case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a - b))
@@ -115,15 +125,22 @@ object VM:
         val args = Chunk.range(0, paramCount.value).map(_ => RuntimeContext.pop.now).reverse
 
         matchOrError(function) {
-          case Value.UserDefinedFunction(start, capturedVars) =>
-            direct:
-              val frame = RuntimeFrame(
-                start,
-                args,
-                Chunk(RuntimeScope(capturedVars))
-              )
+          case Value.VClass(name, initStart) =>
+            val frame = RuntimeFrame(
+              initStart,
+              args,
+              Chunk(RuntimeScope(Map(Identifier("this") -> Value.VInstance(name, mutable.Map.empty))))
+            )
 
-              RuntimeContext.pushFrame(frame).now
+            RuntimeContext.pushFrame(frame)
+          case Value.UserDefinedFunction(start, capturedVars) =>
+            val frame = RuntimeFrame(
+              start,
+              args,
+              Chunk(RuntimeScope(capturedVars))
+            )
+
+            RuntimeContext.pushFrame(frame)
           case Value.BuiltInFunction(f) => f(args).map(RuntimeContext.push)
         }.now
       case Instruction.Jump(position) => RuntimeContext.jump(position).now
@@ -146,6 +163,14 @@ object VM:
         )
 
         RuntimeContext.declareFunction(internalName, functionDef).now
+        RuntimeContext.jump(next).now
+      case Instruction.ClassStart(internalName, displayName, next) =>
+        val classDef = ClassDef(
+          displayName,
+          RuntimeContext.nextInstruction.now
+        )
+
+        RuntimeContext.declareClass(internalName, classDef).now
         RuntimeContext.jump(next).now
 
   def interpretAll(instructions: Chunk[Instruction]): Unit < Runtime = direct:

@@ -1,5 +1,6 @@
 package org.algorab.compiler
 
+import kyo.Chunk
 import org.algorab.ast.Identifier
 
 enum Instruction derives CanEqual:
@@ -11,6 +12,10 @@ enum Instruction derives CanEqual:
   case Load(name: Identifier)
   case LoadBox(name: Identifier)
   case LoadFunction(name: Identifier)
+  case LoadClass(name: Identifier)
+  case DeclareField(name: Identifier)
+  case AssignField(name: Identifier)
+  case Select(name: Identifier)
 
   case Not
   case Equal
@@ -37,16 +42,22 @@ enum Instruction derives CanEqual:
   case PushScope
   case PopScope
   case FunctionStart(internalName: Identifier, displayName: Identifier, captures: Set[Identifier], next: InstrPosition)
+  case ClassStart(internalName: Identifier, displayName: Identifier, next: InstrPosition)
 
 object Instruction:
-  def declare(name: Identifier, boxxed: Boolean): Instruction =
-    if boxxed then Instruction.DeclareBox(name)
-    else Instruction.Declare(name)
+  def loadThis: Instruction = Instruction.Load(Identifier("this"))
 
-  def assign(name: Identifier, boxxed: Boolean): Instruction =
-    if boxxed then Instruction.AssignBox(name)
-    else Instruction.Assign(name)
+  def declare(name: Identifier, boxxed: Boolean, field: Boolean): Chunk[Instruction] =
+    if field then Chunk(loadThis, Instruction.DeclareField(name))
+    else if boxxed then Chunk(Instruction.DeclareBox(name))
+    else Chunk(Instruction.Declare(name))
 
-  def load(name: Identifier, boxxed: Boolean): Instruction =
-    if boxxed then Instruction.LoadBox(name)
-    else Instruction.Load(name)
+  def assign(name: Identifier, boxxed: Boolean, field: Boolean): Chunk[Instruction] =
+    if field then Chunk(loadThis, Instruction.AssignField(name))
+    else if boxxed then Chunk(Instruction.AssignBox(name))
+    else Chunk(Instruction.Assign(name))
+
+  def load(name: Identifier, boxxed: Boolean, field: Boolean): Chunk[Instruction] =
+    if field then Chunk(loadThis, Instruction.Select(name))
+    else if boxxed then Chunk(Instruction.LoadBox(name))
+    else Chunk(Instruction.Load(name))

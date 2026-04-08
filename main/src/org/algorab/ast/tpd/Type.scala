@@ -7,7 +7,8 @@ enum Type derives CanEqual:
   case Nothing
   case Inferred
   case Generic(name: Identifier)
-  case Class(name: Identifier)
+  case Class(name: Identifier, constructor: Type)
+  case Instance(name: Identifier, replacements: Map[Identifier, Type])
   case Apply(base: Type, args: Chunk[Type])
   case Fun(params: Chunk[Type], output: Type)
   case TypeFun(typeParams: Chunk[Identifier], output: Type)
@@ -23,7 +24,8 @@ enum Type derives CanEqual:
     case Nothing                     => Type.Nothing
     case Inferred                    => Type.Inferred
     case Generic(n)                  => replacements.getOrElse(n, this)
-    case Class(name)                 => Type.Class(name)
+    case Class(name, constructor)    => Type.Class(name, constructor)
+    case Instance(name, members)     => Type.Instance(name, members ++ replacements)
     case Apply(base, args)           => Type.Apply(base.replaceGeneric(replacements), args.map(_.replaceGeneric(replacements)))
     case Fun(params, output)         => Type.Fun(params.map(_.replaceGeneric(replacements)), output.replaceGeneric(replacements))
     case TypeFun(typeParams, output) => Type.TypeFun(typeParams, output.replaceGeneric(replacements))
@@ -32,12 +34,12 @@ enum Type derives CanEqual:
 object Type:
 
   // Std types
-  val Any: Type = Class(Identifier("Any"))
-  val Unit: Type = Class(Identifier("Unit"))
-  val Boolean: Type = Class(Identifier("Boolean"))
-  val Int: Type = Class(Identifier("Int"))
-  val Float: Type = Class(Identifier("Float"))
-  val Char: Type = Class(Identifier("Char"))
-  val String: Type = Class(Identifier("String"))
-  val Array: Type = Class(Identifier("Array"))
+  val Any: Type = Instance(Identifier("Any"), Map.empty)
+  val Unit: Type = Instance(Identifier("Unit"), Map.empty)
+  val Boolean: Type = Instance(Identifier("Boolean"), Map.empty)
+  val Int: Type = Instance(Identifier("Int"), Map.empty)
+  val Float: Type = Instance(Identifier("Float"), Map.empty)
+  val Char: Type = Instance(Identifier("Char"), Map.empty)
+  val String: Type = Instance(Identifier("String"), Map.empty)
+  val Array: Type = Instance(Identifier("Array"), Map.empty)
   def arrayOf(tpe: Type): Type = Type.Apply(Array, Chunk(tpe))
