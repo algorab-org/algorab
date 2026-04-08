@@ -256,7 +256,7 @@ object Parser:
       Parse.require(Parse.literal(Token.Do)),
       Parse.require(parseBlockOrExpr)
     ).map((_, cond, _, body) => Expr.While(cond, body))
-  
+
   lazy val parseClass: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.Class),

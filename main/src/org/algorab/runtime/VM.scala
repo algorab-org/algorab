@@ -33,7 +33,7 @@ object VM:
           capturedVars
         )).now
 
-      case Instruction.LoadClass(name) => 
+      case Instruction.LoadClass(name) =>
         val classDef = RuntimeContext.getClass(name).now
         RuntimeContext.push(Value.VClass(name, classDef.initStart)).now
 
@@ -78,10 +78,10 @@ object VM:
           case Value.VFloat(value) => RuntimeContext.push(Value.VFloat(-value))
         }.now
       case Instruction.Add => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
-          case (Value.VInt(b), Value.VInt(a))     => RuntimeContext.push(Value.VInt(a + b))
-          case (Value.VFloat(b), Value.VFloat(a)) => RuntimeContext.push(Value.VFloat(a + b))
-          case (Value.VInt(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a + b))
-          case (Value.VFloat(b), Value.VInt(a))   => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VInt(b), Value.VInt(a))       => RuntimeContext.push(Value.VInt(a + b))
+          case (Value.VFloat(b), Value.VFloat(a))   => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VInt(b), Value.VFloat(a))     => RuntimeContext.push(Value.VFloat(a + b))
+          case (Value.VFloat(b), Value.VInt(a))     => RuntimeContext.push(Value.VFloat(a + b))
           case (Value.VString(b), Value.VString(a)) => RuntimeContext.push(Value.VString(a + b))
         }.now
       case Instruction.Sub => matchOrError((RuntimeContext.pop.now, RuntimeContext.pop.now)) {
@@ -126,22 +126,21 @@ object VM:
 
         matchOrError(function) {
           case Value.VClass(name, initStart) =>
+            val frame = RuntimeFrame(
+              initStart,
+              args,
+              Chunk(RuntimeScope(Map(Identifier("this") -> Value.VInstance(name, mutable.Map.empty))))
+            )
 
-              val frame = RuntimeFrame(
-                initStart,
-                args,
-                Chunk(RuntimeScope(Map(Identifier("this") -> Value.VInstance(name, mutable.Map.empty))))
-              )
-
-              RuntimeContext.pushFrame(frame)
+            RuntimeContext.pushFrame(frame)
           case Value.UserDefinedFunction(start, capturedVars) =>
-              val frame = RuntimeFrame(
-                start,
-                args,
-                Chunk(RuntimeScope(capturedVars))
-              )
+            val frame = RuntimeFrame(
+              start,
+              args,
+              Chunk(RuntimeScope(capturedVars))
+            )
 
-              RuntimeContext.pushFrame(frame)
+            RuntimeContext.pushFrame(frame)
           case Value.BuiltInFunction(f) => f(args).map(RuntimeContext.push)
         }.now
       case Instruction.Jump(position) => RuntimeContext.jump(position).now

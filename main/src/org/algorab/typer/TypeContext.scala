@@ -125,8 +125,8 @@ case class TypeContext(
   def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
     classes.get(className).flatMap(_.declarations.get(memberName)) match
       case Some(decl) => (decl, this.variables(decl.value))
-      case None => Typing.failAndAbort(TypeFailure.UnknownMember(className, memberName))
-    
+      case None       => Typing.failAndAbort(TypeFailure.UnknownMember(className, memberName))
+
   def mergeBlock(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
@@ -159,7 +159,7 @@ case class TypeContext(
         variables = updatedVariables.updated(id.value, declaringBoxxed)
       )
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a function scope")
-    case _ => throw AssertionError("Tried to merge non-existing function scope")
+    case _          => throw AssertionError("Tried to merge non-existing function scope")
 
   def popClass(name: Identifier, displayName: Identifier, parameters: Chunk[Identifier], init: Chunk[Expr]): TypeContext = scopes match
     case TypeScope.Class(id, types, variables) +: remaining =>
@@ -170,7 +170,7 @@ case class TypeContext(
         variables = this.variables.updated(id.value, declaringVariable)
       )
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a class scope")
-    case _ => throw AssertionError("Tried to merge non-existing class scope")
+    case _          => throw AssertionError("Tried to merge non-existing class scope")
 
   def newUniqueTypeName(baseName: Identifier): Identifier =
     val greatestId = scopes
@@ -292,7 +292,8 @@ object TypeContext:
 
   def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
 
-  def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing = Var.use(_.getDeclarationOrFail(className, memberName))
+  def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
+    Var.use(_.getDeclarationOrFail(className, memberName))
 
   def newUniqueTypeName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueTypeName(name))
 

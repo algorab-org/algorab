@@ -129,6 +129,6 @@ object RuntimeContext:
         .getClass(name)
         .getOrElse(throw AssertionError(s"Unknown class: $name"))
     )
-  
+
   def declareClass(name: Identifier, classDef: ClassDef): Unit < Runtime =
     modify(_.declareClass(name, classDef))

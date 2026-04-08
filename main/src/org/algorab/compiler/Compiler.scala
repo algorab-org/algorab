@@ -162,8 +162,8 @@ object Compiler:
   def compileClass(internalName: Identifier, clazz: ClassTypeDef): Unit < Compilation = direct:
     val initPos = Compilation.nextPosition.now + 1
     val defInstrs = Compilation.run(initPos)(Kyo.foreachDiscard(clazz.declarations)(tpl =>
-        if tpl._1 == thisIdentifier then Kyo.unit
-        else Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.DeclareField(tpl._1)))
+      if tpl._1 == thisIdentifier then Kyo.unit
+      else Compilation.emitAll(Chunk(Instruction.loadThis, Instruction.DeclareField(tpl._1)))
     )).now
 
     val paramInstrs = Compilation.run(initPos + defInstrs.size)(Kyo.foreachDiscard(clazz.parameters)(name =>
@@ -171,8 +171,12 @@ object Compiler:
     )).now
 
     val initInstrs = Compilation.run(initPos + defInstrs.size + paramInstrs.size)(Kyo.foreachDiscard(clazz.init)(compileExpr)).now
-    Compilation.emit(Instruction.ClassStart(internalName, clazz.displayName, initPos + defInstrs.size + paramInstrs.size + initInstrs.size + classEpilogue.size)).now
-    
+    Compilation.emit(Instruction.ClassStart(
+      internalName,
+      clazz.displayName,
+      initPos + defInstrs.size + paramInstrs.size + initInstrs.size + classEpilogue.size
+    )).now
+
     Compilation.emitAll(defInstrs).now
     Compilation.emitAll(paramInstrs).now
     Compilation.emitAll(initInstrs).now

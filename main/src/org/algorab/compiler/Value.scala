@@ -56,18 +56,18 @@ enum Value derives CanEqual:
     case _          => throw AssertionError(s"Box expected, got $this")
 
   def convertToString: String = this match
-    case VUnit                        => "()"
-    case VBool(value)                 => value.toString
-    case VInt(value)                  => value.toString
-    case VFloat(value)                => value.toString
-    case VChar(value)                 => value.toString
-    case VString(value)               => value
-    case VArray(values)               => values.mkString("Array(", ", ", ")")
-    case VBox(boxxed)                 => boxxed.convertToString
-    case VClass(className, _)         => s"<class $className>"
+    case VUnit                => "()"
+    case VBool(value)         => value.toString
+    case VInt(value)          => value.toString
+    case VFloat(value)        => value.toString
+    case VChar(value)         => value.toString
+    case VString(value)       => value
+    case VArray(values)       => values.mkString("Array(", ", ", ")")
+    case VBox(boxxed)         => boxxed.convertToString
+    case VClass(className, _) => s"<class $className>"
     case VInstance(className, fields) => fields.filterNot(_._1 == Identifier("this")).map((id, value) =>
-      if value == null then s"$id = null"
-      else s"$id = ${value.convertToString}"
-    ).mkString(s"$className(", ", ", ")")
-    case UserDefinedFunction(_, _)    => "<function>"
-    case BuiltInFunction(_)           => "<builtin function>"
+        if value == null then s"$id = null"
+        else s"$id = ${value.convertToString}"
+      ).mkString(s"$className(", ", ", ")")
+    case UserDefinedFunction(_, _) => "<function>"
+    case BuiltInFunction(_)        => "<builtin function>"

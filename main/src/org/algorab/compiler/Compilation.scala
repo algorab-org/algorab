@@ -2,11 +2,11 @@ package org.algorab.compiler
 
 import kyo.*
 import org.algorab.ast.Identifier
+import org.algorab.typer.ClassTypeDef
 import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
 import org.algorab.typer.Variable
 import org.algorab.typer.VariableId
-import org.algorab.typer.ClassTypeDef
 
 type Compilation = Env[TypeContext] & Compilation.NoContext
 

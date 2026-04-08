@@ -1,7 +1,7 @@
 package org.algorab.compiler
 
-import org.algorab.ast.Identifier
 import kyo.Chunk
+import org.algorab.ast.Identifier
 
 enum Instruction derives CanEqual:
   case Push(value: Value)
@@ -49,18 +49,15 @@ object Instruction:
 
   def declare(name: Identifier, boxxed: Boolean, field: Boolean): Chunk[Instruction] =
     if field then Chunk(loadThis, Instruction.DeclareField(name))
-    else
-      if boxxed then Chunk(Instruction.DeclareBox(name))
-      else Chunk(Instruction.Declare(name))
+    else if boxxed then Chunk(Instruction.DeclareBox(name))
+    else Chunk(Instruction.Declare(name))
 
   def assign(name: Identifier, boxxed: Boolean, field: Boolean): Chunk[Instruction] =
     if field then Chunk(loadThis, Instruction.AssignField(name))
-    else
-      if boxxed then Chunk(Instruction.AssignBox(name))
-      else Chunk(Instruction.Assign(name))
+    else if boxxed then Chunk(Instruction.AssignBox(name))
+    else Chunk(Instruction.Assign(name))
 
   def load(name: Identifier, boxxed: Boolean, field: Boolean): Chunk[Instruction] =
     if field then Chunk(loadThis, Instruction.Select(name))
-    else
-      if boxxed then Chunk(Instruction.LoadBox(name))
-      else Chunk(Instruction.Load(name))
+    else if boxxed then Chunk(Instruction.LoadBox(name))
+    else Chunk(Instruction.Load(name))
