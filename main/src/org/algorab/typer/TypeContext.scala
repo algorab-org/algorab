@@ -1,3 +1,21 @@
+/** The type-checker's mutable environment.
+  *
+  * [[TypeContext]] is the central data structure of the type-checking phase.  It holds:
+  *   - A scope stack (`scopes`) – the chain of [[TypeScope]]s currently in view, innermost first.
+  *   - A function table (`functions`) – all `def`s typed so far, keyed by their internal name.
+  *   - A class table (`classes`) – all `class`es typed so far, keyed by their internal name.
+  *   - A flat variable array (`variables`) – indexed by [[VariableId]]; stores [[Variable]]
+  *     metadata for every variable ever declared.
+  *
+  * The companion object [[TypeContext$]] provides a static effect-style API that operates
+  * through `Var[TypeContext]` without callers needing to read/modify/write the state by hand.
+  *
+  * === Name uniqueness ===
+  *
+  * When a function or type is defined inside another function or loop, the typer assigns a
+  * unique internal name (e.g. `foo$1`) via [[newUniqueFunctionName]] / [[newUniqueTypeName]]
+  * to avoid clashing with names from outer scopes that happen to be the same.
+  */
 package org.algorab.typer
 
 import kyo.*
@@ -14,6 +32,13 @@ class Foo:
   val y = x
  */
 
+/** Immutable snapshot of the complete type-checking environment.
+  *
+  * @param scopes    the scope chain, innermost first
+  * @param functions the global function table; populated as `def`s are processed
+  * @param classes   the global class table; populated as `class`es are processed
+  * @param variables the flat variable metadata array, indexed by [[VariableId]]
+  */
 case class TypeContext(
     scopes: Chunk[TypeScope],
     functions: Map[Identifier, FunctionDef],
@@ -21,22 +46,60 @@ case class TypeContext(
     variables: Chunk[Variable]
 ):
 
+  /** Returns the type bound to `name` by scanning the scope chain from innermost to outermost.
+    *
+    * @param name the type name to look up
+    * @return `Some(tpe)` if found, `None` otherwise
+    */
   def getType(name: Identifier): Option[Type] =
     scopes.collectFirst[Type](((scope: TypeScope) => scope.getType(name)).unlift)
 
+  /** Returns the type bound to `name`, or fails with [[TypeFailure.UnknownType]].
+    *
+    * @param name the type name to resolve
+    * @return the resolved type, effectful in [[Typing]]
+    */
   def getTypeOrFail(name: Identifier): Type < Typing =
     getType(name) match
       case Some(value) => value
       case None        => Typing.failAndAbort(TypeFailure.UnknownType(name))
 
+  /** Adds a new type binding to the innermost scope, or fails if the name is already declared.
+    *
+    * @param name the type name to bind
+    * @param tpe  the type to associate with `name`
+    * @return the updated [[TypeContext]], effectful in [[Typing]]
+    */
   def declareType(name: Identifier, tpe: Type): TypeContext < Typing =
     scopes.head.getType(name) match
       case Some(_) => Typing.failAndAbort(TypeFailure.TypeAlreadyDefined(name))
       case None    => updateType(name, tpe)
 
+  /** Unconditionally updates or adds a type binding in the innermost scope.
+    *
+    * @param name the type name to update
+    * @param tpe  the new type value
+    * @return the updated [[TypeContext]], effectful in [[Typing]]
+    */
   def updateType(name: Identifier, tpe: Type): TypeContext < Typing =
     this.copy(scopes = scopes.head.withType(name, tpe) +: scopes.tail)
 
+  /** Looks up a variable by name, performing capture analysis along the way.
+    *
+    * The lookup traverses the scope chain from innermost to outermost:
+    *   - In `Block` scopes, the variable is found or the search continues outward.
+    *   - In `Function` scopes, if the variable is found in an *outer* scope the name is
+    *     added to the function's capture set.
+    *   - In `Class` scopes, if the variable is not found locally the lookup stops and returns
+    *     [[TypeFailure.UnknownVariable]] (class scopes are opaque to outer captures).
+    *
+    * If a mutable variable is accessed across a function boundary, it is marked `boxxed = true`
+    * so the compiler will wrap it in a `VBox` to allow shared mutation between the outer scope
+    * and the closure.
+    *
+    * @param name the variable to look up
+    * @return `(updatedContext, Result)` – the context is updated if boxing was required
+    */
   def getVariable(name: Identifier): (TypeContext, Result[TypeFailure, (VariableId, Variable)]) =
 
     def isIllegalForwardReference(variable: Variable, captured: Boolean): Boolean =
@@ -88,6 +151,11 @@ case class TypeContext(
       case _ =>
         (this.copy(scopes = updatedScopes), variable)
 
+  /** Looks up a variable by name, or fails with the appropriate [[TypeFailure]].
+    *
+    * @param name the variable to look up
+    * @return `(updatedContext, (id, variable))`, effectful in [[Typing]]
+    */
   @nowarn("msg=exhaustive") // Because it is, actually.
   def getVariableOrFail(name: Identifier): (TypeContext, (VariableId, Variable)) < Typing =
     getVariable(name) match
@@ -95,9 +163,24 @@ case class TypeContext(
       case (_, Result.Failure(failure))    => Typing.failAndAbort(failure)
       case (_, Result.Panic(error))        => throw error
 
+  /** Returns the [[VariableId]] for `name` from the current scope chain (no capture analysis).
+    *
+    * Used internally when the variable is known to be in scope.
+    *
+    * @param name the variable name
+    * @return the corresponding [[VariableId]]
+    */
   def getVariableId(name: Identifier): VariableId =
     scopes.collectFirst(((scope: TypeScope) => scope.getVariable(name)).unlift).get
 
+  /** Declares a new variable in the innermost scope, or fails if the name is already declared.
+    *
+    * The variable is marked as a field if the innermost scope is a `Class` scope.
+    *
+    * @param name     the variable name
+    * @param variable the initial metadata (type may be [[Type.Inferred]])
+    * @return `(updatedContext, newId)`, effectful in [[Typing]]
+    */
   def declareVariable(name: Identifier, variable: Variable): (TypeContext, VariableId) < Typing =
     scopes.head.getVariable(name) match
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
@@ -124,25 +207,65 @@ case class TypeContext(
               id
             )
 
+  /** Declares a variable unconditionally (no duplicate check), used for built-in pre-declarations.
+    *
+    * @param name the variable name
+    * @param tpe  the variable's type
+    * @return the updated [[TypeContext]]
+    */
   def declareVariableForce(name: Identifier, tpe: Type): TypeContext =
     this.copy(
       scopes = scopes.head.withVariable(name, VariableId.assume(variables.size)) +: scopes.tail,
       variables = variables :+ Variable(name, tpe, false, false, true)
     )
 
+  /** Replaces the metadata for the variable `name` in the innermost scope with `variable`.
+    *
+    * @param name     the variable to update
+    * @param variable the new metadata
+    * @return the updated [[TypeContext]]
+    */
   def updateVariable(name: Identifier, variable: Variable): TypeContext =
     this.copy(
       variables = variables.updated(scopes.head.variables(name).value, variable.copy(field = scopes.head.isClassScope))
     )
 
+  /** Returns the declaration metadata for a class field, or fails if not found.
+    *
+    * @param className  the class whose member is being accessed
+    * @param memberName the member name to look up
+    * @return `(id, variable)`, effectful in [[Typing]]
+    */
   def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
     classes.get(className).flatMap(_.declarations.get(memberName)) match
       case Some(decl) => (decl, this.variables(decl.value))
       case None       => Typing.failAndAbort(TypeFailure.UnknownMember(className, memberName))
 
+  /** Merges an inner block context back into `this` after the block has been type-checked.
+    *
+    * Drops the innermost scope (which belongs to the block) and adopts the function/class
+    * tables and variable array from the inner context.
+    *
+    * @param inner the context after the block was typed
+    * @return the merged context
+    */
   def mergeBlock(inner: TypeContext): TypeContext =
     this.copy(scopes = inner.scopes.drop(1), functions = inner.functions, variables = inner.variables)
 
+  /** Pops a function scope, extracts capture information, and records the [[FunctionDef]].
+    *
+    * After the function body has been typed, this method:
+    *   1. Resolves the global capture set (converting local capture names to [[VariableId]]s,
+    *      filtering out field accesses, and adding `this` if any field is captured).
+    *   1. Marks any not-yet-initialised captured variables as `boxxed` (forward closure capture).
+    *   1. Records the final [[FunctionDef]] in `this.functions`.
+    *
+    * @param name        the internal function name
+    * @param displayName the source-level function name
+    * @param params      the parameter names
+    * @param body        the typed body expression
+    * @return the updated [[TypeContext]] with the function scope removed
+    */
   def popFunction(name: Identifier, displayName: Identifier, params: Chunk[Identifier], body: Expr): TypeContext = scopes match
     case TypeScope.Function(id, types, _, localCaptures) +: remaining =>
       var hasField = false
@@ -174,6 +297,14 @@ case class TypeContext(
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a function scope")
     case _          => throw AssertionError("Tried to merge non-existing function scope")
 
+  /** Pops a class scope and records the [[ClassTypeDef]].
+    *
+    * @param name        the internal class name
+    * @param displayName the source-level class name
+    * @param parameters  the constructor parameter names
+    * @param init        the typed constructor body expressions
+    * @return the updated [[TypeContext]] with the class scope removed
+    */
   def popClass(name: Identifier, displayName: Identifier, parameters: Chunk[Identifier], init: Chunk[Expr]): TypeContext = scopes match
     case TypeScope.Class(id, types, variables, localCaptures) +: remaining =>
       val globalCaptures = localCaptures.map(getVariableId)
@@ -186,6 +317,14 @@ case class TypeContext(
     case scope +: _ => throw AssertionError(s"Tried to merge a ${scope.getClass} as a class scope")
     case _          => throw AssertionError("Tried to merge non-existing class scope")
 
+  /** Returns a unique internal type name derived from `baseName`.
+    *
+    * Scans all type bindings across all scopes and appends `$N` (incrementing N) if
+    * `baseName` is already taken.  If not taken, returns `baseName` unchanged.
+    *
+    * @param baseName the desired base name
+    * @return `baseName` or `baseName$N` for some N ≥ 1
+    */
   def newUniqueTypeName(baseName: Identifier): Identifier =
     val greatestId = scopes
       .flatMap(_.types.values)
@@ -200,6 +339,13 @@ case class TypeContext(
     if greatestId == -1 then baseName
     else Identifier.assume(s"$baseName$$${greatestId + 1}")
 
+  /** Returns a unique internal variable name derived from `baseName`.
+    *
+    * Scans all variable bindings across all scopes.
+    *
+    * @param baseName the desired base name
+    * @return `baseName` or `baseName$N` for some N ≥ 1
+    */
   def newUniqueVarName(baseName: Identifier): Identifier =
     val greatestId = scopes
       .flatMap(_.variables.keys)
@@ -214,6 +360,13 @@ case class TypeContext(
     if greatestId == -1 then baseName
     else Identifier.assume(s"$baseName$$${greatestId + 1}")
 
+  /** Returns a unique internal function name derived from `baseName`.
+    *
+    * Scans the function table (not the scope chain).
+    *
+    * @param baseName the desired base name
+    * @return `baseName` or `baseName$N` for some N ≥ 1
+    */
   def newUniqueFunctionName(baseName: Identifier): Identifier =
     val greatestId = functions.keys.foldLeft(-1)((curId, name) =>
       name match
@@ -226,8 +379,14 @@ case class TypeContext(
     if greatestId == -1 then baseName
     else Identifier.assume(s"$baseName$$${greatestId + 1}")
 
+/** Companion containing the default context and the static effect-style API.
+  *
+  * All methods here operate through `Var[TypeContext]` (part of the [[Typing]] effect)
+  * so callers do not need to read-modify-write the state by hand.
+  */
 object TypeContext:
 
+  /** The default starting context, pre-populated with the built-in types and functions. */
   val default: TypeContext = TypeContext(
     scopes = Chunk(
       TypeScope.Block(
@@ -283,51 +442,80 @@ object TypeContext:
       )
     )
 
+  /** Applies `f` to the current context and replaces it with the returned context. */
   def modify(f: TypeContext => TypeContext < Typing): Unit < Typing =
     Var.use[TypeContext](f)
       .map(Var.set)
       .unit
 
+  /** Applies `f` to the current context, returning the first component and updating the context
+    * with the second component. */
   def modifyReturn[A](f: TypeContext => (TypeContext, A) < Typing): A < Typing =
     Var.use[TypeContext](f)
       .map(Var.set(_).andThen(_))
 
+  /** Returns the type bound to `name` in the current context. */
   def getType(name: Identifier): Option[Type] < Typing = Var.use(_.getType(name))
 
+  /** Returns the type bound to `name`, or fails with [[TypeFailure.UnknownType]]. */
   def getTypeOrFail(name: Identifier): Type < Typing = Var.use(_.getTypeOrFail(name))
 
+  /** Adds a new type binding to the innermost scope of the current context. */
   def declareType(name: Identifier, tpe: Type): Unit < Typing = modify(_.declareType(name, tpe))
 
+  /** Unconditionally updates or adds a type binding in the innermost scope. */
   def updateType(name: Identifier, tpe: Type): Unit < Typing = modify(_.updateType(name, tpe))
 
+  /** Looks up a variable by name in the current context, performing capture analysis. */
   def getVariableOrFail(name: Identifier): (VariableId, Variable) < Typing = modifyReturn(_.getVariableOrFail(name))
 
+  /** Declares a new variable in the innermost scope of the current context. */
   def declareVariable(name: Identifier, variable: Variable): VariableId < Typing = modifyReturn(_.declareVariable(name, variable))
 
+  /** Replaces the metadata for `name` in the current context. */
   def updateVariable(name: Identifier, variable: Variable): Unit < Typing = modify(_.updateVariable(name, variable))
 
+  /** Returns the declaration metadata for a class field in the current context. */
   def getDeclarationOrFail(className: Identifier, memberName: Identifier): (VariableId, Variable) < Typing =
     Var.use(_.getDeclarationOrFail(className, memberName))
 
+  /** Returns a unique type name derived from `name`. */
   def newUniqueTypeName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueTypeName(name))
 
+  /** Returns a unique variable name derived from `name`. */
   def newUniqueVarName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueVarName(name))
 
+  /** Returns a unique function name derived from `name`. */
   def newUniqueFunctionName(name: Identifier): Identifier < Typing = Var.use(_.newUniqueFunctionName(name))
 
+  /** Runs `body` inside a fresh `Block` scope, then merges the block back into the parent.
+    *
+    * Variables declared inside the block are invisible after it ends.
+    *
+    * @param body the computation to run in the new block scope
+    * @tparam A the result type
+    */
   def inNewBlockScope[A](body: A < Typing): A < Typing =
     Var.isolate.merge[TypeContext](_.mergeBlock(_)).run(
       Var.update[TypeContext](ctx => ctx.copy(scopes = TypeScope.Block(Map.empty, Map.empty) +: ctx.scopes))
         .andThen(body)
     )
 
-  /*
-    - Create new function name
-    - Reserve function name in context to avoid duplicate internal names for nested functions
-    - Create new function scope with empty captures and variables
-    - Run body to get function declaration and body
-    - Pop function scope, updating captures and variables as needed
-   */
+  /** Runs `body` inside a fresh `Function` scope, then pops the scope and records the function.
+    *
+    * Steps performed:
+    *   1. Allocates a unique internal name for the function.
+    *   1. Pushes a new [[TypeScope.Function]] onto the scope chain.
+    *   1. Calls `body(internalName)`, which should return `(typedBody, declaration)`.
+    *   1. Pops the function scope via [[TypeContext.popFunction]], recording capture information.
+    *   1. Returns `declaration` (the `Assign` node that initialises the function variable).
+    *
+    * @param id          the [[VariableId]] allocated for the function variable
+    * @param displayName the source-level function name
+    * @param params      the parameter names
+    * @param body        a function from the internal name to `(typedBody, declarationExpr)`
+    * @return the declaration expression for the function
+    */
   def inNewFunctionScope(
       id: VariableId,
       displayName: Identifier,
@@ -346,6 +534,21 @@ object TypeContext:
 
     funDecl
 
+  /** Runs `body` inside a fresh `Class` scope, then pops the scope and records the class.
+    *
+    * Steps performed:
+    *   1. Allocates a unique internal name for the class.
+    *   1. Pushes a new [[TypeScope.Class]] and declares `this`.
+    *   1. Calls `body(internalName)`, which returns `(classBodyExprs, declarationExpr)`.
+    *   1. Pops the class scope via [[TypeContext.popClass]].
+    *   1. Returns `declarationExpr` (the `Assign` node that initialises the class variable).
+    *
+    * @param id          the [[VariableId]] allocated for the class constructor variable
+    * @param displayName the source-level class name
+    * @param parameters  the constructor parameter names
+    * @param body        a function from the internal name to `(initExprs, declarationExpr)`
+    * @return the declaration expression for the class
+    */
   def inNewClassScope(
       id: VariableId,
       displayName: Identifier,
@@ -374,11 +577,32 @@ object TypeContext:
 
     classDecl
 
+  /** Returns `true` iff `tpe` is a subtype of `expected` under the current type context.
+    *
+    * Currently implements a simple type equality check extended with:
+    *   - `Any` accepts everything.
+    *   - `Inferred` accepts everything (for use in partial type information).
+    *
+    * @param tpe      the type to check
+    * @param expected the expected supertype
+    */
   def isSubtype(tpe: Type, expected: Type): Boolean < Typing = (tpe, expected) match
     case (_, Type.Any)      => true
     case (_, Type.Inferred) => true
     case _                  => tpe == expected
 
+  /** Computes the least upper bound of two types.
+    *
+    * Rules:
+    *   - `Nothing` is the neutral element (identity under union).
+    *   - `Int ∪ Float = Float` (widening).
+    *   - Equal types return the same type.
+    *   - All other combinations return `Any`.
+    *
+    * @param typeA the first type
+    * @param typeB the second type
+    * @return the least upper bound
+    */
   def union(typeA: Type, typeB: Type): Type < Typing = (typeA, typeB) match
     case (Type.Nothing, _)      => typeB
     case (_, Type.Nothing)      => typeA

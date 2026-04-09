@@ -1,3 +1,19 @@
+/** The Algorab type-checker.
+  *
+  * [[Typer]] is the main type-checking pass.  It takes an [[org.algorab.ast.untpd.Expr]] tree
+  * produced by the parser and:
+  *   1. Resolves untyped [[org.algorab.ast.untpd.Type]] references to their [[org.algorab.ast.tpd.Type]]
+  *      equivalents.
+  *   1. Assigns a [[org.algorab.ast.tpd.Type]] to every expression node, producing a
+  *      [[org.algorab.ast.tpd.Expr]] tree.
+  *   1. Reports [[TypeFailure]]s for any inconsistencies found.
+  *   1. Performs capture analysis for closures and marks mutable captured variables as `boxxed`.
+  *   1. Detects and boxes cyclic closures (functions that capture a reference to themselves,
+  *      directly or transitively) so that the compiler can emit correct code.
+  *
+  * The main entry point is [[typeProgram]], which also applies the [[boxCyclicClosures]] post-pass
+  * to the finished context before returning.
+  */
 package org.algorab.typer
 
 import kyo.*
@@ -8,12 +24,33 @@ import org.algorab.ast.untpd
 import scala.annotation.meta.param
 import scala.languageFeature.experimental.macros
 
+/** Type-checks the untyped AST, producing an annotated typed AST. */
 object Typer:
 
+  /** Asserts that `tpe` is a subtype of at least one of `expected`.
+    *
+    * Emits [[TypeFailure.Mismatch]] and does NOT abort if the check fails, allowing the
+    * caller to continue and report further errors.
+    *
+    * @param tpe      the type to check
+    * @param expected the acceptable supertypes
+    */
   def assertSubtype(tpe: tpd.Type, expected: tpd.Type*): Unit < Typing = direct:
     if expected.exists(TypeContext.isSubtype(tpe, _).now) then ()
     else Typing.fail(TypeFailure.Mismatch(tpe, expected*)).now
 
+  /** Attempts to cast `expr` to one of the `expected` types.
+    *
+    * - If `expr`'s type is already a subtype of one of the expected types, returns
+    *   `Present(expr)` unchanged.
+    * - If `expr` has type `Int` and the expected type is `Float`, inserts a `toFloat` call
+    *   to perform implicit widening.
+    * - Otherwise returns `Absent`.
+    *
+    * @param expr     the typed expression to cast
+    * @param expected the acceptable target types
+    * @return `Present(castedExpr)` on success, `Absent` on failure
+    */
   def cast(expr: tpd.Expr, expected: tpd.Type*): Maybe[tpd.Expr] < Typing =
     Kyo.findFirst(expected)(tpe =>
       TypeContext.isSubtype(expr.exprType, tpe).map(isSub =>
@@ -34,15 +71,39 @@ object Typer:
       )
     )
 
+  /** Casts `expr` to one of the `expected` types, or fails with [[TypeFailure.Mismatch]].
+    *
+    * @param expr     the typed expression to cast
+    * @param expected the acceptable target types
+    * @return the (possibly coerced) expression
+    */
   def castOrFail(expr: tpd.Expr, expected: tpd.Type*): tpd.Expr < Typing =
     cast(expr, expected*).map:
       case Absent =>
         Typing.failAndAbort(TypeFailure.Mismatch(expr.exprType, expected*))
       case Present(finalExpr) => finalExpr
 
+  /** Types and casts both operands of a binary operator, expecting each to satisfy `expected`.
+    *
+    * @param left     the left-hand source expression
+    * @param right    the right-hand source expression
+    * @param expected the acceptable operand types
+    * @param op       a function that combines the typed operands into the result expression
+    * @return the typed result expression
+    */
   def assertBinaryOp(left: untpd.Expr, right: untpd.Expr, expected: tpd.Type*)(op: (tpd.Expr, tpd.Expr) => tpd.Expr): tpd.Expr < Typing = direct:
     op(typeAndCast(left, expected*).now, typeAndCast(right, expected*).now)
 
+  /** Types both operands and verifies that they satisfy one of the expected `(inputType, outputType)` pairs.
+    *
+    * Used for operators like `+` that are polymorphic but have a fixed output type per input type.
+    *
+    * @param left     the left-hand source expression
+    * @param right    the right-hand source expression
+    * @param expected pairs of `(operandType, resultType)` that are acceptable
+    * @param op       a function combining the typed operands and the chosen result type
+    * @return the typed result expression
+    */
   def assertDependentBinaryOp(
       left: untpd.Expr,
       right: untpd.Expr
@@ -66,15 +127,40 @@ object Typer:
         val expectedTypes = expected.map(tpe => tpe._1.zip(tpe._1))
         Typing.failAndAbort(TypeFailure.Mismatch(operandTypes, expectedTypes*)).now
 
+  /** Types and casts both operands to a numeric type, producing a Boolean result.
+    *
+    * Used for `<`, `<=`, `>`, `>=`.
+    *
+    * @param op a function combining typed operands and the Boolean result type
+    */
   def assertComparison(left: untpd.Expr, right: untpd.Expr)(op: (tpd.Expr, tpd.Expr, tpd.Type) => tpd.Expr): tpd.Expr < Typing =
     assertBinaryOp(left, right, tpd.Type.Int, tpd.Type.Float)(op(_, _, tpd.Type.Boolean))
 
+  /** Types and casts both operands to Boolean, producing a Boolean result.
+    *
+    * Used for `and`, `or`.
+    *
+    * @param op a function combining typed operands and the Boolean result type
+    */
   def assertBooleanOp(left: untpd.Expr, right: untpd.Expr)(op: (tpd.Expr, tpd.Expr, tpd.Type) => tpd.Expr): tpd.Expr < Typing =
     assertBinaryOp(left, right, tpd.Type.Boolean)(op(_, _, tpd.Type.Boolean))
 
+  /** Types `expr` and casts the result to one of `expected`, failing if not possible.
+    *
+    * @param expr     the source expression to type and cast
+    * @param expected the acceptable result types
+    * @return the typed and cast expression
+    */
   def typeAndCast(expr: untpd.Expr, expected: tpd.Type*): tpd.Expr < Typing =
     typeExpr(expr).map(castOrFail(_, expected*))
 
+  /** Types two expressions and ensures their types are mutually castable.
+    *
+    * Tries to cast A to B's type, then B to A's type.  Used for `==` and `!=` where both
+    * sides must be "related" but not necessarily identical.
+    *
+    * @return `(typedA, typedB)` where one may have been coerced to match the other
+    */
   def typeAndAssertRelated(exprA: untpd.Expr, exprB: untpd.Expr): (tpd.Expr, tpd.Expr) < Typing = direct:
     val typedA = typeExpr(exprA).now
     val typedB = typeExpr(exprB).now
@@ -85,6 +171,18 @@ object Typer:
           case Present(castedB) => (typedA, castedB)
           case Absent           => Typing.failAndAbort(TypeFailure.Mismatch(typedA.exprType, typedB.exprType)).now
 
+  /** Assigns unique internal names to type parameters and resolves parameter / return types.
+    *
+    * For each type parameter in `funDef.typeParams`, a unique internal name is generated and
+    * declared in the current scope as a `Generic`.  All parameter types and the return type
+    * are then resolved against this enriched scope.
+    *
+    * If the function has no type parameters the outer type is `Fun(paramTypes, retType)`;
+    * otherwise it is `TypeFun(uniqueTypeParams, Fun(paramTypes, retType))`.
+    *
+    * @param funDef the function definition whose parameters are to be resolved
+    * @return `(uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, outerFunType)`
+    */
   def declareTypeParamsAndResolveFunTypes(funDef: untpd.Expr.FunDef): (
       Chunk[(Identifier, Identifier)],
       Chunk[(Identifier, tpd.Type)],
@@ -111,6 +209,11 @@ object Typer:
         tpd.Type.TypeFun(uniqueTypeParams.map(_._2), tpd.Type.Fun(paramTypes, resolvedRetType))
       )
 
+  /** Converts an [[untpd.Type]] to a [[tpd.Type]] by resolving all name references.
+    *
+    * @param tpe the unresolved type
+    * @return the resolved type, effectful in [[Typing]]
+    */
   def resolveType(tpe: untpd.Type): tpd.Type < Typing = direct:
     tpe match
       case untpd.Type.Inferred => tpd.Type.Inferred
@@ -129,6 +232,19 @@ object Typer:
       case untpd.Type.Tuple(elements) =>
         tpd.Type.Tuple(elements.map(resolveType(_).now))
 
+  /** Post-pass that boxes variables involved in cyclic closures.
+    *
+    * A cyclic closure is a function that (directly or transitively) captures a reference to
+    * itself.  For example, a recursive function `f` that is captured by a helper `g` which is
+    * then captured by `f` again.  Without boxing, loading `f` would attempt to read a variable
+    * that may not yet be initialised.
+    *
+    * The algorithm performs a DFS over the capture graph; any function encountered a second time
+    * during the traversal is marked `boxxed`.
+    *
+    * @param context the finished type context after all declarations have been processed
+    * @return the context with cyclic-closure variables boxed
+    */
   def boxCyclicClosures(context: TypeContext): TypeContext =
     def rec(
         variables: Chunk[Variable],
@@ -154,6 +270,15 @@ object Typer:
 
     context.copy(variables = updatedVariables)
 
+  /** Pre-declares all top-level names in a block without typing their bodies.
+    *
+    * Required to support forward references within the same block (e.g. a function can call
+    * another function declared later in the same block).  Only `ValDef`, `FunDef`, and
+    * `ClassDef` expressions participate; other expressions produce an empty `Chunk`.
+    *
+    * @param expr a single expression from the block being pre-processed
+    * @return the `(id, name)` pairs for any variables declared
+    */
   def typeDeclaration(expr: untpd.Expr): Chunk[(VariableId, Identifier)] < Typing = direct:
     expr match
       case untpd.Expr.ValDef(name, tpe, _, mutable) =>
@@ -195,10 +320,34 @@ object Typer:
       case _ =>
         Chunk.empty
 
+  /** Types an entire program, returning the final [[TypeContext]] and the typed expression.
+    *
+    * Applies [[typeExpr]] to produce the typed tree, then runs [[boxCyclicClosures]] as a
+    * post-pass on the resulting context.
+    *
+    * @param expr the top-level (block) expression
+    * @return `(finalContext, typedExpr)`, effectful in [[Typing]]
+    */
   def typeProgram(expr: untpd.Expr): (TypeContext, tpd.Expr) < Typing = direct:
     val typedExpr = typeExpr(expr).now
     (Var.use[TypeContext](boxCyclicClosures).now, typedExpr)
 
+  /** Types a single Algorab expression.
+    *
+    * The method is the workhorse of the type-checker.  It handles every variant of
+    * [[untpd.Expr]], producing the corresponding [[tpd.Expr]] with type annotations.
+    *
+    * Notable translation rules:
+    *   - `untpd.ValDef` → pre-declare the variable, type the initialiser, then emit `Assign`.
+    *   - `untpd.FunDef` → run in a new function scope, collect captures, emit `Assign(FunRef)`.
+    *   - `untpd.ClassDef` → run in a new class scope, collect declarations, emit `Assign(ClassRef)`.
+    *   - `untpd.TypeApply` → resolve type arguments and bake them into the expression type.
+    *   - `untpd.For` → desugar to a `While` loop with an index variable.
+    *   - `untpd.Block` → pre-declare all top-level names, then type each expression in order.
+    *
+    * @param expr the untyped expression to type-check
+    * @return the corresponding typed expression, effectful in [[Typing]]
+    */
   def typeExpr(expr: untpd.Expr): tpd.Expr < Typing = direct:
     expr match
       case untpd.Expr.LBool(value)   => tpd.Expr.LBool(value, tpd.Type.Boolean)
