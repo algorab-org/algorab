@@ -297,6 +297,28 @@ object Parser:
       Expr.ClassDef(name, typeParams, parametersOpt.getOrElse(Chunk.empty), body)
     )
 
+  lazy val parseLambda: Expr < Parse[Token] =
+    Parse.inOrder(
+      Parse.literal(Token.ParenOpen),
+      Parse.separatedBy(
+        Parse.inOrder(
+          parseIdentifier,
+          Parse.literal(Token.Colon),
+          Parse.require(parseType)
+        ).map((id, _, tpe) => (id, tpe)),
+        Parse.literal(Token.Comma)
+      ),
+      Parse.literal(Token.ParenClosed),
+      Parse.require(Parse.literal(Token.DoubleArrow)),
+      Parse.require(parseBlockBody)
+    ).map((_, params, _, _, body) =>
+      // We don't need an Expr.Lambda where we're going ! :D
+      Expr.Block(Chunk(
+        Expr.FunDef(Identifier("lambda"), Chunk.empty, params, Type.Inferred, body),
+        Expr.VarCall(Identifier("lambda"))
+      ))
+    )
+
   lazy val parseBlockBody: Expr.Block < Parse[Token] =
     Parse.separatedBy(
       parseExpr,
@@ -311,16 +333,17 @@ object Parser:
       Parse.literal(Token.DeIndent)
     )
 
-  lazy val parseExpr: Expr < Parse[Token] = Parse.firstOf(
-    parseAssign,
-    parseValDef,
-    parseFunDef,
-    parseIf,
-    parseFor,
-    parseWhile,
-    parseBool,
-    parseClass
-  )
+  lazy val parseExpr: Expr < Parse[Token] = Parse.firstOf(Seq(
+    () => parseAssign,
+    () => parseValDef,
+    () => parseFunDef,
+    () => parseIf,
+    () => parseFor,
+    () => parseWhile,
+    () => parseClass,
+    () => parseLambda,
+    () => parseBool
+  ))
 
   val parseAst: Expr < Parse[Token] = Parse.entireInput(
     Parse.between(
