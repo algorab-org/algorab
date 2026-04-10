@@ -36,7 +36,8 @@ object Typer:
 
   def castOrFail(expr: tpd.Expr, expected: tpd.Type*): tpd.Expr < Typing =
     cast(expr, expected*).map:
-      case Absent             => Typing.failAndAbort(TypeFailure.Mismatch(expr.exprType, expected*))
+      case Absent =>
+        Typing.failAndAbort(TypeFailure.Mismatch(expr.exprType, expected*))
       case Present(finalExpr) => finalExpr
 
   def assertBinaryOp(left: untpd.Expr, right: untpd.Expr, expected: tpd.Type*)(op: (tpd.Expr, tpd.Expr) => tpd.Expr): tpd.Expr < Typing = direct:
@@ -117,7 +118,10 @@ object Typer:
           case Some(resolvedType) => resolvedType
           case None               => Typing.failAndAbort(TypeFailure.UnknownType(name)).now
       case untpd.Type.Apply(base, args) =>
-        tpd.Type.Apply(resolveType(base).now, args.map(resolveType(_).now))
+        val resolvedArgs = args.map(resolveType(_).now)
+        resolveType(base).now match
+          case tpd.Type.Instance(name, typeParams, replacements) => tpd.Type.Instance(name, typeParams, replacements ++ typeParams.zip(resolvedArgs))
+          case resolvedBase                                      => tpd.Type.Apply(resolvedBase, resolvedArgs)
       case untpd.Type.Fun(params, output) =>
         tpd.Type.Fun(params.map(resolveType(_).now), resolveType(output).now)
       case untpd.Type.TypeFun(typeParams, output) =>
@@ -170,7 +174,8 @@ object Typer:
           )
         )
       case untpd.Expr.ClassDef(name, typeParams, parameters, body) =>
-        TypeContext.declareType(name, tpd.Type.Instance(name, Map.empty)).now
+        val internalName = TypeContext.newUniqueTypeName(name).now
+        TypeContext.declareType(name, tpd.Type.Instance(internalName, typeParams, typeParams.map(name => (name, tpd.Type.Generic(name))).toMap)).now
         val (_, _, _, _, constructorType) = TypeContext.inNewBlockScope(declareTypeParamsAndResolveFunTypes(untpd.Expr.FunDef(
           name = Identifier.assume(s"<$name constructor>"),
           params = parameters,
@@ -182,7 +187,7 @@ object Typer:
         Chunk((
           TypeContext.declareVariable(
             name,
-            Variable(name, tpd.Type.Class(name, constructorType), false, false, false, classId = Present(Identifier.assume(null)))
+            Variable(name, tpd.Type.Class(name, constructorType), false, false, false, classId = Present(internalName))
           ).now,
           name
         ))
@@ -388,7 +393,7 @@ object Typer:
       case untpd.Expr.ClassDef(name, typeParams, parameters, body) =>
         val id = Var.use[TypeContext](_.scopes.head.variables(name)).now
 
-        TypeContext.inNewClassScope(id, name, parameters.map(_._1)): internalName =>
+        TypeContext.inNewClassScope(id, name, typeParams, parameters.map(_._1)): internalName =>
           direct:
             val (uniqueTypeParams, resolvedParams, paramTypes, resolvedRetType, constructorType) =
               declareTypeParamsAndResolveFunTypes(untpd.Expr.FunDef(
@@ -417,7 +422,7 @@ object Typer:
       case untpd.Expr.Select(expr, name) =>
         val typedExpr = typeExpr(expr).now
         typedExpr.exprType match
-          case tpd.Type.Instance(className, replacements) =>
+          case tpd.Type.Instance(className, _, replacements) =>
             val (id, member) = TypeContext.getDeclarationOrFail(className, name).now
             tpd.Expr.Select(id, typedExpr, name, member.tpe.replaceGeneric(replacements))
           case tpe =>

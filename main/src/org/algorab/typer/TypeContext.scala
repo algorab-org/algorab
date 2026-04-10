@@ -40,7 +40,7 @@ case class TypeContext(
   def getVariable(name: Identifier): (TypeContext, Result[TypeFailure, (VariableId, Variable)]) =
 
     def isIllegalForwardReference(variable: Variable, captured: Boolean): Boolean =
-      !variable.initialized && !variable.isFunDef
+      !variable.initialized && !variable.isFunDef && !variable.isClassDef
 
     @tailrec
     def rec(
@@ -103,14 +103,26 @@ case class TypeContext(
       case Some(_) => Typing.failAndAbort(TypeFailure.VariableAlreadyDefined(name))
       case None =>
         val id = VariableId.assume(variables.size)
-        val field = scopes.head.isClassScope
-        (
-          this.copy(
-            scopes = scopes.head.withVariable(name, id) +: scopes.tail,
-            variables = variables :+ variable.copy(field = field)
-          ),
-          id
-        )
+        scopes.head match
+          case scope @ TypeScope.Class(classVarId, _, _, _) =>
+            val cid = variables(classVarId.value).classId.get
+            val classDef = classes(cid)
+            (
+              this.copy(
+                scopes = scope.withVariable(name, id) +: scopes.tail,
+                variables = variables :+ variable.copy(field = true),
+                classes = classes.updated(cid, classDef.copy(declarations = classDef.declarations.updated(name, id)))
+              ),
+              id
+            )
+          case scope =>
+            (
+              this.copy(
+                scopes = scope.withVariable(name, id) +: scopes.tail,
+                variables = variables :+ variable.copy(field = scope.isClassScope)
+              ),
+              id
+            )
 
   def declareVariableForce(name: Identifier, tpe: Type): TypeContext =
     this.copy(
@@ -337,19 +349,24 @@ object TypeContext:
   def inNewClassScope(
       id: VariableId,
       displayName: Identifier,
+      typeParams: Chunk[Identifier],
       parameters: Chunk[Identifier]
   )(body: Identifier => (Chunk[Expr], Expr) < Typing): Expr < Typing = direct:
-    val name = newUniqueTypeName(displayName).now
+    val name = Var.use[TypeContext](_.variables(id.value).classId.get).now
     val ctx = Var.updateDiscard[TypeContext](ctx =>
       ctx.copy(
         scopes = TypeScope.Class(
           id = id,
-          types = Map(name -> Type.Instance(name, Map.empty)),
+          types = Map(name -> Type.Instance(name, typeParams, typeParams.map(name => (name, Type.Generic(name))).toMap)),
           variables = Map.empty,
           captures = Set.empty
         ) +: ctx.scopes,
-        classes = ctx.classes.updated(name, null) // Reserve name to avoid duplication of internal name
-      ).declareVariableForce(Identifier("this"), Type.Instance(name, Map.empty))
+        classes =
+          ctx.classes.updated(
+            name,
+            ClassTypeDef(displayName, Map.empty, parameters, Set.empty, Chunk.empty, id)
+          ) // Reserve name to avoid duplication of internal name
+      ).declareVariableForce(Identifier("this"), Type.Instance(name, typeParams, typeParams.map(name => (name, Type.Generic(name))).toMap))
     ).now
 
     val (classBody, classDecl) = body(name).now
