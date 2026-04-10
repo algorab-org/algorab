@@ -309,11 +309,17 @@ object Typer:
                   )
 
                 val replacements = resolvedTypes.toMap.withDefaultValue(tpd.Type.Nothing)
+                val replacementsOrNothing = typeParams.map((_, tpd.Type.Nothing)).toMap ++ replacements
+
+                val notInfered = typeParams.filterNot(replacements.contains)
+                notInfered.foreach(typeParam => Typing.fail(TypeFailure.CannotInferType(typeParam)).now)
+
+                if !notInfered.isEmpty then Abort.fail(()).now
 
                 tpd.Expr.Apply(
-                  typedExpr.withType(funType.replaceGeneric(replacements)),
+                  typedExpr.withType(funType.replaceGeneric(replacementsOrNothing)),
                   typedArgs,
-                  output.replaceGeneric(replacements).now
+                  output.replaceGeneric(replacementsOrNothing).now
                 )
               else
                 Typing.failAndAbort(TypeFailure.WrongArgumentCount(argCount, paramCount)).now
@@ -341,6 +347,8 @@ object Typer:
                       .zip(types)
                       .map((paramName, tpe) => (paramName, resolveType(tpe).now))
                       .toMap
+
+                    println(s"Explicit replacements: ${pprint(replacements)}")
 
                     typedExpr.withType(output.replaceGeneric(replacements).now)
                 .now

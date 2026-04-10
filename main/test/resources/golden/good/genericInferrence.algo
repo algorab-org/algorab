@@ -2,8 +2,6 @@
 
 -- A
 def id[A](x: A): A = x
-def id2[A, B](x: A): A = x
 
 println(id(5))
 println(id("abc"))
-println(id2(true))
