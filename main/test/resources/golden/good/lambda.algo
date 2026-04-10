@@ -1,0 +1,8 @@
+val f: Int => Int = (x: Int) => x * 2
+
+def compose[A, B, C](f: B => C, g: A => B): A => C =
+  (x: A) => f(g(x))
+
+println(f(5))
+println(compose[Int, Int, Float](toFloat, f)(3))
+println(compose[Int, Int, Float](toFloat, (x: Int) => x * 3)(3))
