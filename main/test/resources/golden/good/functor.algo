@@ -1,0 +1,10 @@
+class Box[A](value: A) =
+  def map[B](f: A => B): Box[B] = Box(f(this.value))
+
+val boxInt = Box(5)
+val valueInt: Int = boxInt.value
+println(valueInt)
+
+val boxFloat = boxInt.map[Float](toFloat)
+val valueFloat: Float = boxFloat.value
+println(valueFloat)

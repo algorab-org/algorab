@@ -8,6 +8,7 @@ case class ClassTypeDef(
     displayName: Identifier,
     declarations: Map[Identifier, VariableId],
     parameters: Chunk[Identifier],
+    captures: Set[VariableId],
     init: Chunk[Expr],
     varId: VariableId
 )
