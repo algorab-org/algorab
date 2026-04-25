@@ -1,3 +1,38 @@
+/**
+ * Code generator: lowers the typed AST to a flat sequence of [[Instruction]]s.
+ *
+ * The [[Compiler]] object contains a single public method, [[compileProgram]], which drives
+ * the full compilation of a program.  Internally it delegates to [[compileExpr]] for
+ * expressions, [[compileFunction]] for function definitions, and [[compileClass]] for
+ * class definitions.
+ *
+ * The target is a simple stack machine.  Expressions push their results; operators pop
+ * operands and push results.  Control-flow instructions ([[Instruction.Jump]],
+ * [[Instruction.JumpIf]]) use absolute [[InstrPosition]] addresses that are
+ * pre-computed by running sub-compilations in isolation via [[Compilation.run]].
+ *
+ * === Short-circuit evaluation ===
+ *
+ * `And` and `Or` are compiled with conditional jumps so that the right operand is only
+ * evaluated when necessary:
+ *
+ *   - `left and right` →
+ *     {{{
+ *       <left>
+ *       JumpIf(rightStart, andEnd)
+ *       <right>
+ *       Jump(andEnd)
+ *       Push(false)
+ *     }}}
+ *   - `left or right` →
+ *     {{{
+ *       <left>
+ *       JumpIf(orEnd, rightStart)
+ *       <right>
+ *       Jump(orEnd)
+ *       Push(true)
+ *     }}}
+ */
 package org.algorab.compiler
 
 import kyo.*
@@ -8,23 +43,68 @@ import org.algorab.typer.ClassTypeDef
 import org.algorab.typer.FunctionDef
 import org.algorab.typer.TypeContext
 
+/** Compiles typed Algorab AST nodes to bytecode instructions. */
 object Compiler:
 
+  /** The special identifier used for the implicit `this` parameter in class constructors. */
   private val thisIdentifier = Identifier("this")
 
+  /**
+   * Returns the epilogue instructions appended after every compiled function body.
+   *
+   * For `Unit`-returning functions a `Push(VUnit)` is inserted before `Return` so the
+   * caller always finds a value on the stack.  Non-`Unit` functions rely on the body
+   * expression having already left a value on the stack.
+   *
+   * @param function the function definition whose return type is inspected
+   * @return one or two trailing instructions
+   */
   private def functionEpilogue(function: FunctionDef): Chunk[Instruction] =
     if function.body.exprType == Type.Unit then
       Chunk(Instruction.Push(Value.VUnit), Instruction.Return)
     else
       Chunk(Instruction.Return)
 
+  /**
+   * Epilogue appended after every compiled class constructor body.
+   *
+   * Loads `this` and returns it so the caller receives the newly constructed instance.
+   */
   private val classEpilogue: Chunk[Instruction] = Chunk(Instruction.loadThis, Instruction.Return)
 
+  /**
+   * Compiles a binary operator expression by evaluating both operands and then emitting
+   * the operator instruction.
+   *
+   * Stack effect: `( -- left right result )`
+   *
+   * @param left        the left-hand operand expression
+   * @param right       the right-hand operand expression
+   * @param instruction the binary operator instruction to emit after the operands
+   */
   def compileBinaryOp(left: Expr, right: Expr, instruction: Instruction): Unit < Compilation = direct:
     compileExpr(left).now
     compileExpr(right).now
     Compilation.emit(instruction).now
 
+  /**
+   * Compiles a single typed expression, emitting the corresponding instructions.
+   *
+   * Each case maps to one or more instructions that together implement the expression's
+   * semantics on the stack machine.  See the [[Instruction]] documentation for the
+   * stack effect of each instruction.
+   *
+   * Noteworthy cases:
+   *   - `And` / `Or` – short-circuit evaluated via conditional jumps (see object-level docs).
+   *   - `ValDef` – emits a declaration followed by the initialiser and an assignment.
+   *   - `Block` – emits [[Instruction.PushScope]] / [[Instruction.PopScope]] around the body;
+   *     forward declarations are emitted before the body expressions.
+   *   - `If` – pre-compiles both branches to compute their sizes, then emits a `JumpIf`.
+   *   - `While` – emits the condition, then the body behind a conditional jump, with an
+   *     unconditional jump back to the condition at the end.
+   *
+   * @param expr the typed expression to compile
+   */
   def compileExpr(expr: Expr): Unit < Compilation = direct:
     expr match
       case Expr.LBool(value, _)   => Compilation.emit(Instruction.Push(Value.VBool(value))).now
@@ -141,6 +221,25 @@ object Compiler:
         Compilation.emitAll(bodyInstrs).now
         Compilation.emit(Instruction.Jump(condStart)).now
 
+  /**
+   * Compiles a single function definition into the instruction stream.
+   *
+   * Layout of the emitted instructions:
+   * {{{
+   *   FunctionStart(internalName, displayName, captures, <end>)
+   *   Declare(param0) ; Assign(param0)   -- one pair per parameter
+   *   ...
+   *   <body instructions>
+   *   [Push(VUnit)] ; Return             -- epilogue
+   * }}}
+   *
+   * The `FunctionStart` instruction records the capture list and jumps past the
+   * function body when encountered at the top level (so the body is not executed
+   * during top-level initialisation).
+   *
+   * @param internalName the unique internal name for the function (typer-assigned)
+   * @param function     the function definition (parameters, captures, body)
+   */
   def compileFunction(internalName: Identifier, function: FunctionDef): Unit < Compilation = direct:
     val argsInstrs = function.params.flatMap(arg =>
       Chunk(
@@ -159,6 +258,26 @@ object Compiler:
     Compilation.emitAll(bodyInstrs).now
     Compilation.emitAll(epilogueInstrs).now
 
+  /**
+   * Compiles a single class definition into the instruction stream.
+   *
+   * Layout of the emitted constructor instructions:
+   * {{{
+   *   ClassStart(internalName, displayName, <end>)
+   *   loadThis ; DeclareField(field0)   -- one pair per declared field (except "this")
+   *   ...
+   *   loadThis ; AssignField(param0)    -- one pair per constructor parameter
+   *   ...
+   *   <body init instructions>
+   *   loadThis ; Return                 -- classEpilogue
+   * }}}
+   *
+   * The `ClassStart` instruction records the constructor entry point and jumps past
+   * the constructor body during top-level initialisation.
+   *
+   * @param internalName the unique internal name for the class (typer-assigned)
+   * @param clazz        the class type definition (declarations, parameters, init body)
+   */
   def compileClass(internalName: Identifier, clazz: ClassTypeDef): Unit < Compilation = direct:
     val initPos = Compilation.nextPosition.now + 1
     val defInstrs = Compilation.run(initPos)(Kyo.foreachDiscard(clazz.declarations)(tpl =>
@@ -182,6 +301,14 @@ object Compiler:
     Compilation.emitAll(initInstrs).now
     Compilation.emitAll(classEpilogue).now
 
+  /**
+   * Compiles an entire Algorab program.
+   *
+   * Emits all function definitions first (so they are registered at the start of
+   * execution), then all class definitions, and finally the main expression.
+   *
+   * @param main the top-level program expression (the "main body")
+   */
   def compileProgram(main: Expr): Unit < Compilation = direct:
     Compilation.functions.now.foreach(compileFunction(_, _).now)
     Compilation.classes.now.foreach(compileClass(_, _).now)
