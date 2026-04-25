@@ -1,21 +1,22 @@
-/** Algorab parser: transforms a flat [[Token]] stream into an untyped expression tree.
-  *
-  * [[Parser]] is a collection of `Parse[Token]` combinators that implement the complete
-  * Algorab grammar.  The grammar is expression-oriented: every construct (including function
-  * and class definitions) is an expression that produces a value.
-  *
-  * Operator precedence, from lowest to highest:
-  *   1. Assignment / definitions (`=`)
-  *   1. Boolean (`and`, `or`)
-  *   1. Comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`)
-  *   1. Additive (`+`, `-`)
-  *   1. Multiplicative (`*`, `/`, `//`, `%`)
-  *   1. Unary (`+`, `-`, `not`)
-  *   1. Application / selection (`f(…)`, `f[…]`, `.member`)
-  *   1. Atoms (literals, identifiers, parenthesised expressions)
-  *
-  * The main entry point is [[parseAst]], which parses a complete Algorab program.
-  */
+/**
+ * Algorab parser: transforms a flat [[Token]] stream into an untyped expression tree.
+ *
+ * [[Parser]] is a collection of `Parse[Token]` combinators that implement the complete
+ * Algorab grammar.  The grammar is expression-oriented: every construct (including function
+ * and class definitions) is an expression that produces a value.
+ *
+ * Operator precedence, from lowest to highest:
+ *   1. Assignment / definitions (`=`)
+ *   1. Boolean (`and`, `or`)
+ *   1. Comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`)
+ *   1. Additive (`+`, `-`)
+ *   1. Multiplicative (`*`, `/`, `//`, `%`)
+ *   1. Unary (`+`, `-`, `not`)
+ *   1. Application / selection (`f(…)`, `f[…]`, `.member`)
+ *   1. Atoms (literals, identifiers, parenthesised expressions)
+ *
+ * The main entry point is [[parseAst]], which parses a complete Algorab program.
+ */
 package org.algorab.parser
 
 import kyo.*
@@ -25,24 +26,26 @@ import org.algorab.ast.untpd.Type
 import org.algorab.parser.debug
 import scala.annotation.nowarn
 
-/** Parser combinators for the Algorab grammar.
-  *
-  * All parsers are `lazy val`s to allow mutual recursion between expression and
-  * type parsers without causing initialisation-order issues.
-  */
+/**
+ * Parser combinators for the Algorab grammar.
+ *
+ * All parsers are `lazy val`s to allow mutual recursion between expression and
+ * type parsers without causing initialisation-order issues.
+ */
 object Parser:
 
   given CanEqual[Unit, Unit | Type] = CanEqual.derived
 
-  /** Parses a left-associative list of `element`s separated by a binary `sep` combinator.
-    *
-    * The separator parser returns a function `(A, A) => A` that folds the result.
-    * Elements are combined left-to-right.
-    *
-    * @param element the parser for each operand
-    * @param sep     a parser that consumes the operator and returns the combining function
-    * @return the left-folded result of all elements
-    */
+  /**
+   * Parses a left-associative list of `element`s separated by a binary `sep` combinator.
+   *
+   * The separator parser returns a function `(A, A) => A` that folds the result.
+   * Elements are combined left-to-right.
+   *
+   * @param element the parser for each operand
+   * @param sep     a parser that consumes the operator and returns the combining function
+   * @return the left-folded result of all elements
+   */
   private def separatedByReduce[A, In](element: A < Parse[In], sep: ((A, A) => A) < Parse[In])(using Tag[In], Frame): A < Parse[In] =
     Parse
       .inOrder(
@@ -54,30 +57,33 @@ object Parser:
           case (left, (reduce, right)) => reduce(left, right)
       )
 
-  /** Builds a left-associative binary-operator parser from a map of operator tokens.
-    *
-    * @param element   the parser for the operands
-    * @param operators a map from operator token to the AST-combining function
-    * @return a parser that handles one or more `element (op element)*` sequences
-    */
+  /**
+   * Builds a left-associative binary-operator parser from a map of operator tokens.
+   *
+   * @param element   the parser for the operands
+   * @param operators a map from operator token to the AST-combining function
+   * @return a parser that handles one or more `element (op element)*` sequences
+   */
   private def binaryOperator[A, In](element: A < Parse[In], operators: Map[In, (A, A) => A])(using Tag[In], Frame): A < Parse[In] =
     separatedByReduce(
       element,
       Parse.anyMatch(operators.get.unlift)
     )
 
-  /** Parses a non-blank identifier token.
-    *
-    * Matches any [[Token.Ident]] and unwraps its [[Identifier]] value.
-    */
+  /**
+   * Parses a non-blank identifier token.
+   *
+   * Matches any [[Token.Ident]] and unwraps its [[Identifier]] value.
+   */
   val parseIdentifier: Identifier < Parse[Token] = Parse.anyMatch:
     case Token.Ident(identifier) => identifier
 
-  /** Parses a single literal or variable-reference expression.
-    *
-    * Matches: `LBool`, `LInt`, `LFloat`, `LString`, and bare identifier references
-    * (which become [[Expr.VarCall]]).
-    */
+  /**
+   * Parses a single literal or variable-reference expression.
+   *
+   * Matches: `LBool`, `LInt`, `LFloat`, `LString`, and bare identifier references
+   * (which become [[Expr.VarCall]]).
+   */
   val parseLiteral: Expr < Parse[Token] = Parse.anyMatch:
     case Token.LBool(value)   => Expr.LBool(value)
     case Token.LInt(value)    => Expr.LInt(value)
@@ -85,10 +91,11 @@ object Parser:
     case Token.LString(value) => Expr.LString(value)
     case Token.Ident(name)    => Expr.VarCall(name)
 
-  /** Parses an atomic expression: a literal or a parenthesised expression.
-    *
-    * This is the lowest-level expression parser; all higher-precedence parsers bottom out here.
-    */
+  /**
+   * Parses an atomic expression: a literal or a parenthesised expression.
+   *
+   * This is the lowest-level expression parser; all higher-precedence parsers bottom out here.
+   */
   lazy val parseTerm: Expr < Parse[Token] = withErrorMessage(
     Parse.firstOf(
       parseLiteral,
@@ -97,13 +104,14 @@ object Parser:
     "Invalid term"
   )
 
-  /** Parses a term followed by zero or more postfix operations.
-    *
-    * Postfix operations (applied left-to-right) include:
-    *   - Function application: `expr(arg1, arg2, …)` → [[Expr.Apply]]
-    *   - Type application:     `expr[T1, T2, …]`     → [[Expr.TypeApply]]
-    *   - Member selection:     `expr.member`          → [[Expr.Select]]
-    */
+  /**
+   * Parses a term followed by zero or more postfix operations.
+   *
+   * Postfix operations (applied left-to-right) include:
+   *   - Function application: `expr(arg1, arg2, …)` → [[Expr.Apply]]
+   *   - Type application:     `expr[T1, T2, …]`     → [[Expr.TypeApply]]
+   *   - Member selection:     `expr.member`          → [[Expr.Select]]
+   */
   lazy val parseApply: Expr < Parse[Token] = Parse.inOrder(
     parseTerm,
     Parse.repeat(
@@ -114,7 +122,7 @@ object Parser:
           Parse.separatedBy(parseExpr, Parse.literal(Token.Comma)),
           Parse.literal(Token.ParenClosed)
         ).map((_, args, _) => Expr.Apply(_, args)),
-        // variable[...,...] 
+        // variable[...,...]
         Parse.inOrder(
           Parse.literal(Token.SquareOpen),
           Parse.separatedBy(parseType, Parse.literal(Token.Comma)),
@@ -192,11 +200,12 @@ object Parser:
   /** Parses boolean expressions (`and`, `or`). */
   lazy val parseBool: Expr < Parse[Token] = binaryOperator(parseComp, boolOps)
 
-  /** Parses a simple assignment expression (`name = expr`).
-    *
-    * Note: this does ''not'' consume `val` or `mut`; it is intended for reassignment
-    * to existing mutable variables.
-    */
+  /**
+   * Parses a simple assignment expression (`name = expr`).
+   *
+   * Note: this does ''not'' consume `val` or `mut`; it is intended for reassignment
+   * to existing mutable variables.
+   */
   lazy val parseAssign: Expr < Parse[Token] =
     Parse.inOrder(
       parseIdentifier,
@@ -232,13 +241,14 @@ object Parser:
     parseTypeTerm
   )
 
-  /** Parses a complete type expression, including function types.
-    *
-    * Function types use `=>` as the separator and are right-associative.
-    * The unit input type `()` is recognised as an empty parameter list.
-    * A trailing `()` in the output position is rejected with an error message
-    * (users must write `Unit` explicitly).
-    */
+  /**
+   * Parses a complete type expression, including function types.
+   *
+   * Function types use `=>` as the separator and are right-associative.
+   * The unit input type `()` is recognised as an empty parameter list.
+   * A trailing `()` in the output position is rejected with an error message
+   * (users must write `Unit` explicitly).
+   */
   @nowarn("msg=not.*?exhaustive") // Bug in exhaustivity check
   lazy val parseType: Type < Parse[Token] = Parse.separatedBy(
     Parse.firstOf(
@@ -258,10 +268,11 @@ object Parser:
 
   // Declaration parsers
 
-  /** Parses a `val` or `mut val` variable-binding expression.
-    *
-    * Syntax: `[mut] val name [: Type] = expr`
-    */
+  /**
+   * Parses a `val` or `mut val` variable-binding expression.
+   *
+   * Syntax: `[mut] val name [: Type] = expr`
+   */
   lazy val parseValDef: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.attempt(Parse.literal(Token.Mut)).map(_.isDefined),
@@ -275,13 +286,14 @@ object Parser:
       Parse.require(parseBlockOrExpr)
     ).map((mutable, _, name, tpe, _, expr) => Expr.ValDef(name, tpe, expr, mutable))
 
-  /** Parses a `def` function definition.
-    *
-    * Syntax: `def name [TypeParams] (params): RetType = body`
-    *
-    * Type parameters are optional.  The return type annotation is required (though the type
-    * itself may be [[Type.Inferred]] if the parser accepts it via [[parseType]]).
-    */
+  /**
+   * Parses a `def` function definition.
+   *
+   * Syntax: `def name [TypeParams] (params): RetType = body`
+   *
+   * Type parameters are optional.  The return type annotation is required (though the type
+   * itself may be [[Type.Inferred]] if the parser accepts it via [[parseType]]).
+   */
   lazy val parseFunDef: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.Def),
@@ -323,12 +335,13 @@ object Parser:
       Expr.FunDef(name, typeParams, params.map((id, _, tpe) => (id, tpe)), retType, body)
     )
 
-  /** Parses an `if` conditional expression.
-    *
-    * Syntax: `if cond then ifTrue [else ifFalse]`
-    *
-    * When no `else` branch is present, the missing branch is filled with `VarCall("Unit")`.
-    */
+  /**
+   * Parses an `if` conditional expression.
+   *
+   * Syntax: `if cond then ifTrue [else ifFalse]`
+   *
+   * When no `else` branch is present, the missing branch is filled with `VarCall("Unit")`.
+   */
   lazy val parseIf: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.If),
@@ -341,10 +354,11 @@ object Parser:
       )
     ).map((_, cond, _, thenBranch, elseBranch) => Expr.If(cond, thenBranch, elseBranch))
 
-  /** Parses a `for` loop.
-    *
-    * Syntax: `for iterator in iterable do body`
-    */
+  /**
+   * Parses a `for` loop.
+   *
+   * Syntax: `for iterator in iterable do body`
+   */
   lazy val parseFor: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.For),
@@ -355,10 +369,11 @@ object Parser:
       Parse.require(parseBlockOrExpr)
     ).map((_, id, _, range, _, body) => Expr.For(id, range, body))
 
-  /** Parses a `while` loop.
-    *
-    * Syntax: `while cond do body`
-    */
+  /**
+   * Parses a `while` loop.
+   *
+   * Syntax: `while cond do body`
+   */
   lazy val parseWhile: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.While),
@@ -367,13 +382,14 @@ object Parser:
       Parse.require(parseBlockOrExpr)
     ).map((_, cond, _, body) => Expr.While(cond, body))
 
-  /** Parses a `class` definition.
-    *
-    * Syntax: `class Name [TypeParams] [(params)] [= body]`
-    *
-    * Both type parameters and constructor parameters are optional.  The body is also optional;
-    * an empty class (no `=` clause) produces an empty body chunk.
-    */
+  /**
+   * Parses a `class` definition.
+   *
+   * Syntax: `class Name [TypeParams] [(params)] [= body]`
+   *
+   * Both type parameters and constructor parameters are optional.  The body is also optional;
+   * an empty class (no `=` clause) produces an empty body chunk.
+   */
   lazy val parseClass: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.Class),
@@ -436,10 +452,11 @@ object Parser:
       ))
     )
 
-  /** Parses an indented block body: a newline-separated sequence of expressions.
-    *
-    * Trailing newlines are permitted.  The resulting expressions are wrapped in [[Expr.Block]].
-    */
+  /**
+   * Parses an indented block body: a newline-separated sequence of expressions.
+   *
+   * Trailing newlines are permitted.  The resulting expressions are wrapped in [[Expr.Block]].
+   */
   lazy val parseBlockBody: Expr.Block < Parse[Token] =
     Parse.separatedBy(
       parseExpr,
@@ -447,10 +464,11 @@ object Parser:
       allowTrailing = true
     ).map(Expr.Block.apply)
 
-  /** Parses an indented block (delimited by [[Token.Indent]] / [[Token.DeIndent]]).
-    *
-    * Wraps [[parseBlockBody]] between the synthetic layout tokens emitted by the [[Lexer]].
-    */
+  /**
+   * Parses an indented block (delimited by [[Token.Indent]] / [[Token.DeIndent]]).
+   *
+   * Wraps [[parseBlockBody]] between the synthetic layout tokens emitted by the [[Lexer]].
+   */
   lazy val parseBlockOrExpr: Expr.Block < Parse[Token] =
     Parse.between(
       Parse.literal(Token.Indent),
@@ -458,12 +476,13 @@ object Parser:
       Parse.literal(Token.DeIndent)
     )
 
-  /** Parses any Algorab expression.
-    *
-    * Tries each of the declaration and control-flow forms before falling back to the
-    * binary-operator chain.  Ordered so that more specific forms (assignments, definitions)
-    * are attempted before the general expression parsers.
-    */
+  /**
+   * Parses any Algorab expression.
+   *
+   * Tries each of the declaration and control-flow forms before falling back to the
+   * binary-operator chain.  Ordered so that more specific forms (assignments, definitions)
+   * are attempted before the general expression parsers.
+   */
   lazy val parseExpr: Expr < Parse[Token] = Parse.firstOf(Seq(
     () => parseAssign,
     () => parseValDef,
@@ -476,11 +495,12 @@ object Parser:
     () => parseBool
   ))
 
-  /** Parses a complete Algorab program.
-    *
-    * A program is a block body optionally surrounded by leading/trailing [[Token.Newline]]s.
-    * The entire token stream must be consumed; any remaining tokens result in a parse error.
-    */
+  /**
+   * Parses a complete Algorab program.
+   *
+   * A program is a block body optionally surrounded by leading/trailing [[Token.Newline]]s.
+   * The entire token stream must be consumed; any remaining tokens result in a parse error.
+   */
   val parseAst: Expr < Parse[Token] = Parse.entireInput(
     Parse.between(
       Parse.readWhile[Token](_ == Token.Newline),

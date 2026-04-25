@@ -1,14 +1,15 @@
-/** The Algorab virtual machine interpreter.
-  *
-  * [[VM]] executes the flat instruction sequence produced by [[org.algorab.compiler.Compiler]].
-  * It is a simple, iterative stack machine: [[interpretAll]] runs a loop that fetches each
-  * instruction at the current [[RuntimeContext.nextInstruction]] position and dispatches it
-  * to [[interpretInstr]].
-  *
-  * All state is threaded through `Var[RuntimeContext]` (bundled in the [[Runtime]] effect alias)
-  * so execution is pure from Scala's perspective; side-effects (console I/O) are handled by
-  * Kyo's `Sync` / `Abort[IOException]` layers.
-  */
+/**
+ * The Algorab virtual machine interpreter.
+ *
+ * [[VM]] executes the flat instruction sequence produced by [[org.algorab.compiler.Compiler]].
+ * It is a simple, iterative stack machine: [[interpretAll]] runs a loop that fetches each
+ * instruction at the current [[RuntimeContext.nextInstruction]] position and dispatches it
+ * to [[interpretInstr]].
+ *
+ * All state is threaded through `Var[RuntimeContext]` (bundled in the [[Runtime]] effect alias)
+ * so execution is pure from Scala's perspective; side-effects (console I/O) are handled by
+ * Kyo's `Sync` / `Abort[IOException]` layers.
+ */
 package org.algorab.runtime
 
 import kyo.*
@@ -20,47 +21,49 @@ import scala.collection.mutable
 /** Stack-machine interpreter for Algorab bytecode. */
 object VM:
 
-  /** Pattern-matches `x` against `f`, throwing [[AssertionError]] for unmatched values.
-    *
-    * Used internally throughout the VM to assert that the values on the operand stack have
-    * the expected types (which the type-checker guarantees, so mismatches are internal errors).
-    *
-    * @param x the value to match
-    * @param f the partial function defining the expected patterns
-    * @tparam A the input type
-    * @tparam B the result type
-    * @throws AssertionError if `x` is not matched by `f`
-    */
+  /**
+   * Pattern-matches `x` against `f`, throwing [[AssertionError]] for unmatched values.
+   *
+   * Used internally throughout the VM to assert that the values on the operand stack have
+   * the expected types (which the type-checker guarantees, so mismatches are internal errors).
+   *
+   * @param x the value to match
+   * @param f the partial function defining the expected patterns
+   * @tparam A the input type
+   * @tparam B the result type
+   * @throws AssertionError if `x` is not matched by `f`
+   */
   def matchOrError[A, B](x: A)(f: PartialFunction[A, B]): B =
     f.applyOrElse(x, a => throw AssertionError(s"Unexpected matching value: $a"))
 
-  /** Executes a single [[Instruction]], updating the [[RuntimeContext]] through `Var`.
-    *
-    * Stack machine semantics (pop = rightmost consumed first unless noted):
-    *
-    *   - [[Instruction.Push]] – pushes `value`.
-    *   - [[Instruction.Declare]] / [[Instruction.DeclareBox]] – declares a variable in
-    *     the innermost scope (no stack effect).
-    *   - [[Instruction.Assign]] / [[Instruction.AssignBox]] – pops `value` and stores it.
-    *   - [[Instruction.Load]] / [[Instruction.LoadBox]] – pushes the variable's value.
-    *   - [[Instruction.LoadFunction]] – snapshots closed-over variables and pushes a
-    *     [[Value.UserDefinedFunction]].
-    *   - [[Instruction.LoadClass]] – pushes a [[Value.VClass]].
-    *   - [[Instruction.DeclareField]] – pops `this` and declares a `null` field on it.
-    *   - [[Instruction.AssignField]] – pops `value`, then pops `this`, and stores the field.
-    *   - [[Instruction.Select]] – pops `this` and pushes the named field value.
-    *   - Arithmetic / logical operators – pop operands (right first, then left) and push result.
-    *   - [[Instruction.Apply]] – pops the callee, pops `n` args (rightmost first), and either
-    *     pushes a new [[RuntimeFrame]] (user-defined / class) or calls the built-in immediately.
-    *   - [[Instruction.Jump]] – sets the instruction pointer unconditionally.
-    *   - [[Instruction.JumpIf]] – pops a boolean; jumps to `ifTrue` or `ifFalse`.
-    *   - [[Instruction.Return]] – pops the return value, pops the frame, pushes the return value.
-    *   - [[Instruction.PushScope]] / [[Instruction.PopScope]] – manages the scope chain.
-    *   - [[Instruction.FunctionStart]] – registers the function and jumps past its body.
-    *   - [[Instruction.ClassStart]] – registers the class and jumps past its constructor.
-    *
-    * @param instruction the instruction to execute
-    */
+  /**
+   * Executes a single [[Instruction]], updating the [[RuntimeContext]] through `Var`.
+   *
+   * Stack machine semantics (pop = rightmost consumed first unless noted):
+   *
+   *   - [[Instruction.Push]] – pushes `value`.
+   *   - [[Instruction.Declare]] / [[Instruction.DeclareBox]] – declares a variable in
+   *     the innermost scope (no stack effect).
+   *   - [[Instruction.Assign]] / [[Instruction.AssignBox]] – pops `value` and stores it.
+   *   - [[Instruction.Load]] / [[Instruction.LoadBox]] – pushes the variable's value.
+   *   - [[Instruction.LoadFunction]] – snapshots closed-over variables and pushes a
+   *     [[Value.UserDefinedFunction]].
+   *   - [[Instruction.LoadClass]] – pushes a [[Value.VClass]].
+   *   - [[Instruction.DeclareField]] – pops `this` and declares a `null` field on it.
+   *   - [[Instruction.AssignField]] – pops `value`, then pops `this`, and stores the field.
+   *   - [[Instruction.Select]] – pops `this` and pushes the named field value.
+   *   - Arithmetic / logical operators – pop operands (right first, then left) and push result.
+   *   - [[Instruction.Apply]] – pops the callee, pops `n` args (rightmost first), and either
+   *     pushes a new [[RuntimeFrame]] (user-defined / class) or calls the built-in immediately.
+   *   - [[Instruction.Jump]] – sets the instruction pointer unconditionally.
+   *   - [[Instruction.JumpIf]] – pops a boolean; jumps to `ifTrue` or `ifFalse`.
+   *   - [[Instruction.Return]] – pops the return value, pops the frame, pushes the return value.
+   *   - [[Instruction.PushScope]] / [[Instruction.PopScope]] – manages the scope chain.
+   *   - [[Instruction.FunctionStart]] – registers the function and jumps past its body.
+   *   - [[Instruction.ClassStart]] – registers the class and jumps past its constructor.
+   *
+   * @param instruction the instruction to execute
+   */
   def interpretInstr(instruction: Instruction): Unit < Runtime = direct:
     instruction match
       case Instruction.Push(value)      => RuntimeContext.push(value).now
@@ -223,18 +226,19 @@ object VM:
         RuntimeContext.declareClass(internalName, classDef).now
         RuntimeContext.jump(next).now
 
-  /** Executes all instructions in `instructions` until the end of the array is reached.
-    *
-    * On each iteration:
-    *   1. The current [[RuntimeContext.nextInstruction]] index is read.
-    *   1. The instruction pointer is advanced to `current + 1` (branch / call / return
-    *      instructions may overwrite this with a different target).
-    *   1. [[interpretInstr]] is called for the instruction at `current`.
-    *
-    * Execution terminates when `nextInstruction >= instructions.size`.
-    *
-    * @param instructions the compiled instruction sequence to execute
-    */
+  /**
+   * Executes all instructions in `instructions` until the end of the array is reached.
+   *
+   * On each iteration:
+   *   1. The current [[RuntimeContext.nextInstruction]] index is read.
+   *   1. The instruction pointer is advanced to `current + 1` (branch / call / return
+   *      instructions may overwrite this with a different target).
+   *   1. [[interpretInstr]] is called for the instruction at `current`.
+   *
+   * Execution terminates when `nextInstruction >= instructions.size`.
+   *
+   * @param instructions the compiled instruction sequence to execute
+   */
   def interpretAll(instructions: Chunk[Instruction]): Unit < Runtime = direct:
     while instructions.sizeCompare(RuntimeContext.nextInstruction.now.value) > 0 do
       val next = RuntimeContext.nextInstruction.now

@@ -1,10 +1,11 @@
-/** Typer-internal refined types.
-  *
-  * [[VariableId]] is the stable, integer-indexed key used to look up [[Variable]] metadata
-  * in the flat `variables: Chunk[Variable]` array inside [[TypeContext]].  Using a refined
-  * type (Iron `Positive0`) instead of a plain `Int` prevents negative indices at construction
-  * time.
-  */
+/**
+ * Typer-internal refined types.
+ *
+ * [[VariableId]] is the stable, integer-indexed key used to look up [[Variable]] metadata
+ * in the flat `variables: Chunk[Variable]` array inside [[TypeContext]].  Using a refined
+ * type (Iron `Positive0`) instead of a plain `Int` prevents negative indices at construction
+ * time.
+ */
 package org.algorab.typer
 
 import io.github.iltotore.iron.*

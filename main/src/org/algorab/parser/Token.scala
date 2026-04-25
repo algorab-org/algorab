@@ -1,22 +1,24 @@
-/** Lexer token definitions for the Algorab language.
-  *
-  * Each [[Token]] variant corresponds to a lexical unit recognised by [[Lexer]].
-  * Tokens are consumed by [[Parser]] to build the untyped AST.
-  */
+/**
+ * Lexer token definitions for the Algorab language.
+ *
+ * Each [[Token]] variant corresponds to a lexical unit recognised by [[Lexer]].
+ * Tokens are consumed by [[Parser]] to build the untyped AST.
+ */
 package org.algorab.parser
 
 import org.algorab.ast.Identifier
 
-/** A single lexical token produced by the [[Lexer]].
-  *
-  * Tokens are grouped into:
-  *   - '''Literal tokens''' – carry the parsed value of the literal.
-  *   - '''Layout tokens''' – `Indent`, `DeIndent`, `Newline` – produced by the
-  *     indentation-sensitive layout algorithm; they delimit blocks without requiring
-  *     explicit braces.
-  *   - '''Symbol tokens''' – single or multi-character punctuation.
-  *   - '''Keyword tokens''' – reserved words of the language.
-  */
+/**
+ * A single lexical token produced by the [[Lexer]].
+ *
+ * Tokens are grouped into:
+ *   - '''Literal tokens''' – carry the parsed value of the literal.
+ *   - '''Layout tokens''' – `Indent`, `DeIndent`, `Newline` – produced by the
+ *     indentation-sensitive layout algorithm; they delimit blocks without requiring
+ *     explicit braces.
+ *   - '''Symbol tokens''' – single or multi-character punctuation.
+ *   - '''Keyword tokens''' – reserved words of the language.
+ */
 enum Token derives CanEqual:
   // Literals
 
@@ -35,10 +37,11 @@ enum Token derives CanEqual:
   /** A string literal with escape sequences already translated. */
   case LString(value: String)
 
-  /** An identifier token (variable name, type name, etc.).
-    *
-    * @param identifier the validated non-blank identifier string
-    */
+  /**
+   * An identifier token (variable name, type name, etc.).
+   *
+   * @param identifier the validated non-blank identifier string
+   */
   case Ident(identifier: Identifier)
 
   // Layout tokens

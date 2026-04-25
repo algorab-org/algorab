@@ -1,10 +1,11 @@
-/** Compiler-level failures that can be reported to the user.
-  *
-  * A [[CompilerFailure]] is either a [[kyo.ParseFailure]] produced during lexing/parsing, or a
-  * [[typer.TypeFailure]] raised during type-checking.  Both alternatives are handled by the
-  * [[toPrettyString]] extension method, which produces a human-readable diagnostic string
-  * suitable for display on the command line.
-  */
+/**
+ * Compiler-level failures that can be reported to the user.
+ *
+ * A [[CompilerFailure]] is either a [[kyo.ParseFailure]] produced during lexing/parsing, or a
+ * [[typer.TypeFailure]] raised during type-checking.  Both alternatives are handled by the
+ * [[toPrettyString]] extension method, which produces a human-readable diagnostic string
+ * suitable for display on the command line.
+ */
 package org.algorab
 
 import kyo.ParseFailure
@@ -14,13 +15,14 @@ import org.algorab.typer.TypeFailure
 type CompilerFailure = ParseFailure | TypeFailure
 
 extension (failure: CompilerFailure)
-  /** Formats a [[CompilerFailure]] as a human-readable diagnostic string.
-    *
-    * Each case produces a distinct message that includes the relevant identifiers,
-    * positions, or type information needed to understand and locate the error.
-    *
-    * @return a single-line diagnostic string describing the failure
-    */
+  /**
+   * Formats a [[CompilerFailure]] as a human-readable diagnostic string.
+   *
+   * Each case produces a distinct message that includes the relevant identifiers,
+   * positions, or type information needed to understand and locate the error.
+   *
+   * @return a single-line diagnostic string describing the failure
+   */
   def toPrettyString: String = failure match
     case ParseFailure(msg, pos) =>
       s"Parse error at $pos - $msg"
