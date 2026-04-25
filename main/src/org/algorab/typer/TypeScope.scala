@@ -58,6 +58,8 @@ enum TypeScope:
    * @param types     type bindings visible in this scope (includes the class's own name
    *                  mapped to its instance type)
    * @param variables variable bindings visible in this scope (includes `this`)
+   * @param captures  names from outer scopes that have been referenced inside this class;
+   *                  capture propagation stops here and does not reach enclosing scopes
    */
   case Class(id: VariableId, types: Map[Identifier, Type], variables: Map[Identifier, VariableId], captures: Set[Identifier])
 

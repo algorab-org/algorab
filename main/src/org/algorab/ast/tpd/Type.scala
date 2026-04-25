@@ -48,6 +48,7 @@ enum Type derives CanEqual:
    * The type of an instance of a class, with its generic substitutions resolved.
    *
    * @param name         the internal class name
+   * @param typeParams   the ordered list of generic-parameter names declared by the class
    * @param replacements a mapping from generic-parameter names to the concrete types
    *                     they have been substituted with in this instance
    */

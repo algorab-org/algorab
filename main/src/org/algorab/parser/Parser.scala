@@ -430,6 +430,15 @@ object Parser:
       Expr.ClassDef(name, typeParams, parametersOpt.getOrElse(Chunk.empty), body)
     )
 
+  /**
+   * Parses a lambda expression: `(param: Type, …) => body`.
+   *
+   * The parameter list is required and may be empty.  The body must be an indented block
+   * (parsed by [[parseBlockBody]]).
+   *
+   * Lambdas are desugared into an [[Expr.Block]] containing an anonymous [[Expr.FunDef]]
+   * named `lambda` immediately followed by an [[Expr.VarCall]] that returns it.
+   */
   lazy val parseLambda: Expr < Parse[Token] =
     Parse.inOrder(
       Parse.literal(Token.ParenOpen),
