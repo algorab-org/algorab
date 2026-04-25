@@ -23,7 +23,7 @@ import org.algorab.ast.Identifier
   *   - '''Control flow''': `Block`, `If`, `While`, `For`
   */
 enum Expr:
-  // ── Literals ──────────────────────────────────────────────────────────────
+  // Literals
 
   /** A boolean literal (`true` or `false`). */
   case LBool(value: Boolean)
@@ -40,7 +40,7 @@ enum Expr:
   /** A string literal (e.g. `"hello"`). */
   case LString(value: String)
 
-  // ── Logical / comparison operators ────────────────────────────────────────
+  // Logical / comparison operators
 
   /** Logical negation (`not expr`). */
   case Not(expr: Expr)
@@ -63,7 +63,7 @@ enum Expr:
   /** Greater-than-or-equal comparison (`left >= right`). */
   case GreaterEqual(left: Expr, right: Expr)
 
-  // ── Arithmetic operators ───────────────────────────────────────────────────
+  // Arithmetic operators
 
   /** Unary plus (`+expr`). Desugared to the identity during type-checking. */
   case Plus(expr: Expr)
@@ -95,7 +95,7 @@ enum Expr:
   /** Short-circuit logical OR (`left or right`). */
   case Or(left: Expr, right: Expr)
 
-  // ── Variables / bindings ──────────────────────────────────────────────────
+  // Variables / bindings
 
   /** Reference to a variable by name. */
   case VarCall(name: Identifier)
@@ -116,7 +116,7 @@ enum Expr:
     */
   case Assign(name: Identifier, expr: Expr)
 
-  // ── Calls and selections ──────────────────────────────────────────────────
+  // Calls and selections
 
   /** Function or constructor application (`expr(args...)`).
     *
@@ -132,7 +132,7 @@ enum Expr:
     */
   case TypeApply(expr: Expr, types: Chunk[Type])
 
-  // ── Top-level definitions ─────────────────────────────────────────────────
+  // Top-level definitions
 
   /** A named function definition (`def name[typeParams](params): retType = body`).
     *
@@ -142,13 +142,7 @@ enum Expr:
     * @param retType    the declared return type, or [[Type.Inferred]]
     * @param body       the single expression that forms the function body
     */
-  case FunDef(
-      name: Identifier,
-      typeParams: Chunk[Identifier],
-      params: Chunk[(Identifier, Type)],
-      retType: Type,
-      body: Expr
-  )
+  case FunDef(name: Identifier, typeParams: Chunk[Identifier], params: Chunk[(Identifier, Type)], retType: Type, body: Expr)
 
   /** A class definition (`class Name[typeParams](params) = body`).
     *
@@ -157,12 +151,7 @@ enum Expr:
     * @param params     constructor parameter names paired with their declared types
     * @param body       the expressions that form the class body (field initialisers, method defs, etc.)
     */
-  case ClassDef(
-      name: Identifier,
-      typeParams: Chunk[Identifier],
-      params: Chunk[(Identifier, Type)],
-      body: Chunk[Expr]
-  )
+  case ClassDef(name: Identifier, typeParams: Chunk[Identifier], params: Chunk[(Identifier, Type)], body: Chunk[Expr])
 
   /** Member selection on an object (`expr.name`).
     *
@@ -171,7 +160,7 @@ enum Expr:
     */
   case Select(expr: Expr, name: Identifier)
 
-  // ── Control flow ──────────────────────────────────────────────────────────
+  // Control flow
 
   /** A sequence of expressions evaluated in order; the block's value is that of the last expression.
     *

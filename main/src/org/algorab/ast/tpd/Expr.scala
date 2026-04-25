@@ -27,7 +27,7 @@ import org.algorab.typer.VariableId
   *   - [[untpd.Expr.TypeApply]] is erased; type arguments are baked into the surrounding expression type.
   */
 enum Expr:
-  // ── Literals ──────────────────────────────────────────────────────────────
+  // Literals
 
   /** A typed boolean literal.
     *
@@ -64,7 +64,7 @@ enum Expr:
     */
   case LString(value: String, exprType: Type)
 
-  // ── Logical / comparison operators ────────────────────────────────────────
+  // Logical / comparison operators
 
   /** Logical negation.
     *
@@ -113,7 +113,7 @@ enum Expr:
     */
   case GreaterEqual(left: Expr, right: Expr, exprType: Type)
 
-  // ── Arithmetic operators ──────────────────────────────────────────────────
+  // Arithmetic operators
 
   /** Unary arithmetic negation.
     *
@@ -170,7 +170,7 @@ enum Expr:
     */
   case Or(left: Expr, right: Expr, exprType: Type)
 
-  // ── Variables / bindings ──────────────────────────────────────────────────
+  // Variables / bindings
 
   /** A resolved variable reference.
     *
@@ -205,7 +205,7 @@ enum Expr:
     */
   case Assign(id: VariableId, name: Identifier, expr: Expr, exprType: Type)
 
-  // ── Calls and selections ──────────────────────────────────────────────────
+  // Calls and selections
 
   /** A function or constructor call.
     *
@@ -238,7 +238,7 @@ enum Expr:
     */
   case Select(id: VariableId, expr: Expr, name: Identifier, exprType: Type)
 
-  // ── Control flow ──────────────────────────────────────────────────────────
+  // Control flow
 
   /** A scoped block of expressions.
     *

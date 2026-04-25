@@ -18,7 +18,7 @@ import org.algorab.ast.Identifier
   *   - '''Keyword tokens''' – reserved words of the language.
   */
 enum Token derives CanEqual:
-  // ── Literals ──────────────────────────────────────────────────────────────
+  // Literals
 
   /** A boolean literal (`true` or `false`). */
   case LBool(value: Boolean)
@@ -41,7 +41,7 @@ enum Token derives CanEqual:
     */
   case Ident(identifier: Identifier)
 
-  // ── Layout tokens ─────────────────────────────────────────────────────────
+  // Layout tokens
 
   /** Marks the start of an indented block (analogous to `{` in brace-based languages). */
   case Indent
@@ -52,7 +52,7 @@ enum Token derives CanEqual:
   /** Separates adjacent statements within a block (analogous to `;`). */
   case Newline
 
-  // ── Symbol tokens ─────────────────────────────────────────────────────────
+  // Symbol tokens
 
   /** `(` – opens a parenthesised expression or argument list. */
   case ParenOpen
@@ -123,7 +123,7 @@ enum Token derives CanEqual:
   /** `>=` – greater-than-or-equal comparison operator. */
   case GreaterEqual
 
-  // ── Keyword tokens ────────────────────────────────────────────────────────
+  // Keyword tokens
 
   /** `and` – short-circuit logical AND. */
   case And

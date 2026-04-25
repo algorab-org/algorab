@@ -121,7 +121,7 @@ object Lexer:
     /** Computes the column of the current parse position relative to `lineStart`. */
     def column: Int < Parse[Char] = Parse.position.map(_ - lineStart)
 
-  // ── Primitive parsers ──────────────────────────────────────────────────────
+  // Primitive parsers
 
   /** Parses a decimal integer from the current position.
     *

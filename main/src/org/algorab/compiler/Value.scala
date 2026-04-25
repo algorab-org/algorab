@@ -105,7 +105,7 @@ enum Value derives CanEqual:
     */
   case BuiltInFunction(f: Chunk[Value] => Value < (Sync & Abort[IOException]))
 
-  // ── Unsafe accessors ──────────────────────────────────────────────────────
+  // Unsafe accessors
 
   /** Extracts the underlying `Boolean` from a [[VBool]].
     *
@@ -152,7 +152,7 @@ enum Value derives CanEqual:
     case VArray(values) => values
     case _              => throw AssertionError(s"Array expected, got $this")
 
-  // ── Field access ──────────────────────────────────────────────────────────
+  // Field access
 
   /** Returns the value of field `name` on this instance.
     *
@@ -174,7 +174,7 @@ enum Value derives CanEqual:
     case VInstance(_, fields) => fields(name) = value
     case _                    => throw AssertionError(s"Object expected, got $this")
 
-  // ── Box access ────────────────────────────────────────────────────────────
+  // Box access
 
   /** Extracts the wrapped value from a [[VBox]].
     *
@@ -194,7 +194,7 @@ enum Value derives CanEqual:
     case vbox: VBox => vbox.boxxed = value
     case _          => throw AssertionError(s"Box expected, got $this")
 
-  // ── String conversion ─────────────────────────────────────────────────────
+  // String conversion
 
   /** Converts this value to the string representation shown by the built-in `println`.
     *

@@ -129,7 +129,7 @@ object Parser:
     )
   ).map((expr, apps) => apps.foldLeft(expr)((expr, app) => app(expr)))
 
-  // ── Operator tables ───────────────────────────────────────────────────────
+  // Operator tables
 
   /** Unary prefix operators and their AST constructors. */
   val unaryOps: Map[Token, Expr => Expr] = Map(
@@ -168,7 +168,7 @@ object Parser:
     Token.Or -> Expr.Or.apply
   )
 
-  // ── Expression parsers by precedence level ─────────────────────────────────
+  // Expression parsers by precedence level
 
   /** Parses a unary prefix expression (`+`, `-`, `not`) or falls through to [[parseApply]]. */
   lazy val parseUnary: Expr < Parse[Token] =
@@ -204,7 +204,7 @@ object Parser:
       Parse.require(parseBlockOrExpr)
     ).map((name, _, expr) => Expr.Assign(name, expr))
 
-  // ── Type parsers ───────────────────────────────────────────────────────────
+  // Type parsers
 
   /** Parses an atomic type expression: a named type or a parenthesised type/tuple. */
   lazy val parseTypeTerm: Type < Parse[Token] = Parse.firstOf(
@@ -256,7 +256,7 @@ object Parser:
           case other: Type        => Type.Fun(Chunk(other), right)
       )
 
-  // ── Declaration parsers ────────────────────────────────────────────────────
+  // Declaration parsers
 
   /** Parses a `val` or `mut val` variable-binding expression.
     *

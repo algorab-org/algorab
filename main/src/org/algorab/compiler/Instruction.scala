@@ -30,7 +30,7 @@ import org.algorab.ast.Identifier
   *   - '''Scope management''': [[PushScope]], [[PopScope]]
   */
 enum Instruction derives CanEqual:
-  // ── Stack manipulation ─────────────────────────────────────────────────────
+  // Stack manipulation
 
   /** Pushes a constant [[Value]] onto the operand stack.
     *
@@ -38,7 +38,7 @@ enum Instruction derives CanEqual:
     */
   case Push(value: Value)
 
-  // ── Variable management ────────────────────────────────────────────────────
+  // Variable management
 
   /** Declares a new unboxed (direct-value) variable in the innermost scope, initialised to `null`.
     *
@@ -79,7 +79,7 @@ enum Instruction derives CanEqual:
     */
   case LoadBox(name: Identifier)
 
-  // ── Function / class references ────────────────────────────────────────────
+  // Function / class references
 
   /** Pushes a [[Value.UserDefinedFunction]] for the named function onto the stack.
     *
@@ -95,7 +95,7 @@ enum Instruction derives CanEqual:
     */
   case LoadClass(name: Identifier)
 
-  // ── Field access ───────────────────────────────────────────────────────────
+  // Field access
 
   /** Pops the top-of-stack instance and declares a new field `name` on it, set to `null`.
     *
@@ -115,12 +115,12 @@ enum Instruction derives CanEqual:
     */
   case Select(name: Identifier)
 
-  // ── Unary operators ────────────────────────────────────────────────────────
+  // Unary operators
 
   /** Pops a boolean and pushes its logical negation. */
   case Not
 
-  // ── Binary comparison operators ────────────────────────────────────────────
+  // Binary comparison operators
 
   /** Pops two values and pushes `true` iff they are structurally equal. */
   case Equal
@@ -140,7 +140,7 @@ enum Instruction derives CanEqual:
   /** Pops two numeric values and pushes `true` iff the first-pushed is ≥ the second. */
   case GreaterEqual
 
-  // ── Arithmetic operators ───────────────────────────────────────────────────
+  // Arithmetic operators
 
   /** Pops a numeric value and pushes its arithmetic negation. */
   case Minus
@@ -169,7 +169,7 @@ enum Instruction derives CanEqual:
   /** Pops two booleans and pushes their logical OR. */
   case Or
 
-  // ── Control flow ───────────────────────────────────────────────────────────
+  // Control flow
 
   /** Pops a callee and `paramCount` arguments, then invokes the callee.
     *
@@ -199,7 +199,7 @@ enum Instruction derives CanEqual:
     * return value onto the caller's stack. */
   case Return
 
-  // ── Scope management ──────────────────────────────────────────────────────
+  // Scope management
 
   /** Pushes a new empty variable scope onto the current frame's scope stack. */
   case PushScope
@@ -207,7 +207,7 @@ enum Instruction derives CanEqual:
   /** Pops the innermost variable scope from the current frame's scope stack. */
   case PopScope
 
-  // ── Definition markers ─────────────────────────────────────────────────────
+  // Definition markers
 
   /** Registers a function definition in the runtime and jumps past its body.
     *

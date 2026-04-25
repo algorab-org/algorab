@@ -116,12 +116,12 @@ enum Type derives CanEqual:
 object Type:
 
   // Std types
-  val Any: Type = Instance(Identifier("Any"), Map.empty)
-  val Unit: Type = Instance(Identifier("Unit"), Map.empty)
-  val Boolean: Type = Instance(Identifier("Boolean"), Map.empty)
-  val Int: Type = Instance(Identifier("Int"), Map.empty)
-  val Float: Type = Instance(Identifier("Float"), Map.empty)
-  val Char: Type = Instance(Identifier("Char"), Map.empty)
-  val String: Type = Instance(Identifier("String"), Map.empty)
-  val Array: Type = Instance(Identifier("Array"), Map.empty)
+  val Any: Type = Instance(Identifier("Any"), Chunk.empty, Map.empty)
+  val Unit: Type = Instance(Identifier("Unit"), Chunk.empty, Map.empty)
+  val Boolean: Type = Instance(Identifier("Boolean"), Chunk.empty, Map.empty)
+  val Int: Type = Instance(Identifier("Int"), Chunk.empty, Map.empty)
+  val Float: Type = Instance(Identifier("Float"), Chunk.empty, Map.empty)
+  val Char: Type = Instance(Identifier("Char"), Chunk.empty, Map.empty)
+  val String: Type = Instance(Identifier("String"), Chunk.empty, Map.empty)
+  val Array: Type = Instance(Identifier("Array"), Chunk.empty, Map.empty)
   def arrayOf(tpe: Type): Type = Type.Apply(Array, Chunk(tpe))

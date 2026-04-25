@@ -22,10 +22,4 @@ import org.algorab.ast.tpd.Type
   * @param varId       the [[VariableId]] of the variable that holds this function's value
   *                    (the binding created when the `def` was declared)
   */
-case class FunctionDef(
-    displayName: Identifier,
-    params: Chunk[Identifier],
-    captures: Set[VariableId],
-    body: Expr,
-    varId: VariableId
-)
+case class FunctionDef(displayName: Identifier, params: Chunk[Identifier], captures: Set[VariableId], body: Expr, varId: VariableId)
