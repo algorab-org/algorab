@@ -36,3 +36,5 @@ extension (failure: CompilerFailure)
       s"Cannot assign to immutable variable: ${name.value}"
     case TypeFailure.IllegalForwardReference(name) =>
       s"Illegal forward reference to variable: ${name.value}"
+    case _: TypeFailure.ThisOutsideClass.type =>
+      "Cannot use 'this' outside of a class"
