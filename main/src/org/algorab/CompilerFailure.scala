@@ -14,6 +14,8 @@ import org.algorab.typer.TypeFailure
 /** Union of all failure types that can be produced by the compiler front end. */
 type CompilerFailure = ParseFailure | TypeFailure
 
+given CanEqual[CompilerFailure, CompilerFailure] = CanEqual.derived
+
 extension (failure: CompilerFailure)
   /**
    * Formats a [[CompilerFailure]] as a human-readable diagnostic string.
@@ -53,3 +55,5 @@ extension (failure: CompilerFailure)
       s"Cannot assign to immutable variable: ${name.value}"
     case TypeFailure.IllegalForwardReference(name) =>
       s"Illegal forward reference to variable: ${name.value}"
+    case TypeFailure.ThisOutsideClass =>
+      "Cannot use 'this' outside of a class"

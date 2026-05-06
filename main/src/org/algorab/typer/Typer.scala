@@ -513,8 +513,6 @@ object Typer:
                       .map((paramName, tpe) => (paramName, resolveType(tpe).now))
                       .toMap
 
-                    println(s"Explicit replacements: ${pprint(replacements)}")
-
                     typedExpr.withType(output.replaceGeneric(replacements).now)
                 .now
             case tpd.Type.Class(name, constructor) => rec(constructor).now
