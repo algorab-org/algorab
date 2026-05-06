@@ -5,6 +5,8 @@ import org.algorab.typer.TypeFailure
 
 type CompilerFailure = ParseFailure | TypeFailure
 
+given CanEqual[CompilerFailure, CompilerFailure] = CanEqual.derived
+
 extension (failure: CompilerFailure)
   def toPrettyString: String = failure match
     case ParseFailure(msg, pos) =>
@@ -36,5 +38,5 @@ extension (failure: CompilerFailure)
       s"Cannot assign to immutable variable: ${name.value}"
     case TypeFailure.IllegalForwardReference(name) =>
       s"Illegal forward reference to variable: ${name.value}"
-    case _: TypeFailure.ThisOutsideClass.type =>
+    case TypeFailure.ThisOutsideClass =>
       "Cannot use 'this' outside of a class"
