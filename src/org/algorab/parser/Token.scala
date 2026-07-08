@@ -1,45 +1,48 @@
 package org.algorab.parser
 
 import org.algorab.ast.Identifier
+import io.github.iltotore.pureparser.Span
 
 enum Token derives CanEqual:
-  case LBool(value: Boolean)
-  case LInt(value: Int)
-  case LFloat(value: Double)
-  case LChar(value: Char)
-  case LString(value: String)
-  case Ident(identifier: Identifier)
-  case Indent
-  case DeIndent
-  case Newline
-  case ParenOpen
-  case ParenClosed
-  case Comma
-  case Colon
-  case Plus
-  case Minus
-  case Mul
-  case Div
-  case IntDiv
-  case Percent
-  case DoubleArrow
-  case Equal
-  case EqualEqual
-  case NotEqual
-  case Less
-  case LessEqual
-  case Greater
-  case GreaterEqual
-  case And
-  case Or
-  case Not
-  case If
-  case Then
-  case Else
-  case For
-  case While
-  case Do
-  case In
-  case Def
-  case Val
-  case Mut
+  case LBool(value: Boolean, span: Span)
+  case LInt(value: Int, span: Span)
+  case LFloat(value: Double, span: Span)
+  case LChar(value: Char, span: Span)
+  case LString(value: String, span: Span)
+  case Ident(identifier: Identifier, span: Span)
+  case Indent(span: Span)
+  case DeIndent(span: Span)
+  case Newline(span: Span)
+  case ParenOpen(span: Span)
+  case ParenClosed(span: Span)
+  case Comma(span: Span)
+  case Colon(span: Span)
+  case Plus(span: Span)
+  case Minus(span: Span)
+  case Mul(span: Span)
+  case Div(span: Span)
+  case IntDiv(span: Span)
+  case Percent(span: Span)
+  case DoubleArrow(span: Span)
+  case Equal(span: Span)
+  case EqualEqual(span: Span)
+  case NotEqual(span: Span)
+  case Less(span: Span)
+  case LessEqual(span: Span)
+  case Greater(span: Span)
+  case GreaterEqual(span: Span)
+  case And(span: Span)
+  case Or(span: Span)
+  case Not(span: Span)
+  case If(span: Span)
+  case Then(span: Span)
+  case Else(span: Span)
+  case For(span: Span)
+  case While(span: Span)
+  case Do(span: Span)
+  case In(span: Span)
+  case Def(span: Span)
+  case Val(span: Span)
+  case Mut(span: Span)
+
+  def span: Span
