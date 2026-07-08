@@ -1,0 +1,6 @@
+-- Declaration of multiple variables of the same type in one statement
+val x: Int = 45
+val y: Int = -36
+
+println(x)
+println(y)

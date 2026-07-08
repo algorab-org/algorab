@@ -1,0 +1,10 @@
+-- simple if-else with integer comparison
+mut val x = 0
+val y = 56
+
+if y + 45 <= 2 then
+  x = 1
+else
+  x = 2
+
+println(x)

@@ -1,0 +1,11 @@
+--- count function parameters as initialized ---
+def fac(a: Int): Int =
+  mut val r = 1
+  mut val n = a
+  while n > 0 do
+    r = r * n
+    n = n - 1
+  r
+
+val result: Int = fac(5)
+println(result)

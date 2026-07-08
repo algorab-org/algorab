@@ -1,0 +1,20 @@
+--- Test boolean operators ---
+def test(i: Int): Boolean =
+  println(i)
+  i > 0
+
+println("and")
+println(test(-1) and test(0))
+println(test(-2) and test(1))
+println(test(3) and test(-5))
+println(test(234234) and test(21321))
+
+println("or")
+println(test(-1) or test(0))
+println(test(-2) or test(1))
+println(test(3) or test(-5))
+println(test(234234) or test(21321))
+
+println("not")
+println(not true)
+println(not false)

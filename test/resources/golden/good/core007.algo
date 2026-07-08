@@ -1,0 +1,3 @@
+-- declaration and initialization in same statement
+val x: Int = 7
+println(x)

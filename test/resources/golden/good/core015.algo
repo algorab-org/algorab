@@ -1,0 +1,8 @@
+--- parity of positive integers by recursion ---
+def ev(y: Int): Int =
+  if y > 0 then ev(y - 2)
+  else if y < 0 then 0
+  else 1
+
+val result: Int = ev(17)
+println(result)

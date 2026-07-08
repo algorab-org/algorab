@@ -1,0 +1,8 @@
+--- floating-point arithmetic ---
+val dA: Float = 1.4e-3
+val dB: Float = 0.4e-3
+if dA - dB == 0.001 then
+  println(99)
+val iA: Int = 342
+val iB: Int = 5123123
+println(iA - iB)

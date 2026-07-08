@@ -1,0 +1,8 @@
+--- parity of positive integers by loop ---
+mut val y: Int = 17
+while y > 0 do
+  y = y - 2
+if y < 0 then
+  println(0)
+else
+  println(1)

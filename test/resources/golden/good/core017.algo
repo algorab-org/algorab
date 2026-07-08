@@ -1,0 +1,21 @@
+--- Test boolean operators ---
+def dontCallMe(x: Int): Boolean =
+  println(x)
+  true
+
+def implies(x: Boolean, y: Boolean): Boolean =
+  not x or x == y
+
+val x: Int = 4
+if 3 <= x and 4 != 2 and true then
+  println("true")
+else
+  println("apa")
+
+println(true == true or dontCallMe(1))
+println(4.0 < -50.0 and dontCallMe(2))
+println(4 == x and true == not false and true)
+println(implies(false, false))
+println(implies(false, true))
+println(implies(true, false))
+println(implies(true, true))

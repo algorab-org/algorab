@@ -1,0 +1,9 @@
+--- Arithmetic operations ---
+mut val x: Int = 0
+x = x + 1
+println(x)
+x = x - 1
+println(x)
+x = x - 1
+println(x)
+println(x + x)
