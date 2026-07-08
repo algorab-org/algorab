@@ -9,3 +9,10 @@ object `package` extends ScalaModule, ScalafmtModule:
     mvn"io.github.iltotore::pureparser:0.1.0",
     mvn"io.github.iltotore::iron:3.3.2"
   )
+
+  def scalacOptions = Seq(
+    "-Wvalue-discard", 
+    "-Wnonunit-statement", 
+    "-Wconf:msg=(unused.*value|discarded.*value|pure.*statement):error",
+    "-language:strictEquality"
+  )
