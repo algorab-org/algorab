@@ -13,6 +13,9 @@ enum Token derives CanEqual:
   case Indent(span: Span)
   case DeIndent(span: Span)
   case Newline(span: Span)
+
+  // Symbols
+
   case ParenOpen(span: Span)
   case ParenClosed(span: Span)
   case Comma(span: Span)
@@ -23,7 +26,6 @@ enum Token derives CanEqual:
   case Div(span: Span)
   case IntDiv(span: Span)
   case Percent(span: Span)
-  case DoubleArrow(span: Span)
   case Equal(span: Span)
   case EqualEqual(span: Span)
   case NotEqual(span: Span)
@@ -31,6 +33,9 @@ enum Token derives CanEqual:
   case LessEqual(span: Span)
   case Greater(span: Span)
   case GreaterEqual(span: Span)
+
+  // Keywords
+
   case And(span: Span)
   case Or(span: Span)
   case Not(span: Span)
