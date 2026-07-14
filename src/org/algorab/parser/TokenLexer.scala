@@ -1,13 +1,13 @@
 package org.algorab.parser
 
 import io.github.iltotore.pureparser.*
-import purelogic.*
 import org.algorab.ast.Identifier
+import purelogic.*
+import scala.annotation.tailrec
 
-type TokenLexer = Parser[Char, Token]
 object TokenLexer:
 
-  val booleanParser: TokenLexer = Token.LBool.apply.tupled(
+  val booleanParser: Parser[Char, Token] = Token.LBool.apply.tupled(
     Parser.span(
       Parser.firstOf(
         Parser.as(Parser.literal("true"), true),
@@ -33,7 +33,7 @@ object TokenLexer:
     "Exponent"
   )
 
-  val numberParser: TokenLexer = Parser.firstOf(
+  val numberParser: Parser[Char, Token] = Parser.firstOf(
     Token.LFloat.apply.tupled:
       val (mantissa, exponent, span) = Parser.span(
         Parser.inOrder(
@@ -71,7 +71,7 @@ object TokenLexer:
     Parser.next
   )
 
-  val charParser: TokenLexer = Token.LChar.apply.tupled(
+  val charParser: Parser[Char, Token] = Token.LChar.apply.tupled(
     Parser.span(
       Parser.inOrder(
         Parser.literal('\''),
@@ -86,7 +86,7 @@ object TokenLexer:
     )
   )
 
-  val stringParser: TokenLexer = Token.LString.apply.tupled(
+  val stringParser: Parser[Char, Token] = Token.LString.apply.tupled(
     Parser.span(
       Parser.inOrder(
         Parser.literal("\""),
@@ -101,7 +101,7 @@ object TokenLexer:
     )
   )
 
-  val literalParser: TokenLexer = Parser.firstOf(
+  val literalParser: Parser[Char, Token] = Parser.firstOf(
     booleanParser,
     numberParser,
     charParser,
@@ -110,7 +110,7 @@ object TokenLexer:
 
   private val word: Parser[Char, (String, Span)] = Parser.span(Parser.regex("[a-zA-Z][a-zA-Z0-9]*"))
 
-  private val identifierParser: TokenLexer =
+  private val identifierParser: Parser[Char, Token] =
     val (ident, span) = word
     Token.Ident(Identifier.assume(ident), span)
 
@@ -127,7 +127,7 @@ object TokenLexer:
     "in" -> Token.In.apply,
     "def" -> Token.Def.apply,
     "val" -> Token.Val.apply,
-    "mut" -> Token.Mut.apply,
+    "mut" -> Token.Mut.apply
   )
 
   private val symbols: IndexedSeq[(String, Span => Token)] = Seq(
@@ -149,14 +149,14 @@ object TokenLexer:
     ">" -> Token.Greater.apply,
     ">=" -> Token.GreaterEqual.apply
   )
-  .sortBy(-_._1.length)
-  .toIndexedSeq
+    .sortBy(-_._1.length)
+    .toIndexedSeq
 
-  val keywordParser: TokenLexer =
+  val keywordParser: Parser[Char, Token] =
     val (w, span) = word
     keywords.getOrElse(w, Parser.backtrack)(span)
 
-  val symbolParser: TokenLexer = Parser.firstOfSeq(
+  val symbolParser: Parser[Char, Token] = Parser.firstOfSeq(
     symbols.map((symbol, token) => token(Parser.span(Parser.literal(symbol))))
   )
 
@@ -188,10 +188,81 @@ object TokenLexer:
     )
   )
 
-  val lexer: Parser[Char, List[Token]] = Parser.repeatUntil0(
+  val tokenListParser: Parser[Char, List[Token]] = Parser.repeatUntil0(
     Parser.recoverWith(
       Parser.inOrder(tryParserUnit(commentParser), Parser.spaced(tokenParser), tryParserUnit(commentParser)),
       RecoverStrategy.skipThenRetryUntil(Parser.eof)
     ),
     Parser.eof
   )
+
+  private case class LayoutState(
+      stack: List[Int],
+      output: List[Token],
+      pendingLayout: Boolean,
+      previousPosition: (Int, Int)
+  )
+
+  def isLayoutStart(token: Token): Boolean = token match
+    case _: (Token.If | Token.Then | Token.Else | Token.For | Token.While | Token.Do | Token.In | Token.Equal) => true
+    case _                                                                                                     => false
+
+  def indentationParser(tokens: List[Token], source: String): Parser[Char, List[Token]] =
+    val lineSpans =
+      source
+        .split("(\n|\r(?!\n))")
+        .scanLeft(Span(0, 0))((spanBefore, line) => Span(spanBefore.end, spanBefore.end + line.length + 1))
+        .tail
+        .zipWithIndex
+
+    def lineAndColumn(position: Int): (Int, Int) =
+      lineSpans
+        .collectFirst:
+          case (Span(start, end), line) if position < end => (line, position - start)
+        .get
+
+    val startPosition = tokens.headOption.fold((0, 0))(token => lineAndColumn(token.span.start))
+
+    val finalState = tokens.foldLeft(LayoutState(List(0), Nil, false, startPosition)): (state, token) =>
+      val (line, column) = lineAndColumn(token.span.start)
+      val isSameLine = line == state.previousPosition._1
+      val isMoreIndented = column > state.stack.head
+
+      val withIndent =
+        if state.pendingLayout && !isSameLine then
+          if !isMoreIndented then
+            write(ParseError(s"Greater indentation than ${state.stack.head}", token.span.start))
+
+          state.copy(
+            stack = column :: state.stack,
+            output = state.output :+ Token.Indent(Span(lineSpans(line)._1.start, token.span.start))
+          )
+        else state
+
+      val (dropped, remainingLayouts) = withIndent.stack.span(_ > column)
+      val deindents = dropped.map(column => Token.DeIndent(Span(column, column)))
+
+      val withDeindents = withIndent.copy(
+        stack = remainingLayouts,
+        output = withIndent.output ++ deindents
+      )
+
+      if withDeindents.stack.head < withIndent.stack.head && column > withDeindents.stack.head then
+        write(ParseError(s"Greater or equal indentation than ${state.stack.head}", token.span.start))
+
+      val withNewline =
+        if !isSameLine && withDeindents.stack.head == column && !withDeindents.pendingLayout then
+          withDeindents.copy(
+            output = withDeindents.output :+ Token.Newline(Span(token.span.start, token.span.start))
+          )
+        else withDeindents
+
+      withNewline.copy(
+        output = withNewline.output :+ token,
+        pendingLayout = isLayoutStart(token),
+        previousPosition = (line, column)
+      )
+
+    finalState.output ++ finalState.stack.init.map(column => Token.DeIndent(Span(column, column)))
+
+  def apply(source: String): ParseResult[Char, List[Token]] = Parser(source)(indentationParser(tokenListParser, source))
