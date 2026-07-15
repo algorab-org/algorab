@@ -108,7 +108,7 @@ object TokenLexer:
     stringParser
   )
 
-  private val word: Parser[Char, (String, Span)] = Parser.span(Parser.regex("[a-zA-Z][a-zA-Z0-9]*"))
+  private val word: Parser[Char, (String, Span)] = Parser.span(Parser.regex("[a-zA-Z_][a-zA-Z0-9_]*"))
 
   private val identifierParser: Parser[Char, Token] =
     val (ident, span) = word
@@ -265,4 +265,4 @@ object TokenLexer:
 
     finalState.output ++ finalState.stack.init.map(column => Token.DeIndent(Span(column, column)))
 
-  def apply(source: String): ParseResult[Char, List[Token]] = Parser(source)(indentationParser(tokenListParser, source))
+  def apply(source: String): Parser[Char, List[Token]] = indentationParser(tokenListParser, source)
