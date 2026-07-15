@@ -34,5 +34,6 @@ enum Expr:
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, span: Span)
   case While(cond: Expr, body: Expr, span: Span)
   case For(iterator: Identifier, iterable: Expr, body: Expr, span: Span)
+  case Invalid(span: Span)
 
   def span: Span
