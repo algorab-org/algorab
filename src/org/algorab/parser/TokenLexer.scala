@@ -207,6 +207,10 @@ object TokenLexer:
     case _: (Token.If | Token.Then | Token.Else | Token.For | Token.While | Token.Do | Token.In | Token.Equal) => true
     case _                                                                                                     => false
 
+  def isLayoutEnd(token: Token): Boolean = token match
+    case _: (Token.Then | Token.Else | Token.In | Token.Do) => true
+    case _                                                  => false
+
   def indentationParser(tokens: List[Token], source: String): Parser[Char, List[Token]] =
     val lineSpans =
       source
@@ -251,7 +255,7 @@ object TokenLexer:
         write(ParseError(s"Greater or equal indentation than ${state.stack.head}", token.span.start))
 
       val withNewline =
-        if !isSameLine && withDeindents.stack.head == column && !withDeindents.pendingLayout then
+        if !isSameLine && withDeindents.stack.head == column && !withDeindents.pendingLayout && !isLayoutEnd(token) then
           withDeindents.copy(
             output = withDeindents.output :+ Token.Newline(Span(token.span.start, token.span.start))
           )
