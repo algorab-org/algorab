@@ -6,12 +6,13 @@ import org.algorab.ast.Expr
 object ExprParser:
 
   val literalParser: Parser[Token, Expr] = Parser.next match
-    case Token.LBool(value, span)   => Expr.LBool(value, span)
-    case Token.LInt(value, span)    => Expr.LInt(value, span)
-    case Token.LFloat(value, span)  => Expr.LFloat(value, span)
-    case Token.LChar(value, span)   => Expr.LChar(value, span)
-    case Token.LString(value, span) => Expr.LString(value, span)
-    case _                          => Parser.backtrack
+    case Token.LBool(value, span)      => Expr.LBool(value, span)
+    case Token.LInt(value, span)       => Expr.LInt(value, span)
+    case Token.LFloat(value, span)     => Expr.LFloat(value, span)
+    case Token.LChar(value, span)      => Expr.LChar(value, span)
+    case Token.LString(value, span)    => Expr.LString(value, span)
+    case Token.Ident(identifier, span) => Expr.VarCall(identifier, span)
+    case _                             => Parser.backtrack
 
   val termParser: Parser[Token, Expr] = Parser.firstOf(
     literalParser,
@@ -65,13 +66,81 @@ object ExprParser:
   val binaryCompOpParser: Parser[Token, Expr] = binaryOpParser(binaryAddOpParser, binaryCompOps)
   val binaryBoolOpParser: Parser[Token, Expr] = binaryOpParser(binaryCompOpParser, binaryBoolOps)
 
-  val exprParser: Parser[Token, Expr] = Parser.expect(
+  private val blockParser: Parser[Token, Expr] =
+    Expr.Block.apply.tupled(tokenSpan(Parser.separatedBy(exprParser, tokenTypeParser[Token.Newline])))
+
+  val optionalNewline: Parser[Token, Unit] = tryParserUnit(tokenTypeParser[Token.Newline])
+
+  val ifParser: Parser[Token, Expr] = Expr.If.apply.tupled(
+    tokenSpan(
+      Parser.inOrder(
+        tokenTypeParser[Token.If],
+        exprParser,
+        optionalNewline,
+        tokenTypeParser[Token.Then],
+        exprParser,
+        Parser.firstOf(
+          Parser.inOrder(
+            optionalNewline,
+            tokenTypeParser[Token.Else],
+            exprParser
+          ),
+          Expr.Block(Nil, Span(0, 0))
+        )
+      )
+    )
+  )
+
+  val forParser: Parser[Token, Expr] = Expr.For.apply.tupled(
+    tokenSpan(
+      Parser.inOrder(
+        tokenTypeParser[Token.For],
+        matchingParser:
+          case Token.Ident(identifier, _) => identifier,
+        optionalNewline,
+        tokenTypeParser[Token.In],
+        exprParser,
+        optionalNewline,
+        tokenTypeParser[Token.Do],
+        exprParser
+      )
+    )
+  )
+
+  val whileParser: Parser[Token, Expr] = Expr.While.apply.tupled(
+    tokenSpan(
+      Parser.inOrder(
+        tokenTypeParser[Token.While],
+        exprParser,
+        optionalNewline,
+        tokenTypeParser[Token.Do],
+        exprParser
+      )
+    )
+  )
+
+  val singleExpressionParser: Parser[Token, Expr] = Parser.firstOf(
     binaryBoolOpParser,
+    ifParser,
+    forParser,
+    whileParser
+  )
+
+  val exprParser: Parser[Token, Expr] = Parser.expect(
+    Parser.firstOf(
+      Parser.inOrder(
+        tokenTypeParser[Token.Indent],
+        Parser.debug(blockParser, "block"),
+        tokenTypeParser[Token.DeIndent]
+      ),
+      singleExpressionParser
+    ),
     "Valid expression"
   )
 
   def apply(code: String): ParseResult[Char | Token, Expr] =
     val lexResult = Parser(code)(TokenLexer(code))
     lexResult.output.fold(lexResult.copy(output = None, errors = lexResult.errors)): tokens =>
-      val parseResult = Parser(tokens.toIndexedSeq)(exprParser)
+      println(s"Tokens: ${tokens.zipWithIndex.mkString("\n")}")
+      val parseResult = Parser(tokens.toIndexedSeq)(Parser.inOrder(blockParser, Parser.eof))
       parseResult.copy(errors = lexResult.errors ++ parseResult.errors)
