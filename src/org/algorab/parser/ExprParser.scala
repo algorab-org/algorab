@@ -18,7 +18,7 @@ object ExprParser:
 
   val termParser: Parser[Token, Expr] = Parser.firstOf(
     literalParser,
-    Parser.inOrder(tokenTypeParser[Token.ParenOpen], exprParser, tokenTypeParser[Token.ParenClosed])
+    Parser.inOrder(tokenTypeParser[Token.ParenOpen], exprParser, Parser.commit(tokenTypeParser[Token.ParenClosed]))
   )
 
   val applyParser: Parser[Token, Expr] =
@@ -29,7 +29,7 @@ object ExprParser:
           Parser.inOrder(
             tokenTypeParser[Token.ParenOpen],
             Parser.separatedBy(exprParser, tokenTypeParser[Token.Comma]),
-            tokenTypeParser[Token.ParenClosed]
+            Parser.commit(tokenTypeParser[Token.ParenClosed])
           )
         )
       )
@@ -46,6 +46,7 @@ object ExprParser:
   private val binaryMulOps: PartialFunction[Token, (Expr, Expr, Span) => Expr] =
     case Token.Mul(_)     => Expr.Mul.apply
     case Token.Div(_)     => Expr.Div.apply
+    case Token.IntDiv(_)  => Expr.IntDiv.apply
     case Token.Percent(_) => Expr.Mod.apply
 
   private val binaryAddOps: PartialFunction[Token, (Expr, Expr, Span) => Expr] =
@@ -54,6 +55,7 @@ object ExprParser:
 
   private val binaryCompOps: PartialFunction[Token, (Expr, Expr, Span) => Expr] =
     case Token.EqualEqual(_)   => Expr.Equal.apply
+    case Token.NotEqual(_)     => Expr.NotEqual.apply
     case Token.Greater(_)      => Expr.Greater.apply
     case Token.GreaterEqual(_) => Expr.GreaterEqual.apply
     case Token.Less(_)         => Expr.Less.apply
@@ -97,13 +99,15 @@ object ExprParser:
     tokenSpan(
       Parser.inOrder(
         tokenTypeParser[Token.If],
-        exprParser,
-        tokenTypeParser[Token.Then],
-        exprParser,
+        Parser.commit(Parser.inOrder(
+          exprParser,
+          tokenTypeParser[Token.Then],
+          exprParser
+        )),
         Parser.firstOf(
           Parser.inOrder(
             tokenTypeParser[Token.Else],
-            exprParser
+            Parser.commit(exprParser)
           ),
           Expr.Block(Nil, Span(0, 0))
         )
@@ -115,11 +119,13 @@ object ExprParser:
     tokenSpan(
       Parser.inOrder(
         tokenTypeParser[Token.For],
-        identifierParser,
-        tokenTypeParser[Token.In],
-        exprParser,
-        tokenTypeParser[Token.Do],
-        exprParser
+        Parser.commit(Parser.inOrder(
+          identifierParser,
+          tokenTypeParser[Token.In],
+          exprParser,
+          tokenTypeParser[Token.Do],
+          exprParser
+        ))
       )
     )
   )
@@ -128,9 +134,11 @@ object ExprParser:
     tokenSpan(
       Parser.inOrder(
         tokenTypeParser[Token.While],
-        exprParser,
-        tokenTypeParser[Token.Do],
-        exprParser
+        Parser.commit(Parser.inOrder(
+          exprParser,
+          tokenTypeParser[Token.Do],
+          exprParser
+        ))
       )
     )
   )
@@ -140,13 +148,15 @@ object ExprParser:
       Parser.inOrder(
         Parser.firstOf(Parser.as(tokenTypeParser[Token.Mut], true), false),
         tokenTypeParser[Token.Val],
-        identifierParser,
-        Parser.firstOf(
-          Parser.inOrder(tokenTypeParser[Token.Colon], typeParser),
-          Type.Inferred
-        ),
-        tokenTypeParser[Token.Equal],
-        exprParser
+        Parser.commit(Parser.inOrder(
+          identifierParser,
+          Parser.firstOf(
+            Parser.inOrder(tokenTypeParser[Token.Colon], Parser.commit(typeParser)),
+            Type.Inferred
+          ),
+          tokenTypeParser[Token.Equal],
+          exprParser
+        ))
       )
     )
 
@@ -157,7 +167,7 @@ object ExprParser:
       Parser.inOrder(
         identifierParser,
         tokenTypeParser[Token.Equal],
-        exprParser
+        Parser.commit(exprParser)
       )
     )
   )
@@ -166,17 +176,21 @@ object ExprParser:
     tokenSpan(
       Parser.inOrder(
         tokenTypeParser[Token.Def],
-        identifierParser,
-        tokenTypeParser[Token.ParenOpen],
-        Parser.separatedBy(
-          Parser.inOrder(identifierParser, tokenTypeParser[Token.Colon], typeParser),
-          tokenTypeParser[Token.Comma]
-        ),
-        tokenTypeParser[Token.ParenClosed],
-        tokenTypeParser[Token.Colon],
-        Parser.firstOf(typeParser, Type.Inferred),
-        tokenTypeParser[Token.Equal],
-        exprParser
+        Parser.commit(Parser.inOrder(
+          identifierParser,
+          tokenTypeParser[Token.ParenOpen],
+          Parser.separatedBy(
+            Parser.inOrder(identifierParser, tokenTypeParser[Token.Colon], typeParser),
+            tokenTypeParser[Token.Comma]
+          ),
+          tokenTypeParser[Token.ParenClosed],
+          Parser.firstOf(
+            Parser.inOrder(tokenTypeParser[Token.Colon], Parser.commit(typeParser)),
+            Type.Inferred
+          ),
+          tokenTypeParser[Token.Equal],
+          exprParser
+        ))
       )
     )
   )
@@ -206,6 +220,5 @@ object ExprParser:
   def apply(code: String): ParseResult[Char | Token, Expr] =
     val lexResult = Parser(code)(TokenLexer(code))
     lexResult.output.fold(lexResult.copy(output = None, errors = lexResult.errors)): tokens =>
-      println(s"Tokens: ${tokens.zipWithIndex.mkString("\n")}")
       val parseResult = Parser(tokens.toIndexedSeq)(Parser.inOrder(blockParser, Parser.eof))
       parseResult.copy(errors = lexResult.errors ++ parseResult.errors)

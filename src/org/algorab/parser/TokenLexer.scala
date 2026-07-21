@@ -190,14 +190,34 @@ object TokenLexer:
 
   val tokenListParser: Parser[Char, List[Token]] = Parser.repeatUntil0(
     Parser.recoverWith(
-      Parser.inOrder(tryParserUnit(commentParser), Parser.spaced(tokenParser), tryParserUnit(commentParser)),
+      Parser.inOrder(Parser.repeatDiscard0(commentParser), Parser.spaced(tokenParser), Parser.repeatDiscard0(commentParser)),
       RecoverStrategy.skipThenRetryUntil(Parser.eof)
     ),
     Parser.eof
   )
 
+  private enum LayoutContext derives CanEqual:
+    case Layout(column: Int)
+    case Parentheses
+
+    def isMoreIndented(column: Int): Boolean = this match
+      case Layout(col) => col < column
+      case Parentheses => false
+
+    def isMoreIndented(other: LayoutContext): Boolean = other match
+      case Layout(column) => this.isMoreIndented(column)
+      case Parentheses => false
+
+    def isLessIndented(column: Int): Boolean = this match
+      case Layout(col) => col > column
+      case Parentheses => false
+    
+    def isAsIndented(column: Int): Boolean = this match
+      case Layout(col) => column == col
+      case Parentheses => false
+
   private case class LayoutState(
-      stack: List[Int],
+      stack: List[LayoutContext],
       output: List[Token],
       pendingLayout: Boolean,
       previousPosition: (Int, Int)
@@ -227,46 +247,56 @@ object TokenLexer:
 
     val startPosition = tokens.headOption.fold((0, 0))(token => lineAndColumn(token.span.start))
 
-    val finalState = tokens.foldLeft(LayoutState(List(0), Nil, false, startPosition)): (state, token) =>
+    val finalState = tokens.foldLeft(LayoutState(List(LayoutContext.Layout(0)), Nil, false, startPosition)): (state, token) =>
       val (line, column) = lineAndColumn(token.span.start)
       val isSameLine = line == state.previousPosition._1
-      val isMoreIndented = column > state.stack.head
 
       val withIndent =
         if state.pendingLayout && !isSameLine then
-          if !isMoreIndented then
+          if !state.stack.head.isMoreIndented(column) then
             write(ParseError(s"Greater indentation than ${state.stack.head}", token.span.start))
 
           state.copy(
-            stack = column :: state.stack,
+            stack = LayoutContext.Layout(column) :: state.stack,
             output = state.output :+ Token.Indent(Span(lineSpans(line)._1.start, token.span.start))
           )
         else state
 
-      val (dropped, remainingLayouts) = withIndent.stack.span(_ > column)
-      val deindents = dropped.map(column => Token.DeIndent(Span(column, column)))
+      val (dropped, remainingLayouts) = withIndent.stack.span(_.isLessIndented(column))
+      val deindents = dropped.map:
+        case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
+        case invalid => throw AssertionError(s"Unexpected deindent of non-layout context: $invalid")
 
       val withDeindents = withIndent.copy(
         stack = remainingLayouts,
         output = withIndent.output ++ deindents
       )
 
-      if withDeindents.stack.head < withIndent.stack.head && column > withDeindents.stack.head then
+      if withDeindents.stack.head.isMoreIndented(withIndent.stack.head) && withDeindents.stack.head.isMoreIndented(column) then
         write(ParseError(s"Greater or equal indentation than ${state.stack.head}", token.span.start))
 
       val withNewline =
-        if !isSameLine && withDeindents.stack.head == column && !withDeindents.pendingLayout && !isLayoutEnd(token) then
+        if !isSameLine && withDeindents.stack.head.isAsIndented(column) && !withDeindents.pendingLayout && !isLayoutEnd(token) then
           withDeindents.copy(
             output = withDeindents.output :+ Token.Newline(Span(token.span.start, token.span.start))
           )
         else withDeindents
 
-      withNewline.copy(
-        output = withNewline.output :+ token,
+      val withParenHandling = token match
+        case Token.ParenOpen(_) => withNewline.copy(stack = LayoutContext.Parentheses :: withNewline.stack)
+        case Token.ParenClosed(_) => withNewline.stack match
+          case LayoutContext.Parentheses :: tail => withNewline.copy(stack = tail)
+          case _ => withNewline
+        case _ => withNewline
+        
+
+      withParenHandling.copy(
+        output = withParenHandling.output :+ token,
         pendingLayout = isLayoutStart(token),
         previousPosition = (line, column)
       )
 
-    finalState.output ++ finalState.stack.init.map(column => Token.DeIndent(Span(column, column)))
+    finalState.output ++ finalState.stack.init.collect:
+      case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
 
   def apply(source: String): Parser[Char, List[Token]] = indentationParser(tokenListParser, source)

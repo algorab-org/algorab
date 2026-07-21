@@ -13,8 +13,7 @@ import scala.quoted.*
 import utest.*
 import scala.util.Using
 import scala.io.Source
-import org.algorab.parser.TokenLexer
-import io.github.iltotore.pureparser.Parser
+import org.algorab.parser.ExprParser
 
 object resources:
 
@@ -37,7 +36,7 @@ object resources:
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
   def runGoldenTest(code: String, input: Iterable[String], expectedOutput: Option[String]): Unit =
-    val result = Parser(code)(TokenLexer(code))
+    val result = ExprParser(code)
     assert(result.output.isDefined)
     assert(result.errors.isEmpty)
 
