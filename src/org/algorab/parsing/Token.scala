@@ -1,4 +1,4 @@
-package org.algorab.parser
+package org.algorab.parsing
 
 import org.algorab.ast.Identifier
 import io.github.iltotore.pureparser.Span

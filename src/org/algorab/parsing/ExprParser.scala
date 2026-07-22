@@ -1,4 +1,4 @@
-package org.algorab.parser
+package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
 import org.algorab.ast.Expr

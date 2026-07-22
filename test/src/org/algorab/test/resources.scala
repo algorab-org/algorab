@@ -13,7 +13,7 @@ import scala.quoted.*
 import utest.*
 import scala.util.Using
 import scala.io.Source
-import org.algorab.parser.ExprParser
+import org.algorab.parsing.ExprParser
 
 object resources:
 
