@@ -1,6 +1,8 @@
-package org.algorab.ast
+package org.algorab.ast.untpd
 
 import io.github.iltotore.pureparser.Span
+import org.algorab.ast.untpd.Type
+import org.algorab.ast.Identifier
 
 enum Expr:
   case LBool(value: Boolean, span: Span)

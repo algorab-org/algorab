@@ -1,9 +1,9 @@
 package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
-import org.algorab.ast.Expr
+import org.algorab.ast.untpd.Expr
 import org.algorab.ast.Identifier
-import org.algorab.ast.Type
+import org.algorab.ast.untpd.Type
 
 object ExprParser:
 
