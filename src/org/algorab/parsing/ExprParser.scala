@@ -7,6 +7,8 @@ import org.algorab.ast.Type
 import org.algorab.AlgorabProgram
 import purelogic.Abort
 import purelogic.Writer
+import org.algorab.ast.Statement
+import org.algorab.ast.Definition
 
 object ExprParser:
 
@@ -91,7 +93,7 @@ object ExprParser:
   val binaryBoolOpParser: Parser[Token, Expr] = binaryOpParser(binaryCompOpParser, binaryBoolOps)
 
   private val blockParser: Parser[Token, Expr] =
-    Expr.Block.apply.tupled(tokenSpan(Parser.separatedBy(exprParser, tokenTypeParser[Token.Newline])))
+    Expr.Block.apply.tupled(tokenSpan(Parser.separatedBy(statementParser, tokenTypeParser[Token.Newline])))
 
   private val identifierParser: Parser[Token, Identifier] = matchingParser:
     case Token.Ident(identifier, _) => identifier
@@ -146,7 +148,7 @@ object ExprParser:
     )
   )
 
-  val valDefParser: Parser[Token, Expr] =
+  val valDefParser: Parser[Token, Definition] =
     val (mutable, name, tpe, expr, span) = tokenSpan(
       Parser.inOrder(
         Parser.firstOf(Parser.as(tokenTypeParser[Token.Mut], true), false),
@@ -163,7 +165,7 @@ object ExprParser:
       )
     )
 
-    Expr.ValDef(name, tpe, expr, mutable, span)
+    Definition.Val(name, tpe, expr, mutable, span)
 
   val assignParser: Parser[Token, Expr] = Expr.Assign.apply.tupled(
     tokenSpan(
@@ -175,7 +177,7 @@ object ExprParser:
     )
   )
 
-  val funDefParser: Parser[Token, Expr] = Expr.FunDef.apply.tupled(
+  val funDefParser: Parser[Token, Definition] = Definition.Function.apply.tupled(
     tokenSpan(
       Parser.inOrder(
         tokenTypeParser[Token.Def],
@@ -198,14 +200,9 @@ object ExprParser:
     )
   )
 
-  val singleExpressionParser: Parser[Token, Expr] = Parser.firstOf(
-    ifParser,
-    forParser,
-    whileParser,
+  val definitionParser: Parser[Token, Definition] = Parser.firstOf(
     valDefParser,
-    assignParser,
-    funDefParser,
-    binaryBoolOpParser
+    funDefParser
   )
 
   val exprParser: Parser[Token, Expr] = Parser.expect(
@@ -215,9 +212,21 @@ object ExprParser:
         blockParser,
         tokenTypeParser[Token.DeIndent]
       ),
-      singleExpressionParser
+      ifParser,
+      forParser,
+      whileParser,
+      assignParser,
+      binaryBoolOpParser
     ),
     "Valid expression"
+  )
+
+  val statementParser: Parser[Token, Statement] = Parser.expect(
+    Parser.firstOf(
+      definitionParser,
+      exprParser
+    ),
+    "Valid statement"
   )
 
   def apply(tokens: List[Token]): AlgorabProgram[Expr] =
