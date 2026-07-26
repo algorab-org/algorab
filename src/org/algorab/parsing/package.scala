@@ -1,5 +1,6 @@
 package org.algorab.parsing
 
+import org.algorab.AlgorabProgram
 import io.github.iltotore.pureparser.*
 import io.github.iltotore.pureparser.util.Zip
 import purelogic.*

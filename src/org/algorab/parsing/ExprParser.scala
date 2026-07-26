@@ -4,6 +4,9 @@ import io.github.iltotore.pureparser.*
 import org.algorab.ast.Expr
 import org.algorab.ast.Identifier
 import org.algorab.ast.Type
+import org.algorab.AlgorabProgram
+import purelogic.Abort
+import purelogic.Writer
 
 object ExprParser:
 
@@ -217,8 +220,7 @@ object ExprParser:
     "Valid expression"
   )
 
-  def apply(code: String): ParseResult[Char | Token, Expr] =
-    val lexResult = Parser(code)(TokenLexer(code))
-    lexResult.output.fold(lexResult.copy(output = None, errors = lexResult.errors)): tokens =>
-      val parseResult = Parser(tokens.toIndexedSeq)(Parser.inOrder(blockParser, Parser.eof))
-      parseResult.copy(errors = lexResult.errors ++ parseResult.errors)
+  def apply(tokens: List[Token]): AlgorabProgram[Expr] =
+    val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(blockParser, Parser.eof))
+    Writer.writeAll(result.errors)
+    Abort.extractOption(result.output, ())

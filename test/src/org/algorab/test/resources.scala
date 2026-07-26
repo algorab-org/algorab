@@ -14,6 +14,8 @@ import utest.*
 import scala.util.Using
 import scala.io.Source
 import org.algorab.parsing.ExprParser
+import org.algorab.AlgorabProgram
+import org.algorab.runProgram
 
 object resources:
 
@@ -36,9 +38,9 @@ object resources:
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
   def runGoldenTest(code: String, input: Iterable[String], expectedOutput: Option[String]): Unit =
-    val result = ExprParser(code)
-    assert(result.output.isDefined)
-    assert(result.errors.isEmpty)
+    val (errors, output) = AlgorabProgram(runProgram(code))
+    assert(errors.isEmpty)
+    assert(output.isDefined)
 
   /** Transparent inline entry point that triggers [[goldenTestsImpl]] at the call site.
     *

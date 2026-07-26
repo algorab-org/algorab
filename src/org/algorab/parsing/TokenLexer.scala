@@ -2,6 +2,7 @@ package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
 import org.algorab.ast.Identifier
+import org.algorab.AlgorabProgram
 import purelogic.*
 import scala.annotation.tailrec
 
@@ -299,4 +300,7 @@ object TokenLexer:
     finalState.output ++ finalState.stack.init.collect:
       case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
 
-  def apply(source: String): Parser[Char, List[Token]] = indentationParser(tokenListParser, source)
+  def apply(source: String): AlgorabProgram[List[Token]] =
+    val result = Parser(source)(indentationParser(tokenListParser, source))
+    Writer.writeAll(result.errors)
+    Abort.extractOption(result.output, ())
