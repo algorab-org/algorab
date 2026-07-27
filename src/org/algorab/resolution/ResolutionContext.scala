@@ -3,39 +3,47 @@ package org.algorab.resolution
 import org.algorab.ast.Identifier
 import purelogic.*
 
-case class ResolutionContext(scopeName: Identifier, resolvedNames: Map[Identifier, Identifier], anonymCount: Int)
+case class ResolutionContext(scopeName: Identifier, resolved: Map[Identifier, ResolvedDef], anonymCount: Int)
 
 object ResolutionContext:
 
   val default: ResolutionContext = ResolutionContext(
     scopeName = Identifier("root"),
-    resolvedNames = Map(
-      Identifier("Unit") -> Identifier("Unit"),
-      Identifier("Boolean") -> Identifier("Boolean"),
-      Identifier("Int") -> Identifier("Int"),
-      Identifier("Float") -> Identifier("Float"),
-      Identifier("Char") -> Identifier("Char"),
-      Identifier("String") -> Identifier("String"),
-      Identifier("println") -> Identifier("println"),
-      Identifier("readInt") -> Identifier("readInt"),
-      Identifier("readFloat") -> Identifier("readFloat")
+    resolved = Map(
+      Identifier("Unit") -> ResolvedDef(Identifier("Unit"), true),
+      Identifier("Boolean") -> ResolvedDef(Identifier("Boolean"), true),
+      Identifier("Int") -> ResolvedDef(Identifier("Int"), true),
+      Identifier("Float") -> ResolvedDef(Identifier("Float"), true),
+      Identifier("Char") -> ResolvedDef(Identifier("Char"), true),
+      Identifier("String") -> ResolvedDef(Identifier("String"), true),
+      Identifier("println") -> ResolvedDef(Identifier("println"), true),
+      Identifier("readInt") -> ResolvedDef(Identifier("readInt"), true),
+      Identifier("readFloat") -> ResolvedDef(Identifier("readFloat"), true)
     ),
     anonymCount = 0
   )
 
   def getResolvedName(name: Identifier): Resolution[Identifier] =
-    get.resolvedNames.get(name) match
-      case Some(resolved) => resolved
+    get.resolved.get(name) match
+      case Some(ResolvedDef(resolvedName, initialized)) => 
+        if !initialized then write(ResolutionError.ForwardDeclaration(name))
+        resolvedName
       case None =>
         write(ResolutionError.UnknownName(name))
         Identifier.assume("<invalid>")
 
-  def addName(name: Identifier): Resolution[Identifier] =
+  def addName(name: Identifier, initialized: Boolean = true): Resolution[Identifier] =
     updateAndGet(context =>
       context.copy(
-        resolvedNames = context.resolvedNames.updated(name, Identifier.assume(s"${context.scopeName}.$name"))
+        resolved = context.resolved.updated(name, ResolvedDef(Identifier.assume(s"${context.scopeName}.$name"), initialized))
       )
-    ).resolvedNames(name)
+    ).resolved(name).name
+
+  def updatedResolvedDef(name: Identifier)(f: ResolvedDef => ResolvedDef): Resolution[Unit] =
+    update(context =>
+      val resolvedDef = context.resolved(name)
+      context.copy(resolved = context.resolved.updated(name, f(resolvedDef)))
+    )
 
   def inNewScope[A](name: Identifier)(body: Resolution[A]): Resolution[A] =
     localState(_.copy(scopeName = name))(body)

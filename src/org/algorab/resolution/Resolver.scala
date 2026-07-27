@@ -17,6 +17,7 @@ object Resolver:
 
   def resolveDefinition(definition: Definition): Resolution[Definition] = definition match
     case Definition.Val(name, tpe, expr, mutable, span) =>
+      ResolutionContext.updatedResolvedDef(name)(_.copy(initialized = true))
       Definition.Val(ResolutionContext.getResolvedName(name), resolveType(tpe), resolveExpr(expr), mutable, span)
     case Definition.Function(name, params, retType, body, span) =>
       val funName = ResolutionContext.getResolvedName(name)
@@ -30,7 +31,7 @@ object Resolver:
         )
 
   def addDefinition(definition: Definition): Resolution[Unit] = definition match
-    case Definition.Val(name, _, _, _, _)      => ResolutionContext.addName(name).asInstanceOf[Unit]
+    case Definition.Val(name, _, _, _, _)      => ResolutionContext.addName(name, initialized = false).asInstanceOf[Unit]
     case Definition.Function(name, _, _, _, _) => ResolutionContext.addName(name).asInstanceOf[Unit]
 
   def resolveExpr(expr: Expr): Resolution[Expr] = expr match
