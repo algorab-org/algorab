@@ -1,5 +1,6 @@
 package org.algorab.resolution
 
+import io.github.iltotore.pureparser.Span
 import org.algorab.ast.Identifier
 import purelogic.*
 
@@ -10,32 +11,32 @@ object ResolutionContext:
   val default: ResolutionContext = ResolutionContext(
     scopeName = Identifier("root"),
     resolved = Map(
-      Identifier("Unit") -> ResolvedDef(Identifier("Unit"), true),
-      Identifier("Boolean") -> ResolvedDef(Identifier("Boolean"), true),
-      Identifier("Int") -> ResolvedDef(Identifier("Int"), true),
-      Identifier("Float") -> ResolvedDef(Identifier("Float"), true),
-      Identifier("Char") -> ResolvedDef(Identifier("Char"), true),
-      Identifier("String") -> ResolvedDef(Identifier("String"), true),
-      Identifier("println") -> ResolvedDef(Identifier("println"), true),
-      Identifier("readInt") -> ResolvedDef(Identifier("readInt"), true),
-      Identifier("readFloat") -> ResolvedDef(Identifier("readFloat"), true)
+      Identifier("Unit") -> ResolvedDef(Identifier("Unit"), Span(0, 0), true),
+      Identifier("Boolean") -> ResolvedDef(Identifier("Boolean"), Span(0, 0), true),
+      Identifier("Int") -> ResolvedDef(Identifier("Int"), Span(0, 0), true),
+      Identifier("Float") -> ResolvedDef(Identifier("Float"), Span(0, 0), true),
+      Identifier("Char") -> ResolvedDef(Identifier("Char"), Span(0, 0), true),
+      Identifier("String") -> ResolvedDef(Identifier("String"), Span(0, 0), true),
+      Identifier("println") -> ResolvedDef(Identifier("println"), Span(0, 0), true),
+      Identifier("readInt") -> ResolvedDef(Identifier("readInt"), Span(0, 0), true),
+      Identifier("readFloat") -> ResolvedDef(Identifier("readFloat"), Span(0, 0), true)
     ),
     anonymCount = 0
   )
 
-  def getResolvedName(name: Identifier): Resolution[Identifier] =
+  def getResolvedName(name: Identifier, span: Span): Resolution[Identifier] =
     get.resolved.get(name) match
-      case Some(ResolvedDef(resolvedName, initialized)) => 
-        if !initialized then write(ResolutionError.ForwardDeclaration(name))
+      case Some(ResolvedDef(resolvedName, declarationSpan, initialized)) =>
+        if !initialized then write(ResolutionError.ForwardDeclaration(name, declarationSpan, span))
         resolvedName
       case None =>
-        write(ResolutionError.UnknownName(name))
+        write(ResolutionError.UnknownName(name, span))
         Identifier.assume("<invalid>")
 
-  def addName(name: Identifier, initialized: Boolean = true): Resolution[Identifier] =
+  def declareDef(name: Identifier, span: Span, initialized: Boolean = true): Resolution[Identifier] =
     updateAndGet(context =>
       context.copy(
-        resolved = context.resolved.updated(name, ResolvedDef(Identifier.assume(s"${context.scopeName}.$name"), initialized))
+        resolved = context.resolved.updated(name, ResolvedDef(Identifier.assume(s"${context.scopeName}.$name"), span, initialized))
       )
     ).resolved(name).name
 

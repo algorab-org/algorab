@@ -18,21 +18,21 @@ object Resolver:
   def resolveDefinition(definition: Definition): Resolution[Definition] = definition match
     case Definition.Val(name, tpe, expr, mutable, span) =>
       ResolutionContext.updatedResolvedDef(name)(_.copy(initialized = true))
-      Definition.Val(ResolutionContext.getResolvedName(name), resolveType(tpe), resolveExpr(expr), mutable, span)
+      Definition.Val(ResolutionContext.getResolvedName(name, span), resolveType(tpe), resolveExpr(expr), mutable, span)
     case Definition.Function(name, params, retType, body, span) =>
-      val funName = ResolutionContext.getResolvedName(name)
+      val funName = ResolutionContext.getResolvedName(name, span)
       ResolutionContext.inNewScope(funName):
         Definition.Function(
           funName,
-          params.map((name, tpe) => (ResolutionContext.addName(name), tpe)),
+          params.map((name, tpe) => (ResolutionContext.declareDef(name, span), tpe)),
           resolveType(retType),
           resolveExpr(body),
           span
         )
 
   def addDefinition(definition: Definition): Resolution[Unit] = definition match
-    case Definition.Val(name, _, _, _, _)      => ResolutionContext.addName(name, initialized = false).asInstanceOf[Unit]
-    case Definition.Function(name, _, _, _, _) => ResolutionContext.addName(name).asInstanceOf[Unit]
+    case Definition.Val(name, _, _, _, span)      => ResolutionContext.declareDef(name, span, initialized = false).asInstanceOf[Unit]
+    case Definition.Function(name, _, _, _, span) => ResolutionContext.declareDef(name, span).asInstanceOf[Unit]
 
   def resolveExpr(expr: Expr): Resolution[Expr] = expr match
     case Expr.LBool(value, span)              => Expr.LBool(value, span)
@@ -57,8 +57,8 @@ object Resolver:
     case Expr.Mod(left, right, span)          => Expr.Mod(resolveExpr(left), resolveExpr(right), span)
     case Expr.And(left, right, span)          => Expr.And(resolveExpr(left), resolveExpr(right), span)
     case Expr.Or(left, right, span)           => Expr.Or(resolveExpr(left), resolveExpr(right), span)
-    case Expr.VarCall(name, span)             => Expr.VarCall(ResolutionContext.getResolvedName(name), span)
-    case Expr.Assign(name, expr, span)        => Expr.Assign(ResolutionContext.getResolvedName(name), resolveExpr(expr), span)
+    case Expr.VarCall(name, span)             => Expr.VarCall(ResolutionContext.getResolvedName(name, span), span)
+    case Expr.Assign(name, expr, span)        => Expr.Assign(ResolutionContext.getResolvedName(name, span), resolveExpr(expr), span)
     case Expr.Apply(expr, args, span)         => Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
     case Expr.Block(statements, span) =>
       ResolutionContext.inNewAnonymScope:
@@ -70,5 +70,5 @@ object Resolver:
     case Expr.While(cond, body, span)         => Expr.While(resolveExpr(cond), resolveExpr(body), span)
     case Expr.For(iterator, iterable, body, span) =>
       ResolutionContext.inNewAnonymScope:
-        Expr.For(ResolutionContext.addName(iterator), resolveExpr(iterable), resolveExpr(body), span)
+        Expr.For(ResolutionContext.declareDef(iterator, span), resolveExpr(iterable), resolveExpr(body), span)
     case Expr.Invalid(span) => Expr.Invalid(span)
