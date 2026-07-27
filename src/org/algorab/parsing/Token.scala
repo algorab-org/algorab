@@ -1,7 +1,7 @@
 package org.algorab.parsing
 
-import org.algorab.ast.Identifier
 import io.github.iltotore.pureparser.Span
+import org.algorab.ast.Identifier
 
 enum Token derives CanEqual:
   case LBool(value: Boolean, span: Span)

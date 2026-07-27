@@ -1,8 +1,8 @@
 package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
-import org.algorab.ast.Identifier
 import org.algorab.AlgorabProgram
+import org.algorab.ast.Identifier
 import purelogic.*
 import scala.annotation.tailrec
 
@@ -207,12 +207,12 @@ object TokenLexer:
 
     def isMoreIndented(other: LayoutContext): Boolean = other match
       case Layout(column) => this.isMoreIndented(column)
-      case Parentheses => false
+      case Parentheses    => false
 
     def isLessIndented(column: Int): Boolean = this match
       case Layout(col) => col > column
       case Parentheses => false
-    
+
     def isAsIndented(column: Int): Boolean = this match
       case Layout(col) => column == col
       case Parentheses => false
@@ -266,7 +266,7 @@ object TokenLexer:
       val (dropped, remainingLayouts) = withIndent.stack.span(_.isLessIndented(column))
       val deindents = dropped.map:
         case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
-        case invalid => throw AssertionError(s"Unexpected deindent of non-layout context: $invalid")
+        case invalid                      => throw AssertionError(s"Unexpected deindent of non-layout context: $invalid")
 
       val withDeindents = withIndent.copy(
         stack = remainingLayouts,
@@ -286,10 +286,9 @@ object TokenLexer:
       val withParenHandling = token match
         case Token.ParenOpen(_) => withNewline.copy(stack = LayoutContext.Parentheses :: withNewline.stack)
         case Token.ParenClosed(_) => withNewline.stack match
-          case LayoutContext.Parentheses :: tail => withNewline.copy(stack = tail)
-          case _ => withNewline
+            case LayoutContext.Parentheses :: tail => withNewline.copy(stack = tail)
+            case _                                 => withNewline
         case _ => withNewline
-        
 
       withParenHandling.copy(
         output = withParenHandling.output :+ token,

@@ -1,7 +1,7 @@
 package org.algorab
 
-import purelogic.Writer
 import purelogic.Abort
+import purelogic.Writer
 
 type AlgorabProgram[+A] = (Writer[AlgorabError], Abort[Unit]) ?=> A
 

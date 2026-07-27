@@ -1,8 +1,8 @@
 package org.algorab
 
 import org.algorab.ast.Expr
-import org.algorab.parsing.TokenLexer
 import org.algorab.parsing.ExprParser
+import org.algorab.parsing.TokenLexer
 import org.algorab.resolution.Resolution
 import org.algorab.resolution.Resolver
 

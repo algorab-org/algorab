@@ -30,9 +30,8 @@ object Resolver:
         )
 
   def addDefinition(definition: Definition): Resolution[Unit] = definition match
-    case Definition.Val(name, _, _, _, _) => ResolutionContext.addName(name).asInstanceOf[Unit]
+    case Definition.Val(name, _, _, _, _)      => ResolutionContext.addName(name).asInstanceOf[Unit]
     case Definition.Function(name, _, _, _, _) => ResolutionContext.addName(name).asInstanceOf[Unit]
-  
 
   def resolveExpr(expr: Expr): Resolution[Expr] = expr match
     case Expr.LBool(value, span)              => Expr.LBool(value, span)
@@ -60,11 +59,11 @@ object Resolver:
     case Expr.VarCall(name, span)             => Expr.VarCall(ResolutionContext.getResolvedName(name), span)
     case Expr.Assign(name, expr, span)        => Expr.Assign(ResolutionContext.getResolvedName(name), resolveExpr(expr), span)
     case Expr.Apply(expr, args, span)         => Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
-    case Expr.Block(statements, span)         =>
+    case Expr.Block(statements, span) =>
       ResolutionContext.inNewAnonymScope:
         statements.foreach:
           case definition: Definition => addDefinition(definition)
-          case _ =>
+          case _                      =>
         Expr.Block(statements.map(resolveStatement), span)
     case Expr.If(cond, ifTrue, ifFalse, span) => Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
     case Expr.While(cond, body, span)         => Expr.While(resolveExpr(cond), resolveExpr(body), span)
