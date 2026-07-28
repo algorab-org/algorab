@@ -16,3 +16,4 @@ object SymbolId extends RefinedType[Int, GreaterEqual[-1]]:
     def +(y: Int :| Positive0): SymbolId = SymbolId.assume(x.value + y)
 
   val Invalid: SymbolId = SymbolId(-1)
+  val Root: SymbolId = SymbolId(0)

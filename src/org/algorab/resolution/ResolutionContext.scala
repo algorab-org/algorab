@@ -9,7 +9,7 @@ import org.algorab.ast.SymbolId
 import purelogic.*
 
 case class ResolutionContext(
-    scopeName: Option[QualifiedName],
+    owner: Option[SymbolId],
     localTerms: Map[Identifier, ResolvedDef],
     localTypes: Map[Identifier, SymbolId],
     symbols: Map[SymbolId, Symbol],
@@ -23,7 +23,7 @@ case class ResolutionContext(
       Symbol.Type(
         id = nextId,
         name = name,
-        qualifiedName = Some(QualifiedName.assume(name.value)),
+        owner = Some(SymbolId.Root),
         span = Span(0, 0)
       )
     ),
@@ -37,7 +37,7 @@ case class ResolutionContext(
       Symbol.Variable(
         id = nextId,
         name = name,
-        qualifiedName = Some(QualifiedName.assume(name.value)),
+        owner = Some(SymbolId.Root),
         mutable = false,
         span = Span(0, 0)
       )
@@ -52,7 +52,7 @@ case class ResolutionContext(
       Symbol.Function(
         id = nextId,
         name = name,
-        qualifiedName = Some(QualifiedName.assume(name.value)),
+        owner = Some(SymbolId.Root),
         span = Span(0, 0)
       )
     ),
@@ -62,11 +62,14 @@ case class ResolutionContext(
 object ResolutionContext:
 
   val default: ResolutionContext = ResolutionContext(
-    scopeName = Some(QualifiedName("root")),
+    owner = Some(SymbolId.Root),
     localTerms = Map.empty,
     localTypes = Map.empty,
-    symbols = Map(SymbolId.Invalid -> Symbol.Invalid),
-    nextId = SymbolId(0)
+    symbols = Map(
+      SymbolId.Invalid -> Symbol.Invalid,
+      SymbolId.Root -> Symbol.Root
+    ),
+    nextId = SymbolId(1)
   )
     .declarePredefType(Identifier("Unit"))
     .declarePredefType(Identifier("Boolean"))
@@ -79,10 +82,8 @@ object ResolutionContext:
     .declarePredefFunction(Identifier("readInt"))
     .declarePredefFunction(Identifier("readFloat"))
 
-  def getQualifiedName(id: SymbolId): Resolution[Option[QualifiedName]] =
-    get.symbols(id) match
-      case valid: Symbol.Valid => valid.qualifiedName
-      case _ => throw AssertionError(s"Get qualified name of invalid symbol $id")
+  def getOwner(id: SymbolId): Resolution[Option[SymbolId]] =
+    get.symbols(id).owner
 
   def getLocalTerm(name: Identifier, span: Span): Resolution[SymbolId] =
     get.localTerms.get(name) match
@@ -103,14 +104,12 @@ object ResolutionContext:
   def declareSymbol(symbol: SymbolId => Symbol.Valid): Resolution[(SymbolId, Symbol.Valid)] =
     val context = get
     val sym = symbol(context.nextId)
-    val qualifiedSymbol = context.scopeName.fold(sym)(name =>
-      sym.withQualifiedName(QualifiedName(s"$name.${sym.name}"))
-    )
+    val withOwner = context.owner.fold(sym)(sym.withOwner)
     set(context.copy(
-      symbols = context.symbols.updated(context.nextId, qualifiedSymbol),
+      symbols = context.symbols.updated(context.nextId, withOwner),
       nextId = context.nextId + 1
     ))
-    (context.nextId, qualifiedSymbol)
+    (context.nextId, withOwner)
 
   def declareTerm(symbol: SymbolId => Symbol.Valid, initialized: Boolean = true): Resolution[SymbolId] =
     val (id, sym) = declareSymbol(symbol)
@@ -129,11 +128,11 @@ object ResolutionContext:
       )
     )
 
-  def inNewScope[A](name: Option[QualifiedName])(body: Resolution[A]): Resolution[A] =
-    val scopeName = get.scopeName
+  def inNewScope[A](owner: Option[SymbolId])(body: Resolution[A]): Resolution[A] =
+    val currentOwner = get.owner
     val localTerms = get.localTerms
     val localTypes = get.localTypes
-    update(_.copy(scopeName = name))
+    update(_.copy(owner = currentOwner.flatMap(_ => owner)))
     val result = body
-    update(_.copy(scopeName = scopeName, localTerms = localTerms, localTypes = localTypes))
+    update(_.copy(owner = currentOwner, localTerms = localTerms, localTypes = localTypes))
     result

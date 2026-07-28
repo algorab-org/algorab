@@ -21,7 +21,7 @@ object Resolver:
       resolved.Definition.Val(ResolutionContext.getLocalTerm(name, span), resolveType(tpe, span), resolveExpr(expr), mutable, span)
     case raw.Definition.Function(name, params, retType, body, span) =>
       val id = ResolutionContext.getLocalTerm(name, span)
-      ResolutionContext.inNewScope(ResolutionContext.getQualifiedName(id))(
+      ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
         resolved.Definition.Function(
           id,
           params.map((name, tpe) => (
