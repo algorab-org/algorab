@@ -1,3 +1,3 @@
-package org.algorab.ast
+package org.algorab.ast.resolved
 
 type Statement = Expr | Definition

@@ -1,6 +1,9 @@
-package org.algorab.ast
+package org.algorab.ast.raw
 
 import io.github.iltotore.pureparser.Span
+import org.algorab.ast.raw.Type
+import org.algorab.ast.raw.Expr
+import org.algorab.ast.Identifier
 
 enum Definition:
   case Val(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean, span: Span)

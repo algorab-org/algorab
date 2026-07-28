@@ -2,11 +2,11 @@ package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
 import org.algorab.AlgorabProgram
-import org.algorab.ast.Definition
-import org.algorab.ast.Expr
+import org.algorab.ast.raw.Definition
+import org.algorab.ast.raw.Expr
 import org.algorab.ast.Identifier
-import org.algorab.ast.Statement
-import org.algorab.ast.Type
+import org.algorab.ast.raw.Statement
+import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
 

@@ -1,6 +1,7 @@
-package org.algorab.ast
+package org.algorab.ast.resolved
 
 import io.github.iltotore.pureparser.Span
+import org.algorab.ast.SymbolId
 
 enum Expr:
   case LBool(value: Boolean, span: Span)
@@ -25,13 +26,13 @@ enum Expr:
   case Mod(left: Expr, right: Expr, span: Span)
   case And(left: Expr, right: Expr, span: Span)
   case Or(left: Expr, right: Expr, span: Span)
-  case VarCall(name: Identifier, span: Span)
-  case Assign(name: Identifier, expr: Expr, span: Span)
+  case VarCall(symbol: SymbolId, span: Span)
+  case Assign(symbol: SymbolId, expr: Expr, span: Span)
   case Apply(expr: Expr, args: List[Expr], span: Span)
   case Block(statements: List[Statement], span: Span)
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, span: Span)
   case While(cond: Expr, body: Expr, span: Span)
-  case For(iterator: Identifier, iterable: Expr, body: Expr, span: Span)
+  case For(iterator: SymbolId, iterable: Expr, body: Expr, span: Span)
   case Invalid(span: Span)
 
   def span: Span
