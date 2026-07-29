@@ -7,5 +7,6 @@ import org.algorab.ast.Symbol
 enum ResolutionError:
   case UnknownName(name: Identifier, span: Span)
   case ForwardDeclaration(symbol: Symbol, span: Span)
+  case AlreadyDeclared(symbol: Symbol, span: Span)
 
   def span: Span
