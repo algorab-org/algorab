@@ -4,12 +4,22 @@ import org.algorab.ast.raw
 import org.algorab.ast.resolved
 import org.algorab.ast.Symbol
 import io.github.iltotore.pureparser.Span
+import org.algorab.ast.SymbolId
 
 object Resolver:
+
+  def resolveProgram(program: raw.Program): resolved.Program = ???
 
   def resolveType(tpe: raw.Type, span: Span): Resolution[resolved.Type] = tpe match
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, span))
     case raw.Type.Inferred  => resolved.Type.Inferred
+
+  def resolveBlock(statements: List[raw.Statement]): Resolution[List[resolved.Statement]] =
+    statements.foreach:
+      case definition: raw.Definition => addDefinition(definition)
+      case _                          =>
+    statements.map(resolveStatement)
+    
 
   def resolveStatement(statement: raw.Statement): Resolution[resolved.Statement] = statement match
     case definition: raw.Definition => resolveDefinition(definition)
@@ -66,12 +76,7 @@ object Resolver:
     case raw.Expr.VarCall(name, span)             => resolved.Expr.VarCall(ResolutionContext.getLocalTerm(name, span), span)
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
     case raw.Expr.Apply(expr, args, span)         => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
-    case raw.Expr.Block(statements, span) =>
-      ResolutionContext.inNewScope(None):
-        statements.foreach:
-          case definition: raw.Definition => addDefinition(definition)
-          case _                      =>
-        resolved.Expr.Block(statements.map(resolveStatement), span)
+    case raw.Expr.Block(statements, span)         => ResolutionContext.inNewScope(None)(resolved.Expr.Block(resolveBlock(statements), span))
     case raw.Expr.If(cond, ifTrue, ifFalse, span) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
     case raw.Expr.While(cond, body, span)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), span)
     case raw.Expr.For(iterator, iterable, body, span) =>

@@ -2,70 +2,83 @@ package org.algorab.resolution
 
 import io.github.iltotore.iron.autoRefine
 import io.github.iltotore.pureparser.Span
-import org.algorab.ast.Identifier
-import org.algorab.ast.QualifiedName
-import org.algorab.ast.Symbol
-import org.algorab.ast.SymbolId
+import org.algorab.ast.*
 import purelogic.*
 
 case class ResolutionContext(
-    scopes: List[ResolutionScope],
+    scopePath: List[ScopeId],
     symbols: Map[SymbolId, Symbol],
-    nextId: SymbolId
+    scopes: Map[ScopeId, ResolutionScope],
+    nextSymbolId: SymbolId,
+    nextScopeId: ScopeId
 ):
 
-  def declarePredefType(name: Identifier): ResolutionContext = this.copy(
-    scopes = scopes.head.withLocalType(name, nextId) :: scopes.tail,
-    symbols = symbols.updated(
-      nextId,
-      Symbol.Type(
-        id = nextId,
-        name = name,
-        owner = Some(SymbolId.Root),
-        span = Span(0, 0)
-      )
-    ),
-    nextId = nextId + 1
+  def currentScopeId: ScopeId = scopePath.head
+
+  def updateScope(id: ScopeId)(f: ResolutionScope => ResolutionScope): ResolutionContext = this.copy(
+    scopes = scopes.updated(id, f(scopes(id)))
   )
 
-  def declarePredefVariable(name: Identifier): ResolutionContext = this.copy(
-    scopes = scopes.head.withLocalTerm(name, ResolvedDef(nextId, initialized = true)) :: scopes.tail,
-    symbols = symbols.updated(
-      nextId,
-      Symbol.Variable(
-        id = nextId,
-        name = name,
-        owner = Some(SymbolId.Root),
-        mutable = false,
-        span = Span(0, 0)
-      )
-    ),
-    nextId = nextId + 1
-  )
+  def updateCurrentScope(f: ResolutionScope => ResolutionScope): ResolutionContext =
+    updateScope(currentScopeId)(f)
 
-  def declarePredefFunction(name: Identifier): ResolutionContext = this.copy(
-    scopes = scopes.head.withLocalTerm(name, ResolvedDef(nextId, initialized = true)) :: scopes.tail,
-    symbols = symbols.updated(
-      nextId,
-      Symbol.Function(
-        id = nextId,
-        name = name,
-        owner = Some(SymbolId.Root),
-        span = Span(0, 0)
-      )
-    ),
-    nextId = nextId + 1
-  )
+  def declarePredefType(name: Identifier): ResolutionContext = this
+    .updateCurrentScope(_.withLocalType(name, nextSymbolId))
+    .copy(
+      symbols = symbols.updated(
+        nextSymbolId,
+        Symbol.Type(
+          id = nextSymbolId,
+          name = name,
+          owner = Some(SymbolId.Root),
+          span = Span(0, 0)
+        )
+      ),
+      nextSymbolId = nextSymbolId + 1
+    )
+
+  def declarePredefVariable(name: Identifier): ResolutionContext = this
+    .updateCurrentScope(_.withLocalTerm(name, ResolvedDef(nextSymbolId, initialized = true)))
+    .copy(
+      symbols = symbols.updated(
+        nextSymbolId,
+        Symbol.Variable(
+          id = nextSymbolId,
+          name = name,
+          owner = Some(SymbolId.Root),
+          mutable = false,
+          span = Span(0, 0)
+        )
+      ),
+      nextSymbolId = nextSymbolId + 1
+    )
+
+  def declarePredefFunction(name: Identifier): ResolutionContext = this
+    .updateCurrentScope(_.withLocalTerm(name, ResolvedDef(nextSymbolId, initialized = true)))
+    .copy(
+      symbols = symbols.updated(
+        nextSymbolId,
+        Symbol.Function(
+          id = nextSymbolId,
+          name = name,
+          owner = Some(SymbolId.Root),
+          span = Span(0, 0)
+        )
+      ),
+      nextSymbolId = nextSymbolId + 1
+    )
 
 object ResolutionContext:
 
   val default: ResolutionContext = ResolutionContext(
-    scopes = List(ResolutionScope.empty(Some(SymbolId.Root))),
+    scopePath = List(ScopeId.Root),
     symbols = Map(
       SymbolId.Invalid -> Symbol.Invalid,
       SymbolId.Root -> Symbol.Root
     ),
-    nextId = SymbolId(1)
+    scopes = Map(ScopeId.Root -> ResolutionScope.empty(Some(SymbolId.Root))),
+    nextSymbolId = SymbolId(1),
+    nextScopeId = ScopeId(1)
   )
     .declarePredefType(Identifier("Unit"))
     .declarePredefType(Identifier("Boolean"))
@@ -81,13 +94,16 @@ object ResolutionContext:
   def getOwner(id: SymbolId): Resolution[Option[SymbolId]] =
     get.symbols(id).owner
 
-  def currentScope: Resolution[ResolutionScope] = get.scopes.head
+  def currentScope: Resolution[ResolutionScope] = get.scopes(get.currentScopeId)
 
   def updateCurrentScope(f: ResolutionScope => ResolutionScope): Resolution[Unit] =
-    update(context => context.copy(scopes = f(context.scopes.head) :: context.scopes.tail))
+    update(_.updateCurrentScope(f))
+
+  def findInScopes[A](f: ResolutionScope => Option[A]): Resolution[Option[A]] =
+    get.scopePath.collectFirst((get.scopes.apply andThen f).unlift)
 
   def getLocalTerm(name: Identifier, span: Span): Resolution[SymbolId] =
-    get.scopes.collectFirst(((_: ResolutionScope).localTerms.get(name)).unlift) match
+    findInScopes(_.localTerms.get(name)) match
       case Some(ResolvedDef(id, initialized)) =>
         if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id), span))
         id
@@ -96,7 +112,7 @@ object ResolutionContext:
         SymbolId.Invalid
 
   def getLocalType(name: Identifier, span: Span): Resolution[SymbolId] =
-    get.scopes.collectFirst(((_: ResolutionScope).localTypes.get(name)).unlift) match
+    findInScopes(_.localTypes.get(name)) match
       case Some(id) => id
       case None =>
         write(ResolutionError.UnknownName(name, span))
@@ -106,13 +122,13 @@ object ResolutionContext:
     val withOwner = currentScope.owner.fold(symbol)(symbol.withOwner)
     val context = get
     set(context.copy(
-      symbols = context.symbols.updated(context.nextId, withOwner),
-      nextId = context.nextId + 1
+      symbols = context.symbols.updated(context.nextSymbolId, withOwner),
+      nextSymbolId = context.nextSymbolId + 1
     ))
     (withOwner)
 
   def declareTerm(symbol: SymbolId => Symbol.Valid, initialized: Boolean = true): Resolution[SymbolId] =
-    val id = get.nextId
+    val id = get.nextSymbolId
     val undeclared = symbol(id)
     currentScope.localTerms.get(undeclared.name) match
       case Some(ResolvedDef(original, _)) =>
@@ -124,7 +140,7 @@ object ResolutionContext:
         id
 
   def declareType(symbol: SymbolId => Symbol.Valid): Resolution[SymbolId] =
-    val id = get.nextId
+    val id = get.nextSymbolId
     val undeclared = symbol(id)
     currentScope.localTypes.get(undeclared.name) match
       case Some(original) =>
@@ -142,8 +158,10 @@ object ResolutionContext:
   def inNewScope[A](owner: Option[SymbolId])(body: Resolution[A]): Resolution[A] =
     val currentOwner = currentScope.owner
     update(context => context.copy(
-      scopes = ResolutionScope.empty(currentOwner.flatMap(_ => owner)) :: context.scopes
+      scopePath = context.nextScopeId :: context.scopePath,
+      scopes = context.scopes.updated(context.nextScopeId, ResolutionScope.empty(currentOwner.flatMap(_ => owner))),
+      nextScopeId = context.nextScopeId + 1
     ))
     val result = body
-    update(context => context.copy(scopes = context.scopes.tail))
+    update(context => context.copy(scopePath = context.scopePath.tail))
     result
