@@ -118,14 +118,16 @@ object ResolutionContext:
         write(ResolutionError.UnknownName(name, span))
         SymbolId.Invalid
 
-  def declareSymbol(symbol: Symbol.Valid): Resolution[(Symbol.Valid)] =
-    val withOwner = currentScope.owner.fold(symbol)(symbol.withOwner)
+  def declareSymbol(symbol: Symbol.Valid): Resolution[Symbol.Valid] =
     val context = get
     set(context.copy(
-      symbols = context.symbols.updated(context.nextSymbolId, withOwner),
+      symbols = context.symbols.updated(context.nextSymbolId, symbol),
       nextSymbolId = context.nextSymbolId + 1
     ))
-    (withOwner)
+    symbol
+
+  def declareLocalSymbol(symbol: Symbol.Valid): Resolution[Symbol.Valid] =
+    declareSymbol(currentScope.owner.fold(symbol)(symbol.withOwner))
 
   def declareTerm(symbol: SymbolId => Symbol.Valid, initialized: Boolean = true): Resolution[SymbolId] =
     val id = get.nextSymbolId
@@ -135,7 +137,7 @@ object ResolutionContext:
         write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.span))
         original
       case None =>
-        val sym = declareSymbol(undeclared)
+        val sym = declareLocalSymbol(undeclared)
         updateCurrentScope(_.withLocalTerm(sym.name, ResolvedDef(id, initialized)))
         id
 
@@ -147,7 +149,7 @@ object ResolutionContext:
         write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.span))
         original
       case None =>
-        val sym = declareSymbol(undeclared)
+        val sym = declareLocalSymbol(undeclared)
         updateCurrentScope(_.withLocalType(sym.name, id))
         id
 

@@ -4,11 +4,45 @@ import org.algorab.ast.raw
 import org.algorab.ast.resolved
 import org.algorab.ast.Symbol
 import io.github.iltotore.pureparser.Span
+import io.github.iltotore.iron.autoRefine
 import org.algorab.ast.SymbolId
+import scala.annotation.tailrec
+import org.algorab.ast.Identifier
+import purelogic.*
 
 object Resolver:
 
-  def resolveProgram(program: raw.Program): resolved.Program = ???
+  @tailrec
+    def resolvePackage(ownerId: SymbolId, owner: Symbol.Namespace, path: List[(Identifier, Span)]): Resolution[SymbolId] = path match
+      case Nil => ownerId
+      case (head, headSpan) :: tail =>
+        get.scopes(owner.memberScope).localTerms.get(head) match
+          case Some(ResolvedDef(id, _)) => get.symbols(id) match
+            case namespace: Symbol.Namespace => resolvePackage(id, namespace, tail)
+            case other =>
+              write(ResolutionError.NotANamespace(other, headSpan))
+              SymbolId.Invalid
+          case None =>
+            val packageId = get.nextSymbolId
+            val packageSymbol = ResolutionContext.declareSymbol(Symbol.Package(
+              packageId,
+              head,
+              Some(ownerId),
+              get.nextScopeId
+            ))
+
+            update(context => context.copy(
+              scopes = context.scopes.updated(context.nextScopeId, ResolutionScope.empty(Some(packageId))),
+              nextScopeId = context.nextScopeId + 1
+            ))
+
+            packageId
+
+  def resolveProgram(program: raw.Program): Resolution[resolved.Program] =
+    resolved.Program(
+      owner = resolvePackage(SymbolId.Root, Symbol.Root, program.packageName),
+      statements = resolveBlock(program.statements)
+    )
 
   def resolveType(tpe: raw.Type, span: Span): Resolution[resolved.Type] = tpe match
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, span))
