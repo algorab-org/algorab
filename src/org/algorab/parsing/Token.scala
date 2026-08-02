@@ -20,6 +20,7 @@ enum Token derives CanEqual:
   case ParenClosed(span: Span)
   case Comma(span: Span)
   case Colon(span: Span)
+  case Dot(span: Span)
   case Plus(span: Span)
   case Minus(span: Span)
   case Mul(span: Span)
@@ -49,5 +50,6 @@ enum Token derives CanEqual:
   case Def(span: Span)
   case Val(span: Span)
   case Mut(span: Span)
+  case Package(span: Span)
 
   def span: Span

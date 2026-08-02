@@ -9,6 +9,7 @@ import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
+import org.algorab.ast.raw.Program
 
 object ExprParser:
 
@@ -229,7 +230,22 @@ object ExprParser:
     "Valid statement"
   )
 
-  def apply(tokens: List[Token]): AlgorabProgram[Expr] =
-    val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(blockParser, Parser.eof))
+  val packageParser: Parser[Token, List[(Identifier, Span)]] = Parser.inOrder(
+    tokenTypeParser[Token.Package],
+    Parser.separatedBy(
+      tokenSpan(identifierParser),
+      tokenTypeParser[Token.Dot]
+    )
+  )
+
+  val programParser: Parser[Token, Program] = Program.apply.tupled(
+    Parser.inOrder(
+      Parser.firstOf(packageParser, Nil),
+      Parser.separatedBy(statementParser, tokenTypeParser[Token.Newline])
+    )
+  )
+
+  def apply(tokens: List[Token]): AlgorabProgram[Program] =
+    val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(programParser, Parser.eof))
     Writer.writeAll(result.errors)
     Abort.extractOption(result.output, ())

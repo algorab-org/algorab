@@ -128,7 +128,8 @@ object TokenLexer:
     "in" -> Token.In.apply,
     "def" -> Token.Def.apply,
     "val" -> Token.Val.apply,
-    "mut" -> Token.Mut.apply
+    "mut" -> Token.Mut.apply,
+    "package" -> Token.Package.apply
   )
 
   private val symbols: IndexedSeq[(String, Span => Token)] = Seq(
@@ -136,6 +137,7 @@ object TokenLexer:
     ")" -> Token.ParenClosed.apply,
     "," -> Token.Comma.apply,
     ":" -> Token.Colon.apply,
+    "." -> Token.Dot.apply,
     "+" -> Token.Plus.apply,
     "-" -> Token.Minus.apply,
     "*" -> Token.Mul.apply,
