@@ -19,9 +19,10 @@ object SymbolId extends RefinedType[Int, GreaterEqual[-1]]:
   val Root: SymbolId = SymbolId(0)
 
 type ScopeId = ScopeId.T
-object ScopeId extends RefinedType[Int, Positive0]:
+object ScopeId extends RefinedType[Int, GreaterEqual[-1]]:
 
   extension (x: ScopeId)
     def +(y: Int :| Positive0): ScopeId = ScopeId.assume(x.value + y)
 
+  val Invalid: ScopeId = ScopeId(-1)
   val Root: ScopeId = ScopeId.Root

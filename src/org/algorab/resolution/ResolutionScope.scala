@@ -5,11 +5,11 @@ import org.algorab.ast.Identifier
 
 case class ResolutionScope(
   owner: Option[SymbolId],
-  localTerms: Map[Identifier, ResolvedDef],
+  localTerms: Map[Identifier, SymbolId],
   localTypes: Map[Identifier, SymbolId]
 ):
 
-  def withLocalTerm(name: Identifier, term: ResolvedDef): ResolutionScope =
+  def withLocalTerm(name: Identifier, term: SymbolId): ResolutionScope =
     this.copy(localTerms = localTerms.updated(name, term))
 
   def withLocalType(name: Identifier, tpe: SymbolId): ResolutionScope =

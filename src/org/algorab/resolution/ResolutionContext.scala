@@ -38,7 +38,7 @@ case class ResolutionContext(
     )
 
   def declarePredefVariable(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalTerm(name, ResolvedDef(nextSymbolId, initialized = true)))
+    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
@@ -54,7 +54,7 @@ case class ResolutionContext(
     )
 
   def declarePredefFunction(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalTerm(name, ResolvedDef(nextSymbolId, initialized = true)))
+    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
@@ -104,9 +104,7 @@ object ResolutionContext:
 
   def getLocalTerm(name: Identifier, span: Span): Resolution[SymbolId] =
     findInScopes(_.localTerms.get(name)) match
-      case Some(ResolvedDef(id, initialized)) =>
-        if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id), span))
-        id
+      case Some(id) => id
       case None =>
         write(ResolutionError.UnknownName(name, span))
         SymbolId.Invalid
@@ -133,12 +131,12 @@ object ResolutionContext:
     val id = get.nextSymbolId
     val undeclared = symbol(id)
     currentScope.localTerms.get(undeclared.name) match
-      case Some(ResolvedDef(original, _)) =>
+      case Some(original) =>
         write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.span))
         original
       case None =>
         val sym = declareLocalSymbol(undeclared)
-        updateCurrentScope(_.withLocalTerm(sym.name, ResolvedDef(id, initialized)))
+        updateCurrentScope(_.withLocalTerm(sym.name, id))
         id
 
   def declareType(symbol: SymbolId => Symbol.Valid): Resolution[SymbolId] =
@@ -153,10 +151,6 @@ object ResolutionContext:
         updateCurrentScope(_.withLocalType(sym.name, id))
         id
 
-  def markInitialized(name: Identifier): Resolution[Unit] =
-    val term = currentScope.localTerms(name)
-    updateCurrentScope(_.withLocalTerm(name, term.copy(initialized = true)))
-
   def inNewScope[A](owner: Option[SymbolId])(body: Resolution[A]): Resolution[A] =
     val currentOwner = currentScope.owner
     update(context => context.copy(
@@ -166,4 +160,11 @@ object ResolutionContext:
     ))
     val result = body
     update(context => context.copy(scopePath = context.scopePath.tail))
+    result
+
+  def inScopePath[A](scopePath: List[ScopeId])(body: Resolution[A]): Resolution[A] =
+    val currentPath = get.scopePath
+    update(_.copy(scopePath = scopePath))
+    val result = body
+    update(_.copy(scopePath = currentPath))
     result

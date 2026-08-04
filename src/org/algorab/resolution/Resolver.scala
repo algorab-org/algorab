@@ -1,59 +1,66 @@
 package org.algorab.resolution
 
+import io.github.iltotore.iron.autoRefine
+import io.github.iltotore.pureparser.Span
+import org.algorab.ast.Identifier
+import org.algorab.ast.ScopeId
+import org.algorab.ast.Symbol
+import org.algorab.ast.Symbol.Namespace
+import org.algorab.ast.SymbolId
 import org.algorab.ast.raw
 import org.algorab.ast.resolved
-import org.algorab.ast.Symbol
-import io.github.iltotore.pureparser.Span
-import io.github.iltotore.iron.autoRefine
-import org.algorab.ast.SymbolId
-import scala.annotation.tailrec
-import org.algorab.ast.Identifier
 import purelogic.*
+import scala.annotation.tailrec
 
 object Resolver:
 
-  @tailrec
-    def resolvePackage(ownerId: SymbolId, owner: Symbol.Namespace, path: List[(Identifier, Span)]): Resolution[SymbolId] = path match
-      case Nil => ownerId
-      case (head, headSpan) :: tail =>
-        get.scopes(owner.memberScope).localTerms.get(head) match
-          case Some(ResolvedDef(id, _)) => get.symbols(id) match
-            case namespace: Symbol.Namespace => resolvePackage(id, namespace, tail)
+  def declarePackage(ownerId: SymbolId, scopes: List[ScopeId], path: List[(Identifier, Span)]): Resolution[(SymbolId, List[ScopeId])] = path match
+    case Nil => (ownerId, scopes)
+    case (head, headSpan) :: tail =>
+      get.scopes(scopes.head).localTerms.get(head) match
+        case Some(id) => get.symbols(id) match
+            case namespace: Symbol.Namespace => declarePackage(id, namespace.memberScope :: scopes, tail)
             case other =>
               write(ResolutionError.NotANamespace(other, headSpan))
-              SymbolId.Invalid
-          case None =>
-            val packageId = get.nextSymbolId
-            val packageSymbol = ResolutionContext.declareSymbol(Symbol.Package(
-              packageId,
-              head,
-              Some(ownerId),
-              get.nextScopeId
-            ))
+              (SymbolId.Invalid, List(ScopeId.Invalid))
+        case None =>
+          val packageId = get.nextSymbolId
+          val scopeId = get.nextScopeId
+          val packageSymbol = ResolutionContext.declareSymbol(Symbol.Package(
+            packageId,
+            head,
+            Some(ownerId),
+            scopeId
+          ))
 
-            update(context => context.copy(
+          update(context =>
+            context.copy(
               scopes = context.scopes.updated(context.nextScopeId, ResolutionScope.empty(Some(packageId))),
               nextScopeId = context.nextScopeId + 1
-            ))
+            )
+          )
 
-            packageId
+          declarePackage(packageId, scopeId :: scopes, tail)
 
-  def resolveProgram(program: raw.Program): Resolution[resolved.Program] =
+  def declareProgram(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
+    val (packageId, packageScope) = declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
+    ResolutionContext.inScopePath(packageScope)(declareBlock(program.statements))
+    (packageId, packageScope)
+
+  def resolveProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[resolved.Program] =
     resolved.Program(
-      owner = resolvePackage(SymbolId.Root, Symbol.Root, program.packageName),
-      statements = resolveBlock(program.statements)
+      owner = owner,
+      statements = ResolutionContext.inScopePath(packageScope)(program.statements.map(resolveStatement))
     )
 
   def resolveType(tpe: raw.Type, span: Span): Resolution[resolved.Type] = tpe match
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, span))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
-  def resolveBlock(statements: List[raw.Statement]): Resolution[List[resolved.Statement]] =
+  def declareBlock(statements: List[raw.Statement]): Resolution[Unit] =
     statements.foreach:
-      case definition: raw.Definition => addDefinition(definition)
+      case definition: raw.Definition => declareDefinition(definition)
       case _                          =>
-    statements.map(resolveStatement)
-    
 
   def resolveStatement(statement: raw.Statement): Resolution[resolved.Statement] = statement match
     case definition: raw.Definition => resolveDefinition(definition)
@@ -61,25 +68,32 @@ object Resolver:
 
   def resolveDefinition(definition: raw.Definition): Resolution[resolved.Definition] = definition match
     case raw.Definition.Val(name, tpe, expr, mutable, span) =>
-      ResolutionContext.markInitialized(name)
-      resolved.Definition.Val(ResolutionContext.getLocalTerm(name, span), resolveType(tpe, span), resolveExpr(expr), mutable, span)
+      resolved.Definition.Val(
+        ResolutionContext.getLocalTerm(name, span),
+        resolveType(tpe, span),
+        resolveExpr(expr),
+        mutable,
+        span
+      )
     case raw.Definition.Function(name, params, retType, body, span) =>
       val id = ResolutionContext.getLocalTerm(name, span)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
         resolved.Definition.Function(
           id,
-          params.map((name, tpe) => (
-            ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, span)),
-            resolveType(tpe, span)
-          )),
+          params.map((name, tpe) =>
+            (
+              ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, span)),
+              resolveType(tpe, span)
+            )
+          ),
           resolveType(retType, span),
           resolveExpr(body),
           span
         )
       )
 
-  def addDefinition(definition: raw.Definition): Resolution[Unit] = definition match
-    case raw.Definition.Val(name, _, _, mutable, span)      =>
+  def declareDefinition(definition: raw.Definition): Resolution[Unit] = definition match
+    case raw.Definition.Val(name, _, _, mutable, span) =>
       ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = false).asInstanceOf[Unit]
     case raw.Definition.Function(name, _, _, _, span) =>
       ResolutionContext.declareTerm(Symbol.Function(_, name, None, span)).asInstanceOf[Unit]
@@ -110,7 +124,9 @@ object Resolver:
     case raw.Expr.VarCall(name, span)             => resolved.Expr.VarCall(ResolutionContext.getLocalTerm(name, span), span)
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
     case raw.Expr.Apply(expr, args, span)         => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
-    case raw.Expr.Block(statements, span)         => ResolutionContext.inNewScope(None)(resolved.Expr.Block(resolveBlock(statements), span))
+    case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
+        declareBlock(statements)
+        resolved.Expr.Block(statements.map(resolveStatement), span)
     case raw.Expr.If(cond, ifTrue, ifFalse, span) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
     case raw.Expr.While(cond, body, span)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), span)
     case raw.Expr.For(iterator, iterable, body, span) =>

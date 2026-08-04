@@ -6,7 +6,12 @@ import org.algorab.parsing.TokenLexer
 import org.algorab.resolution.Resolution
 import org.algorab.resolution.Resolver
 
-def runProgram(source: String): AlgorabProgram[resolved.Program] =
-  val parsed = ExprParser(TokenLexer(source))
-  val resolved = Resolution(Resolver.resolveProgram(parsed))
+def runProgram(sources: String*): AlgorabProgram[Seq[resolved.Program]] =
+  val parsed = sources.map(TokenLexer.apply andThen ExprParser.apply)
+  val resolved = Resolution:
+    parsed
+      .map(ast => (ast, Resolver.declareProgram(ast)))
+      .map:
+        case (ast, (packageId, packageScope)) => Resolver.resolveProgram(ast, packageId, packageScope)
+        
   resolved._2
