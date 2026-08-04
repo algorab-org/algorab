@@ -1,0 +1,2 @@
+val foo: Int = 5
+def bar(): Int = 4
