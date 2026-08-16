@@ -51,9 +51,8 @@ object resources:
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
   def runGoldenTest(codes: List[String], input: Iterable[String], expectedOutput: Option[String]): Unit =
-    val (errors, output) = AlgorabProgram(runProgram(codes*))
-    assert(errors.isEmpty)
-    assert(output.isDefined)
+    val result = AlgorabProgram(runProgram(codes*))
+    assert(result._1.isEmpty && result._2.isDefined)
 
   /** Transparent inline entry point that triggers [[goldenTestsImpl]] at the call site.
     *

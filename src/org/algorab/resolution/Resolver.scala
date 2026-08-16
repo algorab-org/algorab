@@ -11,13 +11,15 @@ import org.algorab.ast.raw
 import org.algorab.ast.resolved
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.resolution.ResolutionContext.currentScope
 
 object Resolver:
 
   def declarePackage(ownerId: SymbolId, scopes: List[ScopeId], path: List[(Identifier, Span)]): Resolution[(SymbolId, List[ScopeId])] = path match
     case Nil => (ownerId, scopes)
     case (head, headSpan) :: tail =>
-      get.scopes(scopes.head).localTerms.get(head) match
+      val headScope = get.scopes(scopes.head)
+      headScope.localTerms.get(head) match
         case Some(id) => get.symbols(id) match
             case namespace: Symbol.Namespace => declarePackage(id, namespace.memberScope :: scopes, tail)
             case other =>
@@ -35,7 +37,9 @@ object Resolver:
 
           update(context =>
             context.copy(
-              scopes = context.scopes.updated(context.nextScopeId, ResolutionScope.empty(Some(packageId))),
+              scopes = context.scopes
+                .updated(context.nextScopeId, ResolutionScope.empty(Some(packageId)))
+                .updated(scopes.head, headScope.withLocalTerm(head, packageId)),
               nextScopeId = context.nextScopeId + 1
             )
           )

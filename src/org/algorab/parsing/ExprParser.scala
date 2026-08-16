@@ -241,6 +241,7 @@ object ExprParser:
   val programParser: Parser[Token, Program] = Program.apply.tupled(
     Parser.inOrder(
       Parser.firstOf(packageParser, Nil),
+      Parser.repeatDiscard0(tokenTypeParser[Token.Newline]),
       Parser.separatedBy(statementParser, tokenTypeParser[Token.Newline])
     )
   )

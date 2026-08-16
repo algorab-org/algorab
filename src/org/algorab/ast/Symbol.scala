@@ -24,6 +24,7 @@ object Symbol:
       case Variable(id, name, _, mutable, span) => Variable(id, name, Some(owner), mutable, span)
       case Function(id, name, _, span)          => Function(id, name, Some(owner), span)
       case Type(id, name, _, span)              => Type(id, name, Some(owner), span)
+      case _ => throw AssertionError(s"withOwner with $this")
 
   sealed trait Namespace extends Symbol, Valid:
     def memberScope: ScopeId
