@@ -20,7 +20,7 @@ object Resolver:
     case (head, headSpan) :: tail =>
       val headScope = get.scopes(scopes.head)
       headScope.localTerms.get(head) match
-        case Some(id) => get.symbols(id) match
+        case Some((id, _)) => get.symbols(id) match
             case namespace: Symbol.Namespace => declarePackage(id, namespace.memberScope :: scopes, tail)
             case other =>
               write(ResolutionError.NotANamespace(other, headSpan))
@@ -39,7 +39,7 @@ object Resolver:
             context.copy(
               scopes = context.scopes
                 .updated(context.nextScopeId, ResolutionScope.empty(Some(packageId)))
-                .updated(scopes.head, headScope.withLocalTerm(head, packageId)),
+                .updated(scopes.head, headScope.withLocalTerm(head, packageId, true)),
               nextScopeId = context.nextScopeId + 1
             )
           )
@@ -48,7 +48,7 @@ object Resolver:
 
   def declareProgram(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
     val (packageId, packageScope) = declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
-    ResolutionContext.inScopePath(packageScope)(declareBlock(program.statements))
+    ResolutionContext.inScopePath(packageScope)(declareAllStatements(program.statements, packageId == SymbolId.Root))
     (packageId, packageScope)
 
   def resolveProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[resolved.Program] =
@@ -61,9 +61,9 @@ object Resolver:
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, span))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
-  def declareBlock(statements: List[raw.Statement]): Resolution[Unit] =
+  def declareAllStatements(statements: List[raw.Statement], isBlock: Boolean): Resolution[Unit] =
     statements.foreach:
-      case definition: raw.Definition => declareDefinition(definition)
+      case definition: raw.Definition => declareDefinition(definition, isBlock)
       case _                          =>
 
   def resolveStatement(statement: raw.Statement): Resolution[resolved.Statement] = statement match
@@ -72,6 +72,7 @@ object Resolver:
 
   def resolveDefinition(definition: raw.Definition): Resolution[resolved.Definition] = definition match
     case raw.Definition.Val(name, tpe, expr, mutable, span) =>
+      ResolutionContext.initializeLocalTerm(name)
       resolved.Definition.Val(
         ResolutionContext.getLocalTerm(name, span),
         resolveType(tpe, span),
@@ -96,9 +97,9 @@ object Resolver:
         )
       )
 
-  def declareDefinition(definition: raw.Definition): Resolution[Unit] = definition match
+  def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
     case raw.Definition.Val(name, _, _, mutable, span) =>
-      ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = false).asInstanceOf[Unit]
+      ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = !isBlock).asInstanceOf[Unit]
     case raw.Definition.Function(name, _, _, _, span) =>
       ResolutionContext.declareTerm(Symbol.Function(_, name, None, span)).asInstanceOf[Unit]
 
@@ -129,7 +130,7 @@ object Resolver:
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
     case raw.Expr.Apply(expr, args, span)         => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
     case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
-        declareBlock(statements)
+        declareAllStatements(statements, true)
         resolved.Expr.Block(statements.map(resolveStatement), span)
     case raw.Expr.If(cond, ifTrue, ifFalse, span) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
     case raw.Expr.While(cond, body, span)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), span)

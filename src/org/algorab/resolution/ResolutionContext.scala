@@ -38,7 +38,7 @@ case class ResolutionContext(
     )
 
   def declarePredefVariable(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId))
+    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId, true))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
@@ -54,7 +54,7 @@ case class ResolutionContext(
     )
 
   def declarePredefFunction(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId))
+    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId, true))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
@@ -104,7 +104,9 @@ object ResolutionContext:
 
   def getLocalTerm(name: Identifier, span: Span): Resolution[SymbolId] =
     findInScopes(_.localTerms.get(name)) match
-      case Some(id) => id
+      case Some((id, initialized)) =>
+        if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id), span))
+        id
       case None =>
         write(ResolutionError.UnknownName(name, span))
         SymbolId.Invalid
@@ -131,12 +133,12 @@ object ResolutionContext:
     val id = get.nextSymbolId
     val undeclared = symbol(id)
     currentScope.localTerms.get(undeclared.name) match
-      case Some(original) =>
+      case Some((original, _)) =>
         write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.span))
         original
       case None =>
         val sym = declareLocalSymbol(undeclared)
-        updateCurrentScope(_.withLocalTerm(sym.name, id))
+        updateCurrentScope(_.withLocalTerm(sym.name, id, initialized))
         id
 
   def declareType(symbol: SymbolId => Symbol.Valid): Resolution[SymbolId] =
@@ -150,6 +152,9 @@ object ResolutionContext:
         val sym = declareLocalSymbol(undeclared)
         updateCurrentScope(_.withLocalType(sym.name, id))
         id
+
+  def initializeLocalTerm(name: Identifier): Resolution[Unit] =
+    updateCurrentScope(_.withLocalTermInitialized(name))
 
   def inNewScope[A](owner: Option[SymbolId])(body: Resolution[A]): Resolution[A] =
     val currentOwner = currentScope.owner

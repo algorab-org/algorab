@@ -18,6 +18,8 @@ object SymbolId extends RefinedType[Int, GreaterEqual[-1]]:
   val Invalid: SymbolId = SymbolId(-1)
   val Root: SymbolId = SymbolId(0)
 
+  given CanEqual[SymbolId, SymbolId] = CanEqual.derived
+
 type ScopeId = ScopeId.T
 object ScopeId extends RefinedType[Int, GreaterEqual[-1]]:
 
