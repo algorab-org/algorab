@@ -2,9 +2,10 @@ package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
 import io.github.iltotore.pureparser.util.Zip
+import org.algorab.AlgorabProgram
 import purelogic.*
-import scala.reflect.TypeTest
 import scala.annotation.tailrec
+import scala.reflect.TypeTest
 
 def tryParser[I, A](parser: Parser[I, A]): Parser[I, Option[A]] = Parser.firstOf(Some(parser), None)
 def tryParserUnit[I](parser: Parser[I, Unit]): Parser[I, Unit] = Parser.firstOf(Parser.unit(parser), ())
@@ -33,6 +34,6 @@ def repeatParser[I, A](parser: Parser[I, A]): Parser[I, List[A]] =
   def rec(accumulator: List[A]): Parser[I, List[A]] =
     tryParser(parser) match
       case Some(value) => rec(accumulator :+ value)
-      case None => accumulator
+      case None        => accumulator
 
   rec(Nil)

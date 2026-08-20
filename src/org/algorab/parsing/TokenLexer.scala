@@ -1,6 +1,7 @@
 package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
+import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
 import purelogic.*
 import scala.annotation.tailrec
@@ -127,7 +128,8 @@ object TokenLexer:
     "in" -> Token.In.apply,
     "def" -> Token.Def.apply,
     "val" -> Token.Val.apply,
-    "mut" -> Token.Mut.apply
+    "mut" -> Token.Mut.apply,
+    "package" -> Token.Package.apply
   )
 
   private val symbols: IndexedSeq[(String, Span => Token)] = Seq(
@@ -135,6 +137,7 @@ object TokenLexer:
     ")" -> Token.ParenClosed.apply,
     "," -> Token.Comma.apply,
     ":" -> Token.Colon.apply,
+    "." -> Token.Dot.apply,
     "+" -> Token.Plus.apply,
     "-" -> Token.Minus.apply,
     "*" -> Token.Mul.apply,
@@ -206,12 +209,12 @@ object TokenLexer:
 
     def isMoreIndented(other: LayoutContext): Boolean = other match
       case Layout(column) => this.isMoreIndented(column)
-      case Parentheses => false
+      case Parentheses    => false
 
     def isLessIndented(column: Int): Boolean = this match
       case Layout(col) => col > column
       case Parentheses => false
-    
+
     def isAsIndented(column: Int): Boolean = this match
       case Layout(col) => column == col
       case Parentheses => false
@@ -265,7 +268,7 @@ object TokenLexer:
       val (dropped, remainingLayouts) = withIndent.stack.span(_.isLessIndented(column))
       val deindents = dropped.map:
         case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
-        case invalid => throw AssertionError(s"Unexpected deindent of non-layout context: $invalid")
+        case invalid                      => throw AssertionError(s"Unexpected deindent of non-layout context: $invalid")
 
       val withDeindents = withIndent.copy(
         stack = remainingLayouts,
@@ -285,10 +288,9 @@ object TokenLexer:
       val withParenHandling = token match
         case Token.ParenOpen(_) => withNewline.copy(stack = LayoutContext.Parentheses :: withNewline.stack)
         case Token.ParenClosed(_) => withNewline.stack match
-          case LayoutContext.Parentheses :: tail => withNewline.copy(stack = tail)
-          case _ => withNewline
+            case LayoutContext.Parentheses :: tail => withNewline.copy(stack = tail)
+            case _                                 => withNewline
         case _ => withNewline
-        
 
       withParenHandling.copy(
         output = withParenHandling.output :+ token,
@@ -299,4 +301,7 @@ object TokenLexer:
     finalState.output ++ finalState.stack.init.collect:
       case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
 
-  def apply(source: String): Parser[Char, List[Token]] = indentationParser(tokenListParser, source)
+  def apply(source: String): AlgorabProgram[List[Token]] =
+    val result = Parser(source)(indentationParser(tokenListParser, source))
+    Writer.writeAll(result.errors)
+    Abort.extractOption(result.output, ())

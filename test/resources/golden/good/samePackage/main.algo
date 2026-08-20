@@ -1,0 +1,4 @@
+package hello.world
+
+println(foo)
+println(bar())

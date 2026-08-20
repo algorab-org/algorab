@@ -1,6 +1,7 @@
-package org.algorab.ast
+package org.algorab.ast.resolved
 
 import io.github.iltotore.pureparser.Span
+import org.algorab.ast.SymbolId
 
 enum Expr:
   case LBool(value: Boolean, span: Span)
@@ -16,24 +17,22 @@ enum Expr:
   case Greater(left: Expr, right: Expr, span: Span)
   case GreaterEqual(left: Expr, right: Expr, span: Span)
   case Plus(expr: Expr, span: Span)
-  case Minus(expr: Expr, span: Span)  
-  case Add(left: Expr, right: Expr, span: Span)  
-  case Sub(left: Expr, right: Expr, span: Span)  
-  case Mul(left: Expr, right: Expr, span: Span)  
+  case Minus(expr: Expr, span: Span)
+  case Add(left: Expr, right: Expr, span: Span)
+  case Sub(left: Expr, right: Expr, span: Span)
+  case Mul(left: Expr, right: Expr, span: Span)
   case Div(left: Expr, right: Expr, span: Span)
-  case IntDiv(left: Expr, right: Expr, span: Span)  
-  case Mod(left: Expr, right: Expr, span: Span)  
-  case And(left: Expr, right: Expr, span: Span)  
-  case Or(left: Expr, right: Expr, span: Span)    
-  case VarCall(name: Identifier, span: Span)
-  case ValDef(name: Identifier, tpe: Type, expr: Expr, mutable: Boolean, span: Span) 
-  case Assign(name: Identifier, expr: Expr, span: Span)
+  case IntDiv(left: Expr, right: Expr, span: Span)
+  case Mod(left: Expr, right: Expr, span: Span)
+  case And(left: Expr, right: Expr, span: Span)
+  case Or(left: Expr, right: Expr, span: Span)
+  case VarCall(symbol: SymbolId, span: Span)
+  case Assign(symbol: SymbolId, expr: Expr, span: Span)
   case Apply(expr: Expr, args: List[Expr], span: Span)
-  case FunDef(name: Identifier, params: List[(Identifier, Type)], retType: Type, body: Expr, span: Span)
-  case Block(expressions: List[Expr], span: Span)
+  case Block(statements: List[Statement], span: Span)
   case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, span: Span)
   case While(cond: Expr, body: Expr, span: Span)
-  case For(iterator: Identifier, iterable: Expr, body: Expr, span: Span)
+  case For(iterator: SymbolId, iterable: Expr, body: Expr, span: Span)
   case Invalid(span: Span)
 
   def span: Span

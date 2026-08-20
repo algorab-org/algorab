@@ -14,6 +14,10 @@ import utest.*
 import scala.util.Using
 import scala.io.Source
 import org.algorab.parsing.ExprParser
+import org.algorab.AlgorabProgram
+import org.algorab.runProgram
+import scala.annotation.tailrec
+import java.nio.charset.StandardCharsets
 
 object resources:
 
@@ -24,21 +28,31 @@ object resources:
       val jarFS = FileSystems.newFileSystem(URI.create(strings(0)), java.util.HashMap())
       jarFS.getPath(strings(1))
 
-  def listResources(folder: String): List[Path] =
-    val path = getResourcePath(this.getClass.getResource(folder))
-    val ls = Files.list(path)
-    ls.collect(Collectors.toList()).asScala.toList
+  def getResourcePath(path: String): Path = getResourcePath(this.getClass.getResource(path))
+
+  def listResources(path: Path): List[Path] =
+    Files
+      .list(path)
+      .collect(Collectors.toList())
+      .asScala
+      .toList
+
+  def listResourceTree(path: Path): List[Path] =
+    if Files.isRegularFile(path) then List(path)
+    else listResources(path).flatMap(listResourceTree)
 
   def readResource(path: String): String =
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.mkString)
 
+  def readAllResources(root: String): List[String] =
+    listResourceTree(getResourcePath(root)).map(Files.readString(_, StandardCharsets.UTF_8))
+
   def readResourceLines(path: String): Iterable[String] =
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
-  def runGoldenTest(code: String, input: Iterable[String], expectedOutput: Option[String]): Unit =
-    val result = ExprParser(code)
-    assert(result.output.isDefined)
-    assert(result.errors.isEmpty)
+  def runGoldenTest(codes: List[String], input: Iterable[String], expectedOutput: Option[String]): Unit =
+    val result = AlgorabProgram(runProgram(codes*))
+    assert(result._1.isEmpty && result._2.isDefined)
 
   /** Transparent inline entry point that triggers [[goldenTestsImpl]] at the call site.
     *
@@ -64,7 +78,10 @@ object resources:
   def goldenTestsImpl()(using Quotes): Expr[Unit] =
     import quotes.reflect.*
 
-    val cases: List[Expr[Unit]] = listResources("/golden/good").filter(_.toString.endsWith(".algo")).map(file =>
+    def isTestCase(path: Path): Boolean =
+      Files.isDirectory(path) || path.toString.endsWith(".algo")
+
+    val cases: List[Expr[Unit]] = listResources(getResourcePath("/golden/good")).filter(isTestCase).map(file =>
       val fileStr = file.getFileName().toString
       val fileName = Expr(fileStr)
       val outputFile = fileStr.substring(0, fileStr.length - 5) + ".output"
@@ -75,14 +92,14 @@ object resources:
       val hasInput = Expr(Files.exists(file.resolveSibling(inputFile)))
       '{
         test($fileName):
-          val code = readResource("/golden/good/" + $fileName)
+          val codes = readAllResources("/golden/good/" + $fileName)
           val expectedOutput =
             if $hasOutput then Some(readResource("/golden/good/" + $outputName))
             else None
           val input =
             if $hasInput then readResourceLines("/golden/good/" + $inputName)
             else Seq.empty
-          runGoldenTest(code, input, expectedOutput)
+          runGoldenTest(codes, input, expectedOutput)
       }
     )
 
