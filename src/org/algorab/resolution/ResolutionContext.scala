@@ -22,19 +22,19 @@ case class ResolutionContext(
   def updateCurrentScope(f: ResolutionScope => ResolutionScope): ResolutionContext =
     updateScope(currentScopeId)(f)
 
-  def declarePredefType(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalType(name, nextSymbolId))
+  def declarePredefType(id: SymbolId, name: Identifier): ResolutionContext = this
+    .updateCurrentScope(_.withLocalType(name, id))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
         Symbol.Type(
-          id = nextSymbolId,
+          id = id,
           name = name,
           owner = Some(SymbolId.Root),
           span = Span(0, 0)
         )
       ),
-      nextSymbolId = nextSymbolId + 1
+      nextSymbolId = nextSymbolId.max(id + 1)
     )
 
   def declarePredefVariable(name: Identifier): ResolutionContext = this
@@ -53,19 +53,19 @@ case class ResolutionContext(
       nextSymbolId = nextSymbolId + 1
     )
 
-  def declarePredefFunction(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId, true))
+  def declarePredefFunction(id: SymbolId, name: Identifier): ResolutionContext = this
+    .updateCurrentScope(_.withLocalTerm(name, id, true))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
         Symbol.Function(
-          id = nextSymbolId,
+          id = id,
           name = name,
           owner = Some(SymbolId.Root),
           span = Span(0, 0)
         )
       ),
-      nextSymbolId = nextSymbolId + 1
+      nextSymbolId = nextSymbolId.max(id + 1)
     )
 
 object ResolutionContext:
@@ -80,16 +80,18 @@ object ResolutionContext:
     nextSymbolId = SymbolId(1),
     nextScopeId = ScopeId(1)
   )
-    .declarePredefType(Identifier("Unit"))
-    .declarePredefType(Identifier("Boolean"))
-    .declarePredefType(Identifier("Int"))
-    .declarePredefType(Identifier("Float"))
-    .declarePredefType(Identifier("Char"))
-    .declarePredefType(Identifier("String"))
+    .declarePredefType(SymbolId.AnyType, Identifier("Any"))
+    .declarePredefType(SymbolId.UnitType, Identifier("Unit"))
+    .declarePredefType(SymbolId.BooleanType, Identifier("Boolean"))
+    .declarePredefType(SymbolId.IntType, Identifier("Int"))
+    .declarePredefType(SymbolId.FloatType, Identifier("Float"))
+    .declarePredefType(SymbolId.CharType, Identifier("Char"))
+    .declarePredefType(SymbolId.StringType, Identifier("String"))
     .declarePredefVariable(Identifier("Unit"))
-    .declarePredefFunction(Identifier("println"))
-    .declarePredefFunction(Identifier("readInt"))
-    .declarePredefFunction(Identifier("readFloat"))
+    .declarePredefFunction(SymbolId.ToFloatTerm, Identifier("toFloat"))
+    .declarePredefFunction(SymbolId.PrintLnTerm, Identifier("println"))
+    .declarePredefFunction(SymbolId.ReadIntTerm, Identifier("readInt"))
+    .declarePredefFunction(SymbolId.ReadFloatTerm, Identifier("readFloat"))
 
   def getOwner(id: SymbolId): Resolution[Option[SymbolId]] =
     get.symbols(id).owner
