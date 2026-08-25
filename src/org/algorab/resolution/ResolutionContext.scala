@@ -8,6 +8,7 @@ import purelogic.*
 case class ResolutionContext(
     scopePath: List[ScopeId],
     symbols: Map[SymbolId, Symbol],
+    declarations: Map[SymbolId, resolved.Definition],
     scopes: Map[ScopeId, ResolutionScope],
     nextSymbolId: SymbolId,
     nextScopeId: ScopeId
@@ -37,20 +38,20 @@ case class ResolutionContext(
       nextSymbolId = nextSymbolId.max(id + 1)
     )
 
-  def declarePredefVariable(name: Identifier): ResolutionContext = this
-    .updateCurrentScope(_.withLocalTerm(name, nextSymbolId, true))
+  def declarePredefVariable(id: SymbolId, name: Identifier): ResolutionContext = this
+    .updateCurrentScope(_.withLocalTerm(name, id, true))
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
         Symbol.Variable(
-          id = nextSymbolId,
+          id = id,
           name = name,
           owner = Some(SymbolId.Root),
           mutable = false,
           span = Span(0, 0)
         )
       ),
-      nextSymbolId = nextSymbolId + 1
+      nextSymbolId = nextSymbolId.max(id + 1)
     )
 
   def declarePredefFunction(id: SymbolId, name: Identifier): ResolutionContext = this
@@ -76,6 +77,7 @@ object ResolutionContext:
       SymbolId.Invalid -> Symbol.Invalid,
       SymbolId.Root -> Symbol.Root
     ),
+    declarations = Map.empty,
     scopes = Map(ScopeId.Root -> ResolutionScope.empty(Some(SymbolId.Root))),
     nextSymbolId = SymbolId(1),
     nextScopeId = ScopeId(1)
@@ -87,7 +89,7 @@ object ResolutionContext:
     .declarePredefType(SymbolId.FloatType, Identifier("Float"))
     .declarePredefType(SymbolId.CharType, Identifier("Char"))
     .declarePredefType(SymbolId.StringType, Identifier("String"))
-    .declarePredefVariable(Identifier("Unit"))
+    .declarePredefVariable(SymbolId.UnitTerm, Identifier("Unit"))
     .declarePredefFunction(SymbolId.ToFloatTerm, Identifier("toFloat"))
     .declarePredefFunction(SymbolId.PrintLnTerm, Identifier("println"))
     .declarePredefFunction(SymbolId.ReadIntTerm, Identifier("readInt"))
@@ -154,6 +156,10 @@ object ResolutionContext:
         val sym = declareLocalSymbol(undeclared)
         updateCurrentScope(_.withLocalType(sym.name, id))
         id
+
+  def assignDeclaration(symbol: SymbolId)(declaration: resolved.Definition): Resolution[resolved.Definition] =
+    update(ctx => ctx.copy(declarations = ctx.declarations.updated(symbol, declaration)))
+    declaration
 
   def initializeLocalTerm(name: Identifier): Resolution[Unit] =
     updateCurrentScope(_.withLocalTermInitialized(name))

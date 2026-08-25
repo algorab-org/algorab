@@ -70,37 +70,42 @@ object Resolver:
     case definition: raw.Definition => resolveDefinition(definition)
     case expr: raw.Expr             => resolveExpr(expr)
 
+  // TODO assign SymbolId -> resolved.Definition
   def resolveDefinition(definition: raw.Definition): Resolution[resolved.Definition] = definition match
     case raw.Definition.Val(name, tpe, expr, mutable, span) =>
       ResolutionContext.initializeLocalTerm(name)
-      resolved.Definition.Val(
-        ResolutionContext.getLocalTerm(name, span),
-        resolveType(tpe, span),
-        resolveExpr(expr),
-        mutable,
-        span
+      ResolutionContext.assignDeclaration(ResolutionContext.getLocalTerm(name, span))(
+        resolved.Definition.Val(
+          ResolutionContext.getLocalTerm(name, span),
+          resolveType(tpe, span),
+          resolveExpr(expr),
+          mutable,
+          span
+        )
       )
     case raw.Definition.Function(name, params, retType, body, span) =>
       val id = ResolutionContext.getLocalTerm(name, span)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
-        resolved.Definition.Function(
-          id,
-          params.map((name, tpe) =>
-            (
-              ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, span)),
-              resolveType(tpe, span)
-            )
-          ),
-          resolveType(retType, span),
-          resolveExpr(body),
-          span
+        ResolutionContext.assignDeclaration(id)(
+          resolved.Definition.Function(
+            id,
+            params.map((name, tpe) =>
+              (
+                ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, span)),
+                resolveType(tpe, span)
+              )
+            ),
+            resolveType(retType, span),
+            resolveExpr(body),
+            span
+          )
         )
       )
 
   def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
-    case raw.Definition.Val(name, _, _, mutable, span) =>
+    case raw.Definition.Val(name, _, expr, mutable, span) =>
       ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = !isBlock).asInstanceOf[Unit]
-    case raw.Definition.Function(name, _, _, _, span) =>
+    case raw.Definition.Function(name, _, _, body, span) =>
       ResolutionContext.declareTerm(Symbol.Function(_, name, None, span)).asInstanceOf[Unit]
 
   def resolveExpr(expr: raw.Expr): Resolution[resolved.Expr] = expr match
