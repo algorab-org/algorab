@@ -7,4 +7,6 @@ enum Definition:
   case Val(symbol: SymbolId, tpe: Type, expr: Expr, mutable: Boolean, span: Span)
   case Function(symbol: SymbolId, params: List[(SymbolId, Type)], retType: Type, body: Expr, span: Span)
 
+  def symbol: SymbolId
+
   def span: Span

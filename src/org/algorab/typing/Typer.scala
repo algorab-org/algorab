@@ -14,7 +14,7 @@ object Typer:
 
   def resolveType(tpe: resolved.Type): typed.Type = tpe match
     case resolved.Type.Ref(symbol) => typed.Type.Class(symbol)
-    case resolved.Type.Inferred    => ???
+    case resolved.Type.Inferred    => throw AssertionError("Resolving Inferred type")
 
   def union(typeA: typed.Type, typeB: typed.Type): Typing[typed.Type] =
     if typeA == typed.Type.Unit || typeB == typed.Type.Unit then typed.Type.Unit
@@ -73,26 +73,36 @@ object Typer:
     case definition: resolved.Definition => typeDefinition(definition)
     case expr: resolved.Expr             => typeExpr(expr)
 
-  // TODO separate getDefinition type so that this works:
-  // val x = y
-  // val y: Int = x
-  def typeDefinition(definition: resolved.Definition): Typing[typed.Definition] = definition match
-    case resolved.Definition.Val(symbol, tpe, expr, mutable, span) =>
-      if tpe == resolved.Type.Inferred then
-        TypeContext.startInferring(symbol)
-        val typedExpr = typeExpr(expr)
-        TypeContext.assignType(symbol, typedExpr.tpe)
-        typed.Definition.Val(symbol, typedExpr.tpe, typedExpr, mutable, span)
-      else
-        val resolvedType = resolveType(tpe)
-        TypeContext.assignType(symbol, resolvedType)
+  def resolveDefinitionType(symbol: SymbolId): Typing[typed.Type] =
+    if TypeContext.isTyped(symbol) then TypeContext.getType(symbol)
+    else
+      val definitionType = TypeContext.getDeclaration(symbol) match
+        case resolved.Definition.Val(symbol, tpe, expr, mutable, span) =>
+          if tpe == resolved.Type.Inferred then
+            TypeContext.startInferring(symbol)
+            val typedExpr = typeExpr(expr)
+            typedExpr.tpe
+          else
+            resolveType(tpe)
+
+        case resolved.Definition.Function(symbol, params, retType, body, span) =>
+          val resolvedParams = params.map((sym, tpe) => (sym, resolveType(tpe)))
+          val resolvedRetType = resolveType(retType)
+          resolvedParams.foreach(TypeContext.assignType)
+          typed.Type.Function(resolvedParams.map(_._2), resolvedRetType)
+
+      TypeContext.assignType(symbol, definitionType)
+      definitionType
+
+  def typeDefinition(definition: resolved.Definition): Typing[typed.Definition] =
+    val resolvedType = resolveDefinitionType(definition.symbol)
+    definition match
+      case resolved.Definition.Val(symbol, tpe, expr, mutable, span) =>
         typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, span)
-    case resolved.Definition.Function(symbol, params, retType, body, span) =>
-      val resolvedParams = params.map((sym, tpe) => (sym, resolveType(tpe)))
-      val resolvedRetType = resolveType(retType)
-      TypeContext.assignType(symbol, typed.Type.Function(resolvedParams.map(_._2), resolvedRetType))
-      resolvedParams.foreach(TypeContext.assignType)
-      typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), span)
+      case resolved.Definition.Function(symbol, params, retType, body, span) =>
+        val resolvedParams = params.map(_._1).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
+        val resolvedRetType = resolvedType.asInstanceOf[typed.Type.Function].output
+        typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), span)
 
   def typeExpr(expr: resolved.Expr): Typing[typed.Expr] = expr match
     case resolved.Expr.LBool(value, span)          => typed.Expr.LBool(value, typed.Type.Boolean, span)
@@ -127,9 +137,7 @@ object Typer:
       typed.Expr.And(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, span)
     case resolved.Expr.Or(left, right, span) =>
       typed.Expr.Or(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, span)
-    case resolved.Expr.VarCall(symbol, span)      =>
-      if !TypeContext.isTyped(symbol) then typeDefinition(TypeContext.getDeclaration(symbol)).asInstanceOf[Unit]
-      typed.Expr.VarCall(symbol, TypeContext.getType(symbol), span)
+    case resolved.Expr.VarCall(symbol, span)      => typed.Expr.VarCall(symbol, resolveDefinitionType(symbol), span)
     case resolved.Expr.Assign(symbol, expr, span) => typed.Expr.Assign(symbol, typeExprTo(expr, TypeContext.getType(symbol)), typed.Type.Unit, span)
     case resolved.Expr.Apply(expr, args, span) =>
       val typedExpr = typeExpr(expr)
