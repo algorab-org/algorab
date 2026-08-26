@@ -14,6 +14,14 @@ sealed trait Symbol derives CanEqual:
 
   def owner: Option[SymbolId]
 
+  def isFunction: Boolean = this match
+    case _: Symbol.Function => true
+    case _ => false
+  
+  def isMutableVariable: Boolean = this match
+    case Symbol.Variable(_, _, _, mutable, _) => mutable
+    case _ => false
+
 object Symbol:
 
   sealed trait Valid extends Symbol:

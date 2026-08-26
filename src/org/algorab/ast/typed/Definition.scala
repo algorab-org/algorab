@@ -1,4 +1,4 @@
-package org.algorab.ast.resolved
+package org.algorab.ast.typed
 
 import io.github.iltotore.pureparser.Span
 import org.algorab.ast.SymbolId
@@ -6,7 +6,5 @@ import org.algorab.ast.SymbolId
 enum Definition:
   case Val(symbol: SymbolId, tpe: Type, expr: Expr, mutable: Boolean, span: Span)
   case Function(symbol: SymbolId, params: List[(SymbolId, Type)], retType: Type, body: Expr, span: Span)
-
-  def symbol: SymbolId
 
   def span: Span

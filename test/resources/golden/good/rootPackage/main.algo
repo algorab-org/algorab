@@ -1,2 +1,2 @@
-println(foo)
+-- println(foo) should result in a "forward declaration" error
 println(bar())
