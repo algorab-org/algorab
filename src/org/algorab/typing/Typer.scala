@@ -73,6 +73,9 @@ object Typer:
     case definition: resolved.Definition => typeDefinition(definition)
     case expr: resolved.Expr             => typeExpr(expr)
 
+  // TODO separate getDefinition type so that this works:
+  // val x = y
+  // val y: Int = x
   def typeDefinition(definition: resolved.Definition): Typing[typed.Definition] = definition match
     case resolved.Definition.Val(symbol, tpe, expr, mutable, span) =>
       if tpe == resolved.Type.Inferred then
@@ -160,5 +163,7 @@ object Typer:
       typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, span)
     case resolved.Expr.Invalid(span) => typed.Expr.Invalid(typed.Type.Invalid, span)
 
-  def apply(symbols: Map[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition])(program: resolved.Program): AlgorabProgram[typed.Program] =
-    Typing(symbols, declarations)(typeProgram(program))
+  def apply
+    (symbols: Map[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition])
+    (programs: Seq[resolved.Program]): AlgorabProgram[Seq[typed.Program]] =
+    Typing(symbols, declarations)(programs.map(typeProgram))

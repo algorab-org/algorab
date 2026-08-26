@@ -15,6 +15,6 @@ def runProgram(sources: String*): AlgorabProgram[Seq[Program]] =
       .map:
         case (ast, (packageId, packageScope)) => Resolver.resolveProgram(ast, packageId, packageScope)
 
-  val typed = resolvedPrograms.map(Typer(resolvedContext.symbols, resolvedContext.declarations))
+  val typed = Typer(resolvedContext.symbols, resolvedContext.declarations)(resolvedPrograms)
 
   typed

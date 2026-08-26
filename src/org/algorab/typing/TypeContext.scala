@@ -34,7 +34,6 @@ object TypeContext:
     case Some(tpe) => tpe
     case None =>
       write(TypeError.RecursiveInference(get.declarations(symbol).span))
-      assignType(symbol, Type.Invalid)
       Type.Invalid
   
   def assignType(symbol: SymbolId, tpe: Type): Typing[Unit] = update(ctx =>
