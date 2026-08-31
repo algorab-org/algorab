@@ -2,15 +2,18 @@ package org.algorab.parsing
 
 import io.github.iltotore.pureparser.*
 import org.algorab.AlgorabProgram
+import org.algorab.ast.Identifier
 import org.algorab.ast.raw.Definition
 import org.algorab.ast.raw.Expr
-import org.algorab.ast.Identifier
+import org.algorab.ast.raw.Program
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
-import org.algorab.ast.raw.Program
 
+/**
+ * A [[org.algorab.ast.raw\.Expr]] parser.
+ */
 object ExprParser:
 
   val literalParser: Parser[Token, Expr] = Parser.next match
@@ -246,6 +249,12 @@ object ExprParser:
     )
   )
 
+  /**
+   * Parse an expression from a list of tokens.
+   *
+   * @param tokens the tokens to read
+   * @return the parsed [[org.algorab.ast.raw\.Program]]
+   */
   def apply(tokens: List[Token]): AlgorabProgram[Program] =
     val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(programParser, Parser.eof))
     Writer.writeAll(result.errors)

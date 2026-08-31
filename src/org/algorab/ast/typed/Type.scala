@@ -2,9 +2,29 @@ package org.algorab.ast.typed
 
 import org.algorab.ast.SymbolId
 
+/**
+ * A parsed type.
+ */
 enum Type derives CanEqual:
+
+  /**
+   * A reference to a declared class.
+   *
+   * @param symbol the unique id of the referenced class
+   */
   case Class(symbol: SymbolId)
+
+  /**
+   * The type of a function.
+   *
+   * @param inputs the type of the function's parameters
+   * @param output the return type of the function
+   */
   case Function(inputs: List[Type], output: Type)
+
+  /**
+   * An inferred type aka not explicitly typed in the source.
+   */
   case Invalid
 
 object Type:

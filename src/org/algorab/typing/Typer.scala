@@ -1,22 +1,38 @@
 package org.algorab.typing
 
+import io.github.iltotore.pureparser.Span
+import org.algorab.AlgorabProgram
+import org.algorab.ast.Symbol
+import org.algorab.ast.Symbol.Root.span
+import org.algorab.ast.SymbolId
 import org.algorab.ast.resolved
 import org.algorab.ast.typed
-import purelogic.*
 import org.algorab.resolution.ResolutionContext
-import org.algorab.AlgorabProgram
-import org.algorab.ast.SymbolId
-import org.algorab.ast.Symbol
-import io.github.iltotore.pureparser.Span
-import org.algorab.ast.Symbol.Root.span
+import purelogic.*
 
+/**
+ * The typing phase.
+ */
 object Typer:
 
+  /**
+   * Resolve a type to its fully typed, concrete form.
+   *
+   * @param tpe the type to resolve
+   * @return the given type with fully concrete references aka no generic or inferred
+   */
   def resolveType(tpe: resolved.Type): typed.Type = tpe match
     case resolved.Type.Ref(symbol) => typed.Type.Class(symbol)
     case resolved.Type.Inferred    => throw AssertionError("Resolving Inferred type")
 
-  def union(typeA: typed.Type, typeB: typed.Type): Typing[typed.Type] =
+  /**
+   * Unify two types.
+   *
+   * @param typeA the first type
+   * @param typeB the second type
+   * @return the type unifying the two given ones, usually the lowest common ancestor
+   */
+  def unify(typeA: typed.Type, typeB: typed.Type): Typing[typed.Type] =
     if typeA == typed.Type.Unit || typeB == typed.Type.Unit then typed.Type.Unit
     else if typeA == typed.Type.Invalid || typeB == typed.Type.Invalid then typed.Type.Invalid
     else if typeA == typed.Type.Int && typeB == typed.Type.Float then typed.Type.Float
@@ -25,8 +41,24 @@ object Typer:
     else if TypeContext.isSubtype(typeB, typeA) then typeA
     else typed.Type.Any
 
+  /**
+   * Type an expression and cast it to a certain type.
+   * A type mismatch occurs if the expression's type cannot be casted to the expected one.
+   *
+   * @param expr the expression to type
+   * @param to the target type
+   * @return the given expression, typed to the given type
+   */
   def typeExprTo(expr: resolved.Expr, to: typed.Type): Typing[typed.Expr] = castExpr(typeExpr(expr), to)
 
+  /**
+   * Cast a typed expression to a certain type.
+   * A type mismatch occurs if the expression's type cannot be casted to the expected one.
+   *
+   * @param expr the expression to cast
+   * @param to the target type
+   * @return the given expression, casted to the given type
+   */
   def castExpr(expr: typed.Expr, to: typed.Type): Typing[typed.Expr] =
     if expr.tpe == typed.Type.Int && to == typed.Type.Float then
       typed.Expr.ToFloat(expr)
@@ -34,10 +66,26 @@ object Typer:
       if !TypeContext.isSubtype(expr.tpe, to) then write(TypeError.simpleMismatch(List(to), expr.tpe, expr.span))
       expr
 
+  /**
+   * Ensure the given expression has a numeric type.
+   *
+   * @param expr the expression to check
+   * @return the same expression, for better UX where it's used
+   */
   def assertNumeric(expr: typed.Expr): Typing[typed.Expr] =
-    if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float then write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, span))
+    if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float then
+      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, span))
     expr
 
+  /**
+   * Type a numeric binary operation.
+   *
+   * @param left the operation's LHS
+   * @param right the operation's RHS
+   * @param opText the textual representation of the operator such as "+"
+   * @param op the typed operation's constructor
+   * @return the typed binary operation
+   */
   def typeBinaryNumOp(
       left: resolved.Expr,
       right: resolved.Expr,
@@ -55,7 +103,7 @@ object Typer:
       case (leftType, rightType) =>
         write(TypeError.Mismatch(
           expected = List(
-            TypePattern.Operator(
+            TypePattern.BinaryOperator(
               TypePattern.Union(List(TypePattern.Type(typed.Type.Int), TypePattern.Type(typed.Type.Float))),
               TypePattern.Union(List(TypePattern.Type(typed.Type.Int), TypePattern.Type(typed.Type.Float))),
               opText
@@ -65,10 +113,22 @@ object Typer:
           span = span
         ))
         op(typedLeft, typedRight, typed.Type.Invalid)
-        
+
+  /**
+   * Type a program.
+   *
+   * @param program the program to type
+   * @return a typed representation of the given program
+   */
   def typeProgram(program: resolved.Program): Typing[typed.Program] =
     typed.Program(program.owner, program.statements.map(typeStatement))
 
+  /**
+   * Type a statement.
+   *
+   * @param statement the program to type
+   * @return a typed representation of the given statement
+   */
   def typeStatement(statement: resolved.Statement): Typing[typed.Statement] = statement match
     case definition: resolved.Definition => typeDefinition(definition)
     case expr: resolved.Expr             => typeExpr(expr)
@@ -161,7 +221,7 @@ object Typer:
       val typedCond = typeExprTo(cond, typed.Type.Boolean)
       val typedIfTrue = typeExpr(ifTrue)
       val typedIfFalse = typeExpr(ifFalse)
-      val ifType = union(typedIfTrue.tpe, typedIfFalse.tpe)
+      val ifType = unify(typedIfTrue.tpe, typedIfFalse.tpe)
 
       typed.Expr.If(typedCond, castExpr(typedIfTrue, ifType), castExpr(typedIfFalse, ifType), ifType, span)
 
@@ -171,7 +231,8 @@ object Typer:
       typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, span)
     case resolved.Expr.Invalid(span) => typed.Expr.Invalid(typed.Type.Invalid, span)
 
-  def apply
-    (symbols: Map[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition])
-    (programs: Seq[resolved.Program]): AlgorabProgram[Seq[typed.Program]] =
+  def apply(
+      symbols: Map[SymbolId, Symbol],
+      declarations: Map[SymbolId, resolved.Definition]
+  )(programs: Seq[resolved.Program]): AlgorabProgram[Seq[typed.Program]] =
     Typing(symbols, declarations)(programs.map(typeProgram))
