@@ -6,6 +6,9 @@ import org.algorab.ast.Identifier
 import purelogic.*
 import scala.annotation.tailrec
 
+/**
+ * A [[Token]] parser, also called a lexer.
+ */
 object TokenLexer:
 
   val booleanParser: Parser[Char, Token] = Token.LBool.apply.tupled(
@@ -226,14 +229,21 @@ object TokenLexer:
       previousPosition: (Int, Int)
   )
 
-  def isLayoutStart(token: Token): Boolean = token match
+  private def isLayoutStart(token: Token): Boolean = token match
     case _: (Token.If | Token.Then | Token.Else | Token.For | Token.While | Token.Do | Token.In | Token.Equal) => true
     case _                                                                                                     => false
 
-  def isLayoutEnd(token: Token): Boolean = token match
+  private def isLayoutEnd(token: Token): Boolean = token match
     case _: (Token.Then | Token.Else | Token.In | Token.Do) => true
     case _                                                  => false
 
+  /**
+   * Parse indentation and newlines, based on similar layout rules than Haskell's.
+   *
+   * @param tokens the parsed tokens, excluding indentation-based ones
+   * @param source the textual source code, used for getting line and column of a chatacter based on its absolute position
+   * @return the token list with [[Token.Indent]]/[[Token.DeIndent]]/[[Token.Newline]] inserted
+   */
   def indentationParser(tokens: List[Token], source: String): Parser[Char, List[Token]] =
     val lineSpans =
       source
@@ -301,6 +311,12 @@ object TokenLexer:
     finalState.output ++ finalState.stack.init.collect:
       case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
 
+  /**
+   * Parse a token list from a textual source code.
+   *
+   * @param source the source code to read
+   * @return the parsed [[Token]]s
+   */
   def apply(source: String): AlgorabProgram[List[Token]] =
     val result = Parser(source)(indentationParser(tokenListParser, source))
     Writer.writeAll(result.errors)

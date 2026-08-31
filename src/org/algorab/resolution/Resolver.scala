@@ -9,12 +9,24 @@ import org.algorab.ast.Symbol.Namespace
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw
 import org.algorab.ast.resolved
+import org.algorab.resolution.ResolutionContext.currentScope
 import purelogic.*
 import scala.annotation.tailrec
-import org.algorab.resolution.ResolutionContext.currentScope
 
+/**
+ * The name resolution phase.
+ */
 object Resolver:
 
+  /**
+   * Declare a package if needed and resolve it.
+   *
+   * @param ownerId the root owner of the packages to create
+   * @param scopes the current scope path
+   * @param path the remaining package path to declare/resolve
+   * @return the id of the package and its scope path, typically for `package a.b.c` it will be `List(scopeA, scopeB, scopeC)`
+   */
+  @tailrec
   def declarePackage(ownerId: SymbolId, scopes: List[ScopeId], path: List[(Identifier, Span)]): Resolution[(SymbolId, List[ScopeId])] = path match
     case Nil => (ownerId, scopes)
     case (head, headSpan) :: tail =>
@@ -46,31 +58,81 @@ object Resolver:
 
           declarePackage(packageId, scopeId :: scopes, tail)
 
+  /**
+   * Declare all qualified members of a parsed file.
+   *
+   * @param program the parsed file to visit
+   * @return the package id and scope path of the root of this source file
+   */
   def declareProgram(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
     val (packageId, packageScope) = declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
     ResolutionContext.inScopePath(packageScope)(declareAllStatements(program.statements, packageId == SymbolId.Root))
     (packageId, packageScope)
 
+  /**
+   * Resolve the given parsed file.
+   *
+   * @param program the parsed file to resolve
+   * @param owner the owner of this parsed file aka its package, possibly [[SymbolId.Root]] for package-less files
+   * @param packageScope the scope path of the root of this source file
+   * @return a representation of the same file with all its names resolved
+   */
   def resolveProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[resolved.Program] =
     resolved.Program(
       owner = owner,
       statements = ResolutionContext.inScopePath(packageScope)(program.statements.map(resolveStatement))
     )
 
+  /**
+   * Resolve the given type.
+   *
+   * @param tpe the type to resolve
+   * @param span the span where the resolution occurs, used for reporting purpose
+   * @return a representation of the same type with all its names resolved
+   */
   def resolveType(tpe: raw.Type, span: Span): Resolution[resolved.Type] = tpe match
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, span))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
+  /**
+   * Declare all given statements.
+   *
+   * @param statements the statements to declare
+   * @param isBlock whether these statements reside in a [[raw.Expr.Block]] or not
+   */
   def declareAllStatements(statements: List[raw.Statement], isBlock: Boolean): Resolution[Unit] =
     statements.foreach:
       case definition: raw.Definition => declareDefinition(definition, isBlock)
       case _                          =>
 
+  /**
+   * Resolve the given statement.
+   *
+   * @param statement the statement to resolve
+   * @return a representation of the same statement with all its names resolved
+   */
   def resolveStatement(statement: raw.Statement): Resolution[resolved.Statement] = statement match
     case definition: raw.Definition => resolveDefinition(definition)
     case expr: raw.Expr             => resolveExpr(expr)
 
-  // TODO assign SymbolId -> resolved.Definition
+  /**
+   * Declare the given definition.
+   *
+   * @param definition the definition to declare
+   * @param isBlock whether this definition reside in a [[raw.Expr.Block]] or not
+   */
+  def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
+    case raw.Definition.Val(name, _, expr, mutable, span) =>
+      ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = !isBlock).asInstanceOf[Unit]
+    case raw.Definition.Function(name, _, _, body, span) =>
+      ResolutionContext.declareTerm(Symbol.Function(_, name, None, span)).asInstanceOf[Unit]
+
+  /**
+   * Resolve the given definition.
+   *
+   * @param statement the definition to resolve
+   * @return a representation of the same definition with all its names resolved
+   */
   def resolveDefinition(definition: raw.Definition): Resolution[resolved.Definition] = definition match
     case raw.Definition.Val(name, tpe, expr, mutable, span) =>
       ResolutionContext.initializeLocalTerm(name)
@@ -102,12 +164,12 @@ object Resolver:
         )
       )
 
-  def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
-    case raw.Definition.Val(name, _, expr, mutable, span) =>
-      ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = !isBlock).asInstanceOf[Unit]
-    case raw.Definition.Function(name, _, _, body, span) =>
-      ResolutionContext.declareTerm(Symbol.Function(_, name, None, span)).asInstanceOf[Unit]
-
+  /**
+   * Resolve the given expression.
+   *
+   * @param expr the expression to resolve
+   * @return a representation of the same expression with all its names resolved
+   */
   def resolveExpr(expr: raw.Expr): Resolution[resolved.Expr] = expr match
     case raw.Expr.LBool(value, span)              => resolved.Expr.LBool(value, span)
     case raw.Expr.LInt(value, span)               => resolved.Expr.LInt(value, span)
