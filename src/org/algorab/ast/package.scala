@@ -69,3 +69,18 @@ object ScopeId extends RefinedType[Int, GreaterEqual[-1]]:
 
   val Invalid: ScopeId = ScopeId(-1)
   val Root: ScopeId = ScopeId.Root
+
+type InstructionPosition = InstructionPosition.T
+object InstructionPosition extends RefinedType[Int, Positive0]:
+
+  extension (x: InstructionPosition)
+    /**
+     * Add a positive integer to this instruction position.
+     *
+     * @param y a positive integer
+     * @return this position's value + [[y]]
+     */
+    def +(y: Int :| Positive0): InstructionPosition = InstructionPosition.assume(x.value + y)
+
+type ParamCount = ParamCount.T
+object ParamCount extends RefinedType[Int, Positive0]

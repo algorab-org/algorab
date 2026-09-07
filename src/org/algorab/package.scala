@@ -6,6 +6,7 @@ import org.algorab.parsing.TokenLexer
 import org.algorab.resolution.Resolution
 import org.algorab.resolution.Resolver
 import org.algorab.typing.Typer
+import org.algorab.compilation.Compilation
 
 /**
  * Run an Algorab program.
