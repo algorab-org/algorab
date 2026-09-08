@@ -79,7 +79,7 @@ object resources:
     import quotes.reflect.*
 
     def isTestCase(path: Path): Boolean =
-      Files.isDirectory(path) || path.toString.endsWith(".algo")
+      (Files.isDirectory(path) && !path.toString.endsWith(".disabled")) || path.toString.endsWith(".algo")
 
     val cases: List[Expr[Unit]] = listResources(getResourcePath("/golden/good")).filter(isTestCase).map(file =>
       val fileStr = file.getFileName().toString

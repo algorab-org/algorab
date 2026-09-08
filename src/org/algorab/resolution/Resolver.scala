@@ -2,6 +2,7 @@ package org.algorab.resolution
 
 import io.github.iltotore.iron.autoRefine
 import io.github.iltotore.pureparser.Span
+import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
 import org.algorab.ast.ScopeId
 import org.algorab.ast.Symbol
@@ -224,3 +225,13 @@ object Resolver:
         )
       )
     case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
+
+  def apply(programs: Seq[raw.Program]): AlgorabProgram[(ResolutionContext, Seq[resolved.Program])] =
+    Resolution:
+      val declaredPrograms = programs.map(program => (program, Resolver.declareProgram(program)))
+      if declaredPrograms.count(_._2._1 == SymbolId.Root) > 1 then
+        write(ResolutionError.MultipleScriptFiles(Span(0, 0)))
+        fail(())
+      else
+        declaredPrograms.map:
+          case (program, (packageId, packageScope)) => Resolver.resolveProgram(program, packageId, packageScope)

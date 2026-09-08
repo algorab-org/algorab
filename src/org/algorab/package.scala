@@ -16,12 +16,7 @@ import org.algorab.compilation.Compilation
  */
 def runProgram(sources: String*): AlgorabProgram[Seq[Program]] =
   val parsed = sources.map(TokenLexer.apply andThen ExprParser.apply)
-  val (resolvedContext, resolvedPrograms) = Resolution:
-    parsed
-      .map(ast => (ast, Resolver.declareProgram(ast)))
-      .map:
-        case (ast, (packageId, packageScope)) => Resolver.resolveProgram(ast, packageId, packageScope)
-
+  val (resolvedContext, resolvedPrograms) = Resolver(parsed)
   val typed = Typer(resolvedContext.symbols, resolvedContext.declarations)(resolvedPrograms)
 
   typed

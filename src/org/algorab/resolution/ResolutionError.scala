@@ -44,6 +44,8 @@ enum ResolutionError:
 
   case TopLevelStatementInModule(span: Span)
 
+  case MultipleScriptFiles(span: Span) // TODO use SourcePosition
+
   /**
    * The source position where the error occurred.
    */
