@@ -42,6 +42,8 @@ enum ResolutionError:
    */
   case NotANamespace(symbol: Symbol, span: Span)
 
+  case TopLevelStatementInModule(span: Span)
+
   /**
    * The source position where the error occurred.
    */

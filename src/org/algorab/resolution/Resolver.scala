@@ -78,10 +78,23 @@ object Resolver:
    * @return a representation of the same file with all its names resolved
    */
   def resolveProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[resolved.Program] =
-    resolved.Program(
-      owner = owner,
-      statements = ResolutionContext.inScopePath(packageScope)(program.statements.map(resolveStatement))
-    )
+    if owner == SymbolId.Root then
+      resolved.Program.Script(
+        statements = ResolutionContext.inScopePath(packageScope)(program.statements.map(resolveStatement))
+      )
+    else
+      resolved.Program.Module(
+        owner = owner,
+        definitions = ResolutionContext.inScopePath(packageScope)(
+          program
+            .statements
+            .flatMap:
+              case definition: raw.Definition => Some(resolveDefinition(definition))
+              case expr: raw.Expr =>
+                write(ResolutionError.TopLevelStatementInModule(expr.span))
+                None
+        )
+      )
 
   /**
    * Resolve the given type.
