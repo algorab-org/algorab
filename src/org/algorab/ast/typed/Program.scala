@@ -11,3 +11,11 @@ import org.algorab.ast.SymbolId
 enum Program:
   case Script(statements: List[Statement])
   case Module(owner: SymbolId, definitions: List[Definition])
+
+  def moduleSymbol: SymbolId = this match
+    case Script(_)        => SymbolId.Root
+    case Module(owner, _) => owner
+
+  def moduleStatements: List[Statement] = this match
+    case Script(statements)     => statements
+    case Module(_, definitions) => definitions
