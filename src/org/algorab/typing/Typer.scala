@@ -9,6 +9,7 @@ import org.algorab.ast.resolved
 import org.algorab.ast.typed
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
+import org.algorab.ast.raw.Statement
 
 /**
  * The typing phase.
@@ -120,8 +121,9 @@ object Typer:
    * @param program the program to type
    * @return a typed representation of the given program
    */
-  def typeProgram(program: resolved.Program): Typing[typed.Program] =
-    typed.Program(program.owner, program.statements.map(typeStatement))
+  def typeProgram(program: resolved.Program): Typing[typed.Program] = program match
+    case resolved.Program.Script(statements) => typed.Program.Script(statements.map(typeStatement))
+    case resolved.Program.Module(owner, definitions) => typed.Program.Module(owner, definitions.map(typeDefinition))
 
   /**
    * Type a statement.
