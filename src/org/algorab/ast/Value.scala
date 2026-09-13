@@ -6,6 +6,8 @@ opaque type Value <: Value.Raw = Value.Raw
 object Value:
   type Raw = Boolean | Int | Double | Char | String | FunctionRef | Null
 
+  given CanEqual[Value, Value] = CanEqual.derived
+
   inline def apply(value: Raw): Value = value
 
   inline def unapply(value: Raw): Value = value
