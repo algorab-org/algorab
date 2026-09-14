@@ -50,7 +50,7 @@ object Compiler:
       compileAllDeclarations(allStatements, true)
       allStatements.foreach(compileStatement)
 
-    CompilationContext.addFunction(moduleSymbol, Function(initialization))
+    CompilationContext.addFunction(moduleSymbol, Function(initialization.toArray))
     
     Module(
       dependencies = Set.empty,
@@ -79,7 +79,7 @@ object Compiler:
         compileExpr(body)
         CompilationContext.emit(Instruction.Return(span))
       
-      CompilationContext.addFunction(symbol, Function(instructions))
+      CompilationContext.addFunction(symbol, Function(instructions.toArray))
       CompilationContext.emit(Instruction.Push(Value.FunctionRef(symbol), span))
       CompilationContext.emitStore(symbol, span)
 

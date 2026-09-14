@@ -1,3 +1,3 @@
 package org.algorab.ast.compiled
 
-case class Function(body: Seq[Instruction])
+case class Function(body: Array[Instruction])
