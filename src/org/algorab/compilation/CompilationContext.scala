@@ -20,7 +20,13 @@ object CompilationContext:
 
   val default: CompilationContext = CompilationContext(
     functions = Map.empty,
-    globals = Set.empty,
+    globals = Set(
+      SymbolId.UnitTerm,
+      SymbolId.ToFloatTerm,
+      SymbolId.PrintLnTerm,
+      SymbolId.ReadIntTerm,
+      SymbolId.ReadFloatTerm
+    ),
     instructions = Seq.empty,
     position = InstructionPosition(0)
   )

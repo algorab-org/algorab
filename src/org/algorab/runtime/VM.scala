@@ -9,6 +9,7 @@ import purelogic.*
 import org.algorab.ast.compiled.Program
 import org.algorab.ast.SymbolId
 import org.algorab.AlgorabProgram
+import org.algorab.runtime.RuntimeContext.currentFrame
 
 object VM:
 

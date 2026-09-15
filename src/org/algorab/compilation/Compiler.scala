@@ -138,8 +138,8 @@ object Compiler:
       compileExpr(expr)
       CompilationContext.emit(Instruction.ToFloat(span))
     case Expr.Apply(expr, args, _, span) =>
-      compileExpr(expr)
       args.foreach(compileExpr)
+      compileExpr(expr)
       CompilationContext.emit(Instruction.Apply(ParamCount.assume(args.size), span))
     case Expr.Block(statements, _, span) =>
       compileAllDeclarations(statements, false)

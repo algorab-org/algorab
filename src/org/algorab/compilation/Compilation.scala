@@ -17,7 +17,7 @@ object Compilation:
     locallyAt(InstructionPosition(0))(program)._1
 
   def locallyAt(offset: InstructionPosition)(program: Compilation[Unit]): Compilation[(Seq[Instruction], InstructionPosition)] =
-    val context = localState(_.copy(position = offset)):
+    val context = localState(_.copy(instructions = Vector.empty, position = offset)):
       program
       get
 
