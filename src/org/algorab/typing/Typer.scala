@@ -100,7 +100,7 @@ object Typer:
       case (typed.Type.Int, typed.Type.Int)     => op(typedLeft, typedRight, typed.Type.Int)
       case (typed.Type.Int, typed.Type.Float)   => op(typed.Expr.ToFloat(typedLeft), typedRight, typed.Type.Float)
       case (typed.Type.Float, typed.Type.Int)   => op(typedLeft, typed.Expr.ToFloat(typedRight), typed.Type.Float)
-      case (typed.Type.Float, typed.Type.Float) => op(typed.Expr.ToFloat(typedLeft), typed.Expr.ToFloat(typedRight), typed.Type.Float)
+      case (typed.Type.Float, typed.Type.Float) => op(typedLeft, typedRight, typed.Type.Float)
       case (leftType, rightType) =>
         write(TypeError.Mismatch(
           expected = List(
