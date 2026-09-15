@@ -9,6 +9,7 @@ import org.algorab.ast.InstructionPosition
 import org.algorab.compilation.CompilationContext.currentPosition
 import org.algorab.ast.compiled.Instruction
 import io.github.iltotore.iron.autoRefine
+import scala.io.StdIn
 
 case class RuntimeContext(
   frames: List[RuntimeFrame],
@@ -31,7 +32,11 @@ object RuntimeContext:
       SymbolId.ToFloatTerm -> Value.BuiltinFunction:
         case Seq(value: Int) => Value(value.toFloat),
       SymbolId.PrintLnTerm -> Value.BuiltinFunction:
-        case Seq(value) => Value(println(value))
+        case Seq(value) => Value(println(value)),
+      SymbolId.ReadIntTerm -> Value.BuiltinFunction:
+        case Seq() => Value(StdIn.readInt()),
+      SymbolId.ReadFloatTerm -> Value.BuiltinFunction:
+        case Seq() => Value(StdIn.readFloat())
     )
   )
 
