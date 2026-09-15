@@ -64,7 +64,7 @@ object Compiler:
   def compileAllDeclarations(statements: Seq[Statement], global: Boolean): Compilation[Unit] =
     statements.foreach:
       case definition: Definition =>
-        CompilationContext.declareGlobal(definition.symbol)
+        if global then CompilationContext.declareGlobal(definition.symbol)
         compileDeclaration(definition)
       case _ =>
 
