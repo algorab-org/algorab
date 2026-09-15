@@ -73,6 +73,15 @@ object Compiler:
       CompilationContext.emit(Instruction.Push(Value.default(tpe), span))
       CompilationContext.emitStore(symbol, span)
 
+    case Definition.Function(symbol, _, _, _, span) =>
+      CompilationContext.emit(Instruction.Push(Value(null), span))
+      CompilationContext.emitStore(symbol, span)
+
+  def compileDefinition(definition: Definition): Compilation[Unit] = definition match
+    case Definition.Val(symbol, _, expr, _, span) =>
+      compileExpr(expr)
+      CompilationContext.emitStore(symbol, span)
+
     case Definition.Function(symbol, params, retType, body, span) =>
       val instructions = Compilation.locally:
         params.reverse.foreach((param, _) => CompilationContext.emit(Instruction.Store(param, span)))
@@ -82,13 +91,6 @@ object Compiler:
       CompilationContext.addFunction(symbol, Function(instructions.toArray))
       CompilationContext.emit(Instruction.Push(Value.FunctionRef(symbol), span))
       CompilationContext.emitStore(symbol, span)
-
-  def compileDefinition(definition: Definition): Compilation[Unit] = definition match
-    case Definition.Val(symbol, _, expr, _, span) =>
-      compileExpr(expr)
-      CompilationContext.emitStore(symbol, span)
-
-    case Definition.Function(_, _, _, _, _) =>
 
   def compileExpr(expr: Expr): Compilation[Unit] = expr match
     case Expr.LBool(value, _, span)              => CompilationContext.emit(Instruction.Push(Value(value), span))
@@ -113,9 +115,9 @@ object Compiler:
     case Expr.Mod(left, right, _, span)          => compileBinaryNumOp(left, right, Instruction.ModInt(span), Instruction.ModFloat(span))
     case Expr.And(left, right, _, span)          =>
       compileExpr(left)
-      val (rightInstructions, rightEnd) = Compilation.locallyAt(CompilationContext.currentPosition):
+      val (rightInstructions, rightEnd) = Compilation.locallyAt(CompilationContext.currentPosition + 1):
         compileExpr(right)
-        CompilationContext.emit(Instruction.Jump(CompilationContext.currentPosition + 1, span))
+        CompilationContext.emit(Instruction.Jump(CompilationContext.currentPosition + 2, span))
       
       CompilationContext.emit(Instruction.JumpIfFalse(rightEnd, span))
       CompilationContext.emitAll(rightInstructions)
@@ -156,11 +158,12 @@ object Compiler:
       CompilationContext.emit(Instruction.Jump(ifFalseEnd, span))
       CompilationContext.emitAll(ifFalseInstructions)
     case Expr.While(cond, body, _, span) =>
+      val whileStart = CompilationContext.currentPosition
       compileExpr(cond)
       val bodyStart = CompilationContext.currentPosition + 1
       val (bodyInstructions, bodyEnd) = Compilation.locallyAt(bodyStart):
         compileExpr(body)
-        CompilationContext.emit(Instruction.Jump(CompilationContext.currentPosition, span))
+        CompilationContext.emit(Instruction.Jump(whileStart, span))
 
       CompilationContext.emit(Instruction.JumpIfFalse(bodyEnd, span))
       CompilationContext.emitAll(bodyInstructions)
