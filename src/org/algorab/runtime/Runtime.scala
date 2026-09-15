@@ -3,8 +3,9 @@ package org.algorab.runtime
 import purelogic.*
 import org.algorab.AlgorabProgram
 import org.algorab.ast.compiled.Program
+import org.algorab.util.Console
 
-type Runtime[+A] = (State[RuntimeContext], Abort[RuntimeError]) ?=> A
+type Runtime[+A] = (State[RuntimeContext], Abort[RuntimeError], Console) ?=> A
 
 object Runtime:
 

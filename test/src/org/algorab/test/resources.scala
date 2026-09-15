@@ -54,9 +54,15 @@ object resources:
   def readResourceLines(path: String): Iterable[String] =
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
-  def runGoldenTest(codes: List[String], input: Iterable[String], expectedOutput: Option[String]): Unit =
-    val result = Await.result(Future(AlgorabProgram(runProgram(codes*)))(using ExecutionContext.global), 3.seconds)
-    assert(result._1.isEmpty && result._2.isDefined)
+  def runGoldenTest(codes: List[String], input: String, expectedOutput: Option[String]): Unit =
+    val (output, errors, result) = Await.result(
+      Future(
+        AlgorabProgram.withInput(input)(runProgram(codes*))
+      )(using ExecutionContext.global),
+      3.seconds
+    )
+
+    assert(output != null && errors.isEmpty && result.isDefined && expectedOutput.forall(_ == output))
 
   /** Transparent inline entry point that triggers [[goldenTestsImpl]] at the call site.
     *
@@ -101,8 +107,8 @@ object resources:
             if $hasOutput then Some(readResource("/golden/good/" + $outputName))
             else None
           val input =
-            if $hasInput then readResourceLines("/golden/good/" + $inputName)
-            else Seq.empty
+            if $hasInput then readResource("/golden/good/" + $inputName)
+            else ""
           runGoldenTest(codes, input, expectedOutput)
       }
     )
