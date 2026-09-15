@@ -149,7 +149,7 @@ object Compiler:
       val ifTrueStart = CompilationContext.currentPosition + 1
       val (ifTrueInstructions, ifTrueEnd) = Compilation.locallyAt(ifTrueStart)(compileExpr(ifTrue))
       val ifFalseStart = ifTrueEnd + 1
-      val (ifFalseInstructions, ifFalseEnd) = Compilation.locallyAt(ifFalseStart)(compileExpr(ifTrue))
+      val (ifFalseInstructions, ifFalseEnd) = Compilation.locallyAt(ifFalseStart)(compileExpr(ifFalse))
 
       CompilationContext.emit(Instruction.JumpIfFalse(ifFalseStart, span))
       CompilationContext.emitAll(ifTrueInstructions)
