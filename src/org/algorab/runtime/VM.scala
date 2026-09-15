@@ -25,7 +25,7 @@ object VM:
     case value: Double => value
     case value         => fail(RuntimeError.simpleMismatch(Type.Float, value, span))
 
-  inline def binaryOp[A <: Value.Raw](inline right: A, inline left: A, inline op: (A, A) => Value.Raw): Value =
+  inline def binaryOp[A <: Value.Raw](right: A, left: A, inline op: (A, A) => Value.Raw): Value =
     Value(op(left, right))
 
   inline def binaryOpInt(inline span: Span, inline op: (Int, Int) => Value.Raw): Runtime[Value] =
@@ -78,10 +78,10 @@ object VM:
       function match
         case Value.FunctionRef(symbol) => RuntimeContext.pushNewFrame(
           symbol,
-          RuntimeContext.currentFrame.stack.take(paramCount.value)
+          RuntimeContext.popN(paramCount.value)
         )
 
-        case Value.BuiltinFunction(f) => RuntimeContext.push(f(RuntimeContext.currentFrame.stack.take(paramCount.value)))
+        case Value.BuiltinFunction(f) => RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
 
         case _ =>
           fail(RuntimeError.simpleMismatch(Type.Function(List.fill(paramCount.value)(Type.Any), Type.Any), function, span))

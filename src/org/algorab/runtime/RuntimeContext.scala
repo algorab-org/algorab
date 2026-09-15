@@ -56,8 +56,13 @@ object RuntimeContext:
     stack = value :: ctx.stack
   ))
 
-  def pop: Runtime[Value] = modifyCurrentFrame((ctx, frame) =>
+  def pop: Runtime[Value] = modifyCurrentFrame((_, frame) =>
     (frame.stack.head, frame.copy(stack = frame.stack.tail))
+  )
+
+  def popN(n: Int): Runtime[List[Value]] = modifyCurrentFrame((_, frame) =>
+    val (popped, remaining) = frame.stack.splitAt(n)
+    (popped, frame.copy(stack = remaining))
   )
 
   def storeGlobal(symbol: SymbolId, value: Value): Runtime[Unit] = update(ctx => ctx.copy(
@@ -74,9 +79,11 @@ object RuntimeContext:
 
   def jump(to: InstructionPosition): Runtime[Unit] = updateCurrentFrame(_.copy(position = to))
 
-  def pushNewFrame(function: SymbolId, stack: List[Value]): Runtime[Unit] = update(frame => frame.copy(
-    frames = RuntimeFrame.default(function, stack) :: frame.frames
-  ))
+  def pushNewFrame(function: SymbolId, stack: List[Value]): Runtime[Unit] =
+    if get.frames.sizeCompare(32) > 0 then throw AssertionError("Max recursion")
+    update(frame => frame.copy(
+      frames = RuntimeFrame.default(function, stack) :: frame.frames
+    ))
 
   def popFrame(): Runtime[Unit] = update(frame => frame.copy(
     frames = frame.frames.tail
