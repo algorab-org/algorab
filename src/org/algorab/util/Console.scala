@@ -9,7 +9,7 @@ trait Console:
 
   def readInt(): Int
 
-  def readFloat(): Float
+  def readDouble(): Double
 
   def println(text: String): Unit
 
@@ -20,11 +20,10 @@ object Console:
     def readLine(): (String, IO) =
       val endPos = input.indexWhere(c => c == '\n' || c == '\r')
       if endPos == -1 then (input, this.copy(input = ""))
-      else if input(endPos) == '\r' && endPos + 1 < input.size && input(endPos + 1) == '\n' then
-        (input.take(endPos), this.copy(input = input.drop(endPos + 1)))
+      else if input(endPos) == '\r' && input(endPos + 1) == '\n' then
+        (input.take(endPos), this.copy(input = input.drop(endPos + 2)))
       else
-        val (taken, remaining) = input.splitAt(endPos)
-        (taken, this.copy(input = remaining))
+        (input.take(endPos), this.copy(input = input.drop(endPos + 1)))
 
     def appendOutput(output: String): IO = this.copy(output = this.output + output)
 
@@ -34,7 +33,7 @@ object Console:
 
       override def readInt(): Int = readLine().toInt
 
-      override def readFloat(): Float = readLine().toFloat
+      override def readDouble(): Double = readLine().toDouble
 
       override def println(text: String): Unit = update(_.appendOutput(s"$text\n"))
     )
@@ -49,7 +48,7 @@ object Console:
 
       override def readInt(): Int = StdIn.readInt()
       
-      override def readFloat(): Float = StdIn.readFloat()
+      override def readDouble(): Double = StdIn.readDouble()
 
       override def println(text: String): Unit = scala.Console.println(text)  
     )
@@ -58,6 +57,6 @@ object Console:
 
   def readInt()(using console: Console): Int = console.readInt()
   
-  def readFloat()(using console: Console): Float = console.readFloat()
+  def readDouble()(using console: Console): Double = console.readDouble()
 
   def println(text: String)(using console: Console): Unit = console.println(text)

@@ -21,6 +21,5 @@ def runProgram(sources: String*): AlgorabProgram[Unit] =
   val (resolvedContext, resolvedPrograms) = Resolver(parsed)
   val typed = Typer(resolvedContext.symbols, resolvedContext.declarations)(resolvedPrograms)
   val compiled = Compiler(typed)
-  println(compiled.functions.map((s, f) => s"$s:\n${f.body.zipWithIndex.mkString("\n")}").mkString("\n\n"))
 
   VM(compiled)

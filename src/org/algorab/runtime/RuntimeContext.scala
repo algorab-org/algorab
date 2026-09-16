@@ -36,7 +36,7 @@ object RuntimeContext:
       SymbolId.ReadIntTerm -> Value.BuiltinFunction:
         case Seq() => Value(Console.readInt()),
       SymbolId.ReadFloatTerm -> Value.BuiltinFunction:
-        case Seq() => Value(Console.readFloat())
+        case Seq() => Value(Console.readDouble())
     )
   )
 
