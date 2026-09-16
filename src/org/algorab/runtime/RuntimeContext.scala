@@ -10,6 +10,7 @@ import org.algorab.ast.InstructionPosition
 import org.algorab.compilation.CompilationContext.currentPosition
 import org.algorab.ast.compiled.Instruction
 import io.github.iltotore.iron.autoRefine
+import io.github.iltotore.pureparser.Span
 
 case class RuntimeContext(
   frames: List[RuntimeFrame],
@@ -34,9 +35,9 @@ object RuntimeContext:
       SymbolId.PrintLnTerm -> Value.BuiltinFunction:
         case Seq(value) => Value(Console.println(value.toString)),
       SymbolId.ReadIntTerm -> Value.BuiltinFunction:
-        case Seq() => Value(Console.readInt()),
+        case Seq() => Value(Runtime.convertConsoleError(Console.readInt())),
       SymbolId.ReadFloatTerm -> Value.BuiltinFunction:
-        case Seq() => Value(Console.readDouble())
+        case Seq() => Value(Runtime.convertConsoleError(Console.readDouble()))
     )
   )
 
@@ -100,3 +101,10 @@ object RuntimeContext:
     val ctx = get
     val currentFrame = ctx.frames.head
     ctx.functions(currentFrame.currentFunction).body.sizeCompare(currentFrame.position.value) > 0
+
+  def currentSpan: Runtime[Span] =
+    val ctx = get
+    val frame = ctx.frames.head
+    val function = ctx.functions(frame.currentFunction)
+    val instruction = function.body(frame.position.value)
+    instruction.span
