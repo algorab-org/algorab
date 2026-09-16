@@ -1,7 +1,6 @@
 package org.algorab
 
-import purelogic.Abort
-import purelogic.Writer
+import purelogic.*
 import org.algorab.util.Console
 
 /**
@@ -22,3 +21,8 @@ object AlgorabProgram:
   def withInput[A](input: String)(program: AlgorabProgram[A]): (String, Seq[AlgorabError], Option[A]) =
     val (output, result) = Console.withInput(input)(Writer(Abort(program).toOption))
     output *: result
+
+  def abortIfErrors[A](program: AlgorabProgram[A]): AlgorabProgram[A] =
+    val (errors, result) = capture(program)
+    if errors.isEmpty then result
+    else fail(())
