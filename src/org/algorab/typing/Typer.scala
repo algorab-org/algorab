@@ -209,7 +209,7 @@ object Typer:
           if inputs.sizeCompare(typedArgs) != 0 then write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), span))
           typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, span)
         case _ =>
-          write(TypeError.ApplyOnNonFunction(typedExpr.tpe, span))
+          if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, span))
           typed.Expr.Apply(typedExpr, typedArgs, typed.Type.Invalid, span)
 
     case resolved.Expr.Block(statements, span) =>
