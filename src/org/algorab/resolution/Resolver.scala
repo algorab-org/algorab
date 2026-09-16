@@ -226,6 +226,12 @@ object Resolver:
       )
     case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
 
+  /**
+    * Resolve the names of the given programs.
+    *
+    * @param programs the parsed programs to resolve
+    * @return the resolved programs and the resolution context, containing information about the declared modules and symbols
+    */
   def apply(programs: Seq[raw.Program]): AlgorabProgram[(ResolutionContext, Seq[resolved.Program])] =
     Resolution:
       val declaredPrograms = programs.map(program => (program, Resolver.declareProgram(program)))

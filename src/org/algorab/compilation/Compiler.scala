@@ -14,17 +14,40 @@ import purelogic.State
 import org.algorab.AlgorabProgram
 import org.algorab.ast.SymbolId
 
+/**
+  * The compilation phase.
+  */
 object Compiler:
 
+  /**
+    * Compile an unary operator.
+    *
+    * @param expr the operand to compile
+    * @param op the operation's instruction
+    */
   def compileUnaryOp(expr: Expr, op: Instruction): Compilation[Unit] =
     compileExpr(expr)
     CompilationContext.emit(op)
 
+  /**
+    * Compile a binary operator.
+    *
+    * @param left the LHS to compile
+    * @param right the RHS to compile
+    * @param op the operation's instruction
+    */
   def compileBinaryOp(left: Expr, right: Expr, op: Instruction): Compilation[Unit] =
     compileExpr(left)
     compileExpr(right)
     CompilationContext.emit(op)
 
+  /**
+    * Compile a numeric unary operator.
+    *
+    * @param expr the operand to compile
+    * @param opInt the operation's instruction if the operand is an integer
+    * @param opFloat the operation's instruction if the operand is a float
+    */
   def compileUnaryNumOp(expr: Expr, opInt: Instruction, opFloat: Instruction): Compilation[Unit] =
     compileUnaryOp(
       expr = expr,
@@ -34,6 +57,14 @@ object Compiler:
         else throw AssertionError(s"Wrong type (${expr.tpe}) for operator $opInt/$opFloat. Bug in typer?")
     )
 
+  /**
+    * Compile a numeric binary operator.
+    *
+    * @param left the LHS to compile
+    * @param right the RHS to compile
+    * @param opInt the operation's instruction if both operands are integers
+    * @param opFloat the operation's instruction if both operands are floats
+    */
   def compileBinaryNumOp(left: Expr, right: Expr, opInt: Instruction, opFloat: Instruction): Compilation[Unit] =
     compileBinaryOp(
       left = left,
@@ -44,6 +75,13 @@ object Compiler:
         else throw AssertionError(s"Wrong types (${left.tpe} and ${right.tpe}) for operator $opInt/$opFloat. Bug in typer?")
     )
 
+  /**
+    * Compile a set of programs into a module.
+    *
+    * @param moduleSymbol the symbol identifying the module
+    * @param programs the programs to compile
+    * @return the compiled module
+    */
   def compilePrograms(moduleSymbol: SymbolId, programs: Seq[Program]): Compilation[Module] =
     val initialization = Compilation.locally:
       val allStatements = programs.flatMap(_.moduleStatements)
@@ -57,10 +95,21 @@ object Compiler:
       initialization = moduleSymbol
     )
 
+  /**
+    * Compile a statement.
+    *
+    * @param statement the statement to compile
+    */
   def compileStatement(statement: Statement): Compilation[Unit] = statement match
     case definition: Definition => compileDefinition(definition)
     case expr: Expr             => compileExpr(expr)
 
+  /**
+    * Compile the definition of all declarations in a sequence of statements.
+    *
+    * @param statements the statements containing the declarations
+    * @param global whether the declarations are global
+    */
   def compileAllDeclarations(statements: Seq[Statement], global: Boolean): Compilation[Unit] =
     statements.foreach:
       case definition: Definition =>
@@ -68,6 +117,11 @@ object Compiler:
         compileDeclaration(definition)
       case _ =>
 
+  /**
+    * Compile a definition initialization.
+    *
+    * @param definition the definition to declare
+    */
   def compileDeclaration(definition: Definition): Compilation[Unit] = definition match
     case Definition.Val(symbol, tpe, _, _, span) =>
       CompilationContext.emit(Instruction.Push(Value.default(tpe), span))
@@ -77,6 +131,11 @@ object Compiler:
       CompilationContext.emit(Instruction.Push(Value(null), span))
       CompilationContext.emitStore(symbol, span)
 
+  /**
+    * Compile a definition.
+    *
+    * @param definition the definition to compile
+    */
   def compileDefinition(definition: Definition): Compilation[Unit] = definition match
     case Definition.Val(symbol, _, expr, _, span) =>
       compileExpr(expr)
@@ -92,6 +151,11 @@ object Compiler:
       CompilationContext.emit(Instruction.Push(Value.FunctionRef(symbol), span))
       CompilationContext.emitStore(symbol, span)
 
+  /**
+    * Compile an expression.
+    *
+    * @param expr the expression to compile
+    */
   def compileExpr(expr: Expr): Compilation[Unit] = expr match
     case Expr.LBool(value, _, span)              => CompilationContext.emit(Instruction.Push(Value(value), span))
     case Expr.LInt(value, _, span)               => CompilationContext.emit(Instruction.Push(Value(value), span))
@@ -171,6 +235,12 @@ object Compiler:
     case Expr.For(iterator, iterable, body, _, span) => ???
     case Expr.Invalid(_, span)                       => throw AssertionError(s"Tried to compile an invalid node at $span")
 
+  /**
+    * Compile programs into one.
+    *
+    * @param programs the programs to compile
+    * @return the compiled program
+    */
   def apply(programs: Seq[Program]): AlgorabProgram[CompiledProgram] =
     val (context, modules) = Compilation(
       programs

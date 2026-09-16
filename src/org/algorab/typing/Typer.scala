@@ -233,6 +233,14 @@ object Typer:
       typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, span)
     case resolved.Expr.Invalid(span) => typed.Expr.Invalid(typed.Type.Invalid, span)
 
+  /**
+    * Type the given programs.
+    *
+    * @param symbols the declared symbols
+    * @param declarations the declaration of each user-defined symbol
+    * @param programs the name-resolved programs to type
+    * @return the typed programs
+    */
   def apply(
       symbols: Map[SymbolId, Symbol],
       declarations: Map[SymbolId, resolved.Definition]
