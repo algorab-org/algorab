@@ -353,5 +353,4 @@ object Expr:
 
     def unapply(toFloat: Expr): Option[(Expr, Span)] = toFloat match
       case Apply(VarCall(SymbolId.ToFloatTerm, _, _), List(expr), _, span) => Some((expr, span))
-      case _ => None
-    
+      case _                                                               => None

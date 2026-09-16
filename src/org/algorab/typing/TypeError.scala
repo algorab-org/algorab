@@ -36,10 +36,10 @@ enum TypeError:
   case ApplyMismatch(expectedParams: List[Type], got: List[Type], span: Span)
 
   /**
-    * Tried to infer the type of a recursive definition.
-    *
-    * @param span the source position where the error occurred
-    */
+   * Tried to infer the type of a recursive definition.
+   *
+   * @param span the source position where the error occurred
+   */
   case RecursiveInference(span: Span)
 
   /**

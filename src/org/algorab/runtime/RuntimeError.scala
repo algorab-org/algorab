@@ -1,9 +1,9 @@
 package org.algorab.runtime
 
-import org.algorab.ast.typed.Type
 import io.github.iltotore.pureparser.Span
-import org.algorab.typing.TypePattern
 import org.algorab.ast.Value
+import org.algorab.ast.typed.Type
+import org.algorab.typing.TypePattern
 import org.algorab.util.ConsoleError
 
 /**

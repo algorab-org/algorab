@@ -1,8 +1,8 @@
 package org.algorab.runtime
 
+import org.algorab.ast.InstructionPosition
 import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
-import org.algorab.ast.InstructionPosition
 
 /**
  * A runtime call frame containing the execution state of a function.
@@ -13,10 +13,10 @@ import org.algorab.ast.InstructionPosition
  * @param stack the current value stack
  */
 case class RuntimeFrame(
-  currentFunction: SymbolId,
-  position: InstructionPosition,
-  variables: Map[SymbolId, Value],
-  stack: List[Value]
+    currentFunction: SymbolId,
+    position: InstructionPosition,
+    variables: Map[SymbolId, Value],
+    stack: List[Value]
 )
 
 object RuntimeFrame:

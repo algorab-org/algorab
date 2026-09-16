@@ -1,9 +1,9 @@
 package org.algorab.util
 
+import java.io.IOException
+import org.algorab.util.ConsoleError
 import purelogic.*
 import scala.io.StdIn
-import org.algorab.util.ConsoleError
-import java.io.IOException
 
 /**
  * An abstraction over console input and output.
@@ -64,10 +64,11 @@ object Console:
    * @return the program result
    */
   def apply[A](program: Console ?=> A): State[IO] ?=> A =
-    program(using new:
-      override def readLine(): Abort[ConsoleError] ?=> String = modify(_.readLine())
+    program(using
+      new:
+        override def readLine(): Abort[ConsoleError] ?=> String = modify(_.readLine())
 
-      override def println(text: String): Unit = update(_.appendOutput(s"$text\n"))
+        override def println(text: String): Unit = update(_.appendOutput(s"$text\n"))
     )
 
   /**
@@ -88,13 +89,14 @@ object Console:
    * @return the program result
    */
   def withStd[A](program: Console ?=> A): A =
-    program(using new:
-      def readLine(): Abort[ConsoleError] ?=> String =
-        val line = StdIn.readLine()
-        if line == null then fail(ConsoleError.EndOfInput)
-        else line
+    program(using
+      new:
+        def readLine(): Abort[ConsoleError] ?=> String =
+          val line = StdIn.readLine()
+          if line == null then fail(ConsoleError.EndOfInput)
+          else line
 
-      override def println(text: String): Unit = scala.Console.println(text)  
+        override def println(text: String): Unit = scala.Console.println(text)
     )
 
   /**
@@ -114,7 +116,7 @@ object Console:
     line
       .toIntOption
       .getOrElse(fail(ConsoleError.InvalidInt(line)))
-  
+
   /**
    * Read a floating-point number from the current console.
    *
@@ -122,9 +124,9 @@ object Console:
    */
   def readDouble()(using console: Console): Abort[ConsoleError] ?=> Double =
     val line = readLine()
-      line
-        .toDoubleOption
-        .getOrElse(fail(ConsoleError.InvalidFloat(line)))
+    line
+      .toDoubleOption
+      .getOrElse(fail(ConsoleError.InvalidFloat(line)))
 
   /**
    * Print a line to the current console.

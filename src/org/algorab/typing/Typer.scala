@@ -5,11 +5,11 @@ import org.algorab.AlgorabProgram
 import org.algorab.ast.Symbol
 import org.algorab.ast.Symbol.Root.span
 import org.algorab.ast.SymbolId
+import org.algorab.ast.raw.Statement
 import org.algorab.ast.resolved
 import org.algorab.ast.typed
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
-import org.algorab.ast.raw.Statement
 
 /**
  * The typing phase.
@@ -122,7 +122,7 @@ object Typer:
    * @return a typed representation of the given program
    */
   def typeProgram(program: resolved.Program): Typing[typed.Program] = program match
-    case resolved.Program.Script(statements) => typed.Program.Script(statements.map(typeStatement))
+    case resolved.Program.Script(statements)         => typed.Program.Script(statements.map(typeStatement))
     case resolved.Program.Module(owner, definitions) => typed.Program.Module(owner, definitions.map(typeDefinition))
 
   /**
@@ -234,13 +234,13 @@ object Typer:
     case resolved.Expr.Invalid(span) => typed.Expr.Invalid(typed.Type.Invalid, span)
 
   /**
-    * Type the given programs.
-    *
-    * @param symbols the declared symbols
-    * @param declarations the declaration of each user-defined symbol
-    * @param programs the name-resolved programs to type
-    * @return the typed programs
-    */
+   * Type the given programs.
+   *
+   * @param symbols the declared symbols
+   * @param declarations the declaration of each user-defined symbol
+   * @param programs the name-resolved programs to type
+   * @return the typed programs
+   */
   def apply(
       symbols: Map[SymbolId, Symbol],
       declarations: Map[SymbolId, resolved.Definition]

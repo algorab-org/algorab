@@ -1,87 +1,87 @@
 package org.algorab.runtime
 
 import io.github.iltotore.pureparser.Span
+import org.algorab.AlgorabProgram
+import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
 import org.algorab.ast.compiled.Instruction
 import org.algorab.ast.compiled.Module
-import org.algorab.ast.typed.Type
-import purelogic.*
 import org.algorab.ast.compiled.Program
-import org.algorab.ast.SymbolId
-import org.algorab.AlgorabProgram
+import org.algorab.ast.typed.Type
 import org.algorab.runtime.RuntimeContext.currentFrame
+import purelogic.*
 
 /**
-  * The runtime phase, based on a stack VM.
-  */
+ * The runtime phase, based on a stack VM.
+ */
 object VM:
 
   /**
-    * Pop a boolean value from the stack.
-    *
-    * @param span the source span of the operation
-    * @return the popped value
-    */
+   * Pop a boolean value from the stack.
+   *
+   * @param span the source span of the operation
+   * @return the popped value
+   */
   def popBool(span: Span): Runtime[Boolean] = RuntimeContext.pop match
     case value: Boolean => value
     case value          => fail(RuntimeError.simpleMismatch(Type.Boolean, value, span))
 
   /**
-    * Pop an integer value from the stack.
-    *
-    * @param span the source span of the operation
-    * @return the popped value
-    */
+   * Pop an integer value from the stack.
+   *
+   * @param span the source span of the operation
+   * @return the popped value
+   */
   def popInt(span: Span): Runtime[Int] = RuntimeContext.pop match
     case value: Int => value
     case value      => fail(RuntimeError.simpleMismatch(Type.Int, value, span))
 
   /**
-    * Pop a floating-point value from the stack.
-    *
-    * @param span the source span of the operation
-    * @return the popped value
-    */
+   * Pop a floating-point value from the stack.
+   *
+   * @param span the source span of the operation
+   * @return the popped value
+   */
   def popFloat(span: Span): Runtime[Double] = RuntimeContext.pop match
     case value: Double => value
     case value         => fail(RuntimeError.simpleMismatch(Type.Float, value, span))
 
   /**
-    * Apply a binary operation to two values.
-    *
-    * @param right the right operand
-    * @param left the left operand
-    * @param op the operation to apply
-    * @return the resulting value
-    */
+   * Apply a binary operation to two values.
+   *
+   * @param right the right operand
+   * @param left the left operand
+   * @param op the operation to apply
+   * @return the resulting value
+   */
   inline def binaryOp[A <: Value.Raw](right: A, left: A, inline op: (A, A) => Value.Raw): Value =
     Value(op(left, right))
 
   /**
-    * Apply a binary operation to two integer values popped from the stack.
-    *
-    * @param span the source span of the operation
-    * @param op the operation to apply
-    * @return the resulting value
-    */
+   * Apply a binary operation to two integer values popped from the stack.
+   *
+   * @param span the source span of the operation
+   * @param op the operation to apply
+   * @return the resulting value
+   */
   inline def binaryOpInt(inline span: Span, inline op: (Int, Int) => Value.Raw): Runtime[Value] =
     binaryOp(popInt(span), popInt(span), op)
 
   /**
-    * Apply a binary operation to two floating-point values popped from the stack.
-    *
-    * @param span the source span of the operation
-    * @param op the operation to apply
-    * @return the resulting value
-    */
+   * Apply a binary operation to two floating-point values popped from the stack.
+   *
+   * @param span the source span of the operation
+   * @param op the operation to apply
+   * @return the resulting value
+   */
   inline def binaryOpFloat(inline span: Span, inline op: (Double, Double) => Value.Raw): Runtime[Value] =
     binaryOp(popFloat(span), popFloat(span), op)
 
   /**
-    * Load a module and its dependencies.
-    *
-    * @param module the module to load
-    */
+   * Load a module and its dependencies.
+   *
+   * @param module the module to load
+   */
   def loadModule(module: Module): Runtime[Unit] =
     for dependency <- module.dependencies do
       loadModule(RuntimeContext.getModule(dependency))
@@ -89,10 +89,10 @@ object VM:
     RuntimeContext.pushNewFrame(module.initialization, List.empty)
 
   /**
-    * Interpret an instruction.
-    *
-    * @param instruction the instruction to interpret
-    */
+   * Interpret an instruction.
+   *
+   * @param instruction the instruction to interpret
+   */
   def interpret(instruction: Instruction): Runtime[Unit] = instruction match
     case Instruction.Push(value, span)         => RuntimeContext.push(value)
     case Instruction.Not(span)                 => RuntimeContext.push(Value(!popBool(span)))
@@ -125,32 +125,32 @@ object VM:
     case Instruction.StoreGlobal(symbol, span) => RuntimeContext.storeGlobal(symbol, RuntimeContext.pop)
     case Instruction.Load(symbol, span)        => RuntimeContext.push(RuntimeContext.loadLocal(symbol))
     case Instruction.LoadGlobal(symbol, span)  => RuntimeContext.push(RuntimeContext.loadGlobal(symbol))
-    case Instruction.Apply(paramCount, span)   =>
+    case Instruction.Apply(paramCount, span) =>
       val function = RuntimeContext.pop
-      
+
       function match
         case Value.FunctionRef(symbol) => RuntimeContext.pushNewFrame(
-          symbol,
-          RuntimeContext.popN(paramCount.value)
-        )
+            symbol,
+            RuntimeContext.popN(paramCount.value)
+          )
 
         case Value.BuiltinFunction(f) => RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
 
         case _ =>
           fail(RuntimeError.simpleMismatch(Type.Function(List.fill(paramCount.value)(Type.Any), Type.Any), function, span))
-      
-    case Instruction.Jump(to, span)            => RuntimeContext.jump(to)
-    case Instruction.JumpIfFalse(to, span)     => if !popBool(span) then RuntimeContext.jump(to)
-    case Instruction.Return(span)              =>
+
+    case Instruction.Jump(to, span)        => RuntimeContext.jump(to)
+    case Instruction.JumpIfFalse(to, span) => if !popBool(span) then RuntimeContext.jump(to)
+    case Instruction.Return(span) =>
       val returned = RuntimeContext.pop
       RuntimeContext.popFrame()
       RuntimeContext.push(returned)
 
   /**
-    * Execute a compiled program.
-    *
-    * @param program the program to execute
-    */
+   * Execute a compiled program.
+   *
+   * @param program the program to execute
+   */
   def apply(program: Program): AlgorabProgram[Unit] =
     Runtime(program):
       loadModule(program.modules(SymbolId.Root))

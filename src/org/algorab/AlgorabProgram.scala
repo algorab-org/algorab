@@ -1,7 +1,7 @@
 package org.algorab
 
-import purelogic.*
 import org.algorab.util.Console
+import purelogic.*
 
 /**
  * A program representation universal across all phases. Can produce 0 or more [[AlgorabError]] and stop.
