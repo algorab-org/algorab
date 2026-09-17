@@ -1,4 +1,4 @@
 package hello.world
 
-def f(): Unit = println(foo)
+def f(): Int = foo
 def g(): Unit = println(bar())

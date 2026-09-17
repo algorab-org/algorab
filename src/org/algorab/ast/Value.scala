@@ -1,10 +1,13 @@
 package org.algorab.ast
 
 import org.algorab.ast.typed.Type
+import org.algorab.runtime.Runtime
 
 opaque type Value <: Value.Raw = Value.Raw
 object Value:
-  type Raw = Boolean | Int | Double | Char | String | FunctionRef | Null
+  type Raw = Boolean | Int | Double | Char | String | Unit | FunctionRef | BuiltinFunction | Null
+
+  given CanEqual[Value, Value] = CanEqual.derived
 
   inline def apply(value: Raw): Value = value
 
@@ -21,3 +24,8 @@ object Value:
 
   object FunctionRef:
     def apply(id: SymbolId): Value = new FunctionRef(id)
+
+  case class BuiltinFunction(f: Seq[Value] => Runtime[Value])
+
+  object BuiltinFunction:
+    def apply(f: Seq[Value] => Runtime[Value]): Value = new BuiltinFunction(f)

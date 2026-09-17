@@ -342,9 +342,15 @@ enum Expr:
 
 object Expr:
 
-  def ToFloat(expr: Expr): Expr = Apply(
-    VarCall(SymbolId.ToFloatTerm, Type.Function(List(Type.Int), Type.Float), expr.span),
-    List(expr),
-    Type.Float,
-    expr.span
-  )
+  object ToFloat:
+
+    def apply(expr: Expr): Expr = Apply(
+      VarCall(SymbolId.ToFloatTerm, Type.Function(List(Type.Int), Type.Float), expr.span),
+      List(expr),
+      Type.Float,
+      expr.span
+    )
+
+    def unapply(toFloat: Expr): Option[(Expr, Span)] = toFloat match
+      case Apply(VarCall(SymbolId.ToFloatTerm, _, _), List(expr), _, span) => Some((expr, span))
+      case _                                                               => None

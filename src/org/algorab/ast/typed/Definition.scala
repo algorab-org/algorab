@@ -23,9 +23,9 @@ enum Definition:
    * A function declaration.
    *
    * @param symbol the definition's unique id
-   * @param tpe the variable's declared type
-   * @param expr the variable's RHS
-   * @param mutable whether or not this variable is mutable
+   * @param params the function's parameters
+   * @param retType the type of value returned by this function
+   * @param body the function's RHS
    * @param span the source position of this definition
    */
   case Function(symbol: SymbolId, params: List[(SymbolId, Type)], retType: Type, body: Expr, span: Span)
