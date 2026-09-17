@@ -46,5 +46,5 @@ The compiler contains multiple phases from textual source code to program execut
 - Parsing: build an raw Abstract Syntax Tree (AST) from the tokens
 - Name resolution: resolve all textual references to targetted symbols and handle multi-files
 - Typing: elaborate the resolved AST into a typed AST, checking that all types are valid
-- \[TODO\] Compilation: compile the typed AST into a flat sequence of instructions
-- \[TODO\] VM execution: interpret and execute the instructions
+- Compilation: compile the typed AST into a flat sequence of instructions
+- VM execution: interpret and execute the instructions
