@@ -216,6 +216,8 @@ enum Expr:
    */
   case Assign(name: Identifier, expr: Expr, span: Span)
 
+  case Select(expr: Expr, member: Identifier, span: Span)
+
   /**
    * A function application.
    *

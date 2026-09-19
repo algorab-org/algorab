@@ -209,6 +209,7 @@ object Resolver:
     case raw.Expr.Or(left, right, span)           => resolved.Expr.Or(resolveExpr(left), resolveExpr(right), span)
     case raw.Expr.VarCall(name, span)             => resolved.Expr.VarCall(ResolutionContext.getLocalTerm(name, span), span)
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
+    case raw.Expr.Select(expr, member, span)      => resolved.Expr.Select(resolveExpr(expr), member, span)
     case raw.Expr.Apply(expr, args, span)         => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
     case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)

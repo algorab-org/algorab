@@ -2,6 +2,7 @@ package org.algorab.ast.resolved
 
 import io.github.iltotore.pureparser.Span
 import org.algorab.ast.SymbolId
+import org.algorab.ast.Identifier
 
 /**
  * An Algorab expression.
@@ -214,6 +215,8 @@ enum Expr:
    * @param span the source position of this expression
    */
   case Assign(symbol: SymbolId, expr: Expr, span: Span)
+
+  case Select(expr: Expr, member: Identifier, span: Span)
 
   /**
    * A function application.

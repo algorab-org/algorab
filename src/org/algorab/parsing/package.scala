@@ -63,3 +63,5 @@ def repeatParser[I, A](parser: Parser[I, A]): Parser[I, List[A]] =
       case None        => accumulator
 
   rec(Nil)
+
+def mapParser[I, A, B](parser: Parser[I, A])(f: A => B): Parser[I, B] = f(parser)

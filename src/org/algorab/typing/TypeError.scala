@@ -42,6 +42,8 @@ enum TypeError:
    */
   case RecursiveInference(span: Span)
 
+  case UnsupportedOOP(span: Span)
+
   /**
    * The source position where the error occurred.
    */
