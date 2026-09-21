@@ -209,8 +209,24 @@ object Resolver:
     case raw.Expr.Or(left, right, span)           => resolved.Expr.Or(resolveExpr(left), resolveExpr(right), span)
     case raw.Expr.VarCall(name, span)             => resolved.Expr.VarCall(ResolutionContext.getLocalTerm(name, span), span)
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
-    case raw.Expr.Select(expr, member, span)      => resolved.Expr.Select(resolveExpr(expr), member, span)
-    case raw.Expr.Apply(expr, args, span)         => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
+    case raw.Expr.Select(expr, member, span) =>
+      resolveExpr(expr) match
+        case resolved.Expr.VarCall(symbol, _) => get.symbols(symbol) match
+            case namespace: Symbol.Namespace =>
+              val finalSymbol = get.scopes(namespace.memberScope).localTerms.get(member) match
+                case Some((memberSymbol, _)) => memberSymbol
+                case None =>
+                  write(ResolutionError.UnknownName(member, span))
+                  SymbolId.Invalid
+              resolved.Expr.VarCall(finalSymbol, span)
+
+            case sym =>
+              write(ResolutionError.NotANamespace(sym, span))
+              resolved.Expr.Invalid(span)
+
+        case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, span)
+
+    case raw.Expr.Apply(expr, args, span) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
     case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
         resolved.Expr.Block(statements.map(resolveStatement), span)

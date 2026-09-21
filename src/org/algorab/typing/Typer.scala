@@ -201,7 +201,9 @@ object Typer:
       typed.Expr.Or(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, span)
     case resolved.Expr.VarCall(symbol, span)      => typed.Expr.VarCall(symbol, resolveDefinitionType(symbol), span)
     case resolved.Expr.Assign(symbol, expr, span) => typed.Expr.Assign(symbol, typeExprTo(expr, TypeContext.getType(symbol)), typed.Type.Unit, span)
-    case resolved.Expr.Select(expr, member, span) => ???
+    case resolved.Expr.Select(expr, member, span) =>
+      write(TypeError.UnsupportedOOP(span))
+      typed.Expr.Invalid(typed.Type.Invalid, span)
 
     case resolved.Expr.Apply(expr, args, span) =>
       val typedExpr = typeExpr(expr)
