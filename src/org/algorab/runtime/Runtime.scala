@@ -21,7 +21,7 @@ object Runtime:
    * @return an [[AlgorabProgram]] describing the same computation, with phase-specific effects evaluated
    */
   def apply[A](compiledProgram: Program)(program: Runtime[A]): AlgorabProgram[A] =
-    State(RuntimeContext.default(compiledProgram.modules, compiledProgram.functions))(
+    State(RuntimeContext.default(compiledProgram.modules, compiledProgram.functions, compiledProgram.owners))(
       Abort.recover(program): error =>
         write(error)
         fail(())

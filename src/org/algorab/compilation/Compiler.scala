@@ -75,6 +75,11 @@ object Compiler:
         else throw AssertionError(s"Wrong types (${left.tpe} and ${right.tpe}) for operator $opInt/$opFloat. Bug in typer?")
     )
 
+  def declarePrograms(moduleSymbol: SymbolId, programs: Seq[Program]): Compilation[Unit] =
+    programs.flatMap(_.moduleStatements).foreach:
+      case definition: Definition => CompilationContext.declareGlobal(definition.symbol, moduleSymbol)
+      case _ =>
+
   /**
    * Compile a set of programs into a module.
    *
@@ -85,13 +90,12 @@ object Compiler:
   def compilePrograms(moduleSymbol: SymbolId, programs: Seq[Program]): Compilation[Module] =
     val initialization = Compilation.locally:
       val allStatements = programs.flatMap(_.moduleStatements)
-      compileAllDeclarations(allStatements, true)
+      compileAllDeclarations(allStatements)
       allStatements.foreach(compileStatement)
 
     CompilationContext.addFunction(moduleSymbol, Function(initialization.toArray))
 
     Module(
-      dependencies = Set.empty,
       initialization = moduleSymbol
     )
 
@@ -108,13 +112,10 @@ object Compiler:
    * Compile the definition of all declarations in a sequence of statements.
    *
    * @param statements the statements containing the declarations
-   * @param global whether the declarations are global
    */
-  def compileAllDeclarations(statements: Seq[Statement], global: Boolean): Compilation[Unit] =
+  def compileAllDeclarations(statements: Seq[Statement]): Compilation[Unit] =
     statements.foreach:
-      case definition: Definition =>
-        if global then CompilationContext.declareGlobal(definition.symbol)
-        compileDeclaration(definition)
+      case definition: Definition => compileDeclaration(definition)
       case _ =>
 
   /**
@@ -209,7 +210,7 @@ object Compiler:
       compileExpr(expr)
       CompilationContext.emit(Instruction.Apply(ParamCount.assume(args.size), span))
     case Expr.Block(statements, _, span) =>
-      compileAllDeclarations(statements, false)
+      compileAllDeclarations(statements)
       statements.foreach(compileStatement)
     case Expr.If(cond, ifTrue, ifFalse, _, span) =>
       compileExpr(cond)
@@ -246,10 +247,12 @@ object Compiler:
     val (context, modules) = Compilation(
       programs
         .groupBy(_.moduleSymbol)
+        .tapEach(declarePrograms)
         .map((id, programs) => (id, compilePrograms(id, programs)))
     )
 
     CompiledProgram(
       modules = modules,
-      functions = context.functions
+      functions = context.functions,
+      owners = context.globals
     )

@@ -24,7 +24,9 @@ case class RuntimeContext(
     frames: List[RuntimeFrame],
     modules: Map[SymbolId, Module],
     functions: Map[SymbolId, Function],
-    globals: Map[SymbolId, Value]
+    owners: Map[SymbolId, SymbolId],
+    globals: Map[SymbolId, Value],
+    initializedModules: Set[SymbolId]
 )
 
 object RuntimeContext:
@@ -38,11 +40,13 @@ object RuntimeContext:
    */
   def default(
       modules: Map[SymbolId, Module],
-      functions: Map[SymbolId, Function]
+      functions: Map[SymbolId, Function],
+      owners: Map[SymbolId, SymbolId]
   ): RuntimeContext = RuntimeContext(
     frames = List.empty,
     modules = modules,
     functions = functions,
+    owners = owners,
     globals = Map(
       SymbolId.UnitTerm -> Value(()),
       SymbolId.ToFloatTerm -> Value.BuiltinFunction:
@@ -53,7 +57,8 @@ object RuntimeContext:
         case Seq() => Value(Runtime.convertConsoleError(Console.readInt())),
       SymbolId.ReadFloatTerm -> Value.BuiltinFunction:
         case Seq() => Value(Runtime.convertConsoleError(Console.readDouble()))
-    )
+    ),
+    initializedModules = Set(SymbolId.Invalid)
   )
 
   /**
@@ -88,12 +93,19 @@ object RuntimeContext:
    *
    * @return the next instruction
    */
-  def nextInstruction: Runtime[Instruction] = modifyCurrentFrame((ctx, frame) =>
-    val function = ctx.functions(frame.currentFunction)
-    val instruction = function.body(frame.position.value)
-    (instruction, frame.copy(position = frame.position + 1))
-  )
+  def nextInstruction: Runtime[Instruction] =
+    val ctx = get
+    val frame = currentFrame
 
+    val function = ctx.functions(frame.currentFunction)
+    if frame.position.value < function.body.length then 
+      updateCurrentFrame(frame => frame.copy(position = frame.position + 1))
+      function.body(frame.position.value)
+    else
+      popFrame()
+      val newFrame = currentFrame
+      ctx.functions(newFrame.currentFunction).body(newFrame.position.value - 1)
+      
   /**
    * Push a value onto the current frame's stack.
    *
@@ -209,7 +221,8 @@ object RuntimeContext:
   def isRunning: Runtime[Boolean] =
     val ctx = get
     val currentFrame = ctx.frames.head
-    ctx.functions(currentFrame.currentFunction).body.sizeCompare(currentFrame.position.value) > 0
+    currentFrame.currentFunction != SymbolId.Root
+    || ctx.functions(currentFrame.currentFunction).body.sizeCompare(currentFrame.position.value) > 0
 
   /**
    * The source span of the current instruction.

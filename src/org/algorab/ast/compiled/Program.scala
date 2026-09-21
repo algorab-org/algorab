@@ -10,5 +10,6 @@ import org.algorab.ast.SymbolId
  */
 case class Program(
     modules: Map[SymbolId, Module],
-    functions: Map[SymbolId, Function]
+    functions: Map[SymbolId, Function],
+    owners: Map[SymbolId, SymbolId]
 )

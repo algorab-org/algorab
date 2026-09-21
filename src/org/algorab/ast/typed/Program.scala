@@ -19,3 +19,8 @@ enum Program:
   def moduleStatements: List[Statement] = this match
     case Script(statements)     => statements
     case Module(_, definitions) => definitions
+
+  def moduleDefinitions: List[Definition] = this match
+    case Script(_) => List.empty
+    case Module(_, definitions) => definitions
+  
