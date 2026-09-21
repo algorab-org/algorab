@@ -94,10 +94,13 @@ object resources:
     val cases: List[Expr[Unit]] = listResources(getResourcePath("/golden/good")).filter(isTestCase).map(file =>
       val fileStr = file.getFileName().toString
       val fileName = Expr(fileStr)
-      val outputFile = fileStr.substring(0, fileStr.length - 5) + ".output"
+      val fileBase =
+        if fileStr.endsWith(".algo") then fileStr.substring(0, fileStr.length - 5)
+        else fileStr
+      val outputFile = s"$fileBase.output"
       val outputName = Expr(outputFile)
       val hasOutput = Expr(Files.exists(file.resolveSibling(outputFile)))
-      val inputFile = fileStr.substring(0, fileStr.length - 5) + ".input"
+      val inputFile = s"$fileBase.input"
       val inputName = Expr(inputFile)
       val hasInput = Expr(Files.exists(file.resolveSibling(inputFile)))
       '{
