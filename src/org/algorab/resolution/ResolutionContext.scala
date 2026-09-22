@@ -207,6 +207,19 @@ object ResolutionContext:
         write(ResolutionError.UnknownName(name, span))
         SymbolId.Invalid
 
+  def getMember(symbol: SymbolId, member: Identifier, span: Span): Resolution[SymbolId] =
+    get.symbols(symbol) match
+      case namespace: Symbol.Namespace =>
+        get.scopes(namespace.memberScope).localTerms.get(member) match
+          case Some((memberSymbol, _)) => memberSymbol
+          case None =>
+            write(ResolutionError.UnknownName(member, span))
+            SymbolId.Invalid
+
+      case sym =>
+        write(ResolutionError.NotANamespace(sym, span))
+        SymbolId.Invalid
+
   /**
    * Declare the given symbol.
    *

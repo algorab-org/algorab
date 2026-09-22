@@ -10,9 +10,9 @@ import org.algorab.ast.Symbol.Namespace
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw
 import org.algorab.ast.resolved
-import org.algorab.resolution.ResolutionContext.currentScope
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.ast.raw.Import.Selector
 
 /**
  * The name resolution phase.
@@ -81,7 +81,7 @@ object Resolver:
   def resolveProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[resolved.Program] =
     if owner == SymbolId.Root then
       resolved.Program.Script(
-        statements = ResolutionContext.inScopePath(packageScope)(program.statements.map(resolveStatement))
+        statements = ResolutionContext.inScopePath(packageScope)(program.statements.flatMap(resolveStatement))
       )
     else
       resolved.Program.Module(
@@ -91,6 +91,9 @@ object Resolver:
             .statements
             .flatMap:
               case definition: raw.Definition => Some(resolveDefinition(definition))
+              case importClause: raw.Import =>
+                resolveImport(importClause)
+                None
               case expr: raw.Expr =>
                 write(ResolutionError.TopLevelStatementInModule(expr.span))
                 None
@@ -125,9 +128,19 @@ object Resolver:
    * @param statement the statement to resolve
    * @return a representation of the same statement with all its names resolved
    */
-  def resolveStatement(statement: raw.Statement): Resolution[resolved.Statement] = statement match
-    case definition: raw.Definition => resolveDefinition(definition)
-    case expr: raw.Expr             => resolveExpr(expr)
+  def resolveStatement(statement: raw.Statement): Resolution[Option[resolved.Statement]] = statement match
+    case importClause: raw.Import   =>
+      resolveImport(importClause)
+      None
+    case definition: raw.Definition => Some(resolveDefinition(definition))
+    case expr: raw.Expr             => Some(resolveExpr(expr))
+
+  def resolveImport(importClause: raw.Import): Resolution[Unit] =
+    val (head, headSpan) :: tail = importClause.path.runtimeChecked
+    val qualifier = tail.foldLeft(ResolutionContext.getLocalTerm(head, headSpan)):
+        case (symbol, (segment, span)) => ResolutionContext.getMember(symbol, segment, span)
+
+    resolveSelector(qualifier, importClause.selector)
 
   /**
    * Declare the given definition.
@@ -211,25 +224,15 @@ object Resolver:
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
     case raw.Expr.Select(expr, member, span) =>
       resolveExpr(expr) match
-        case resolved.Expr.VarCall(symbol, _) => get.symbols(symbol) match
-            case namespace: Symbol.Namespace =>
-              val finalSymbol = get.scopes(namespace.memberScope).localTerms.get(member) match
-                case Some((memberSymbol, _)) => memberSymbol
-                case None =>
-                  write(ResolutionError.UnknownName(member, span))
-                  SymbolId.Invalid
-              resolved.Expr.VarCall(finalSymbol, span)
-
-            case sym =>
-              write(ResolutionError.NotANamespace(sym, span))
-              resolved.Expr.Invalid(span)
+        case resolved.Expr.VarCall(symbol, _) =>
+          resolved.Expr.VarCall(ResolutionContext.getMember(symbol, member, span), span)
 
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, span)
 
     case raw.Expr.Apply(expr, args, span) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
     case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
-        resolved.Expr.Block(statements.map(resolveStatement), span)
+        resolved.Expr.Block(statements.flatMap(resolveStatement), span)
     case raw.Expr.If(cond, ifTrue, ifFalse, span) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
     case raw.Expr.While(cond, body, span)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), span)
     case raw.Expr.For(iterator, iterable, body, span) =>
@@ -242,6 +245,13 @@ object Resolver:
         )
       )
     case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
+
+  def resolveSelector(qualifier: SymbolId, selector: Selector): Resolution[Unit] = selector match
+    case Selector.Simple(name, span) =>
+      val member = ResolutionContext.getMember(qualifier, name, span)
+      if !ResolutionContext.currentScope.localTerms.contains(name) then ResolutionContext.updateCurrentScope(
+        _.withLocalTerm(name, member, true)
+      )
 
   /**
    * Resolve the names of the given programs.

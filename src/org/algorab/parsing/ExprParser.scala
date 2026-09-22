@@ -216,9 +216,11 @@ object ExprParser:
   )
 
   val importParser: Parser[Token, Import] =
-    val (path, span) = tokenSpan(
+    val (first, firstSpan, path, span) = tokenSpan(
       Parser.inOrder(
         tokenTypeParser[Token.Import],
+        tokenSpan(identifierParser),
+        tokenTypeParser[Token.Dot],
         Parser.separatedBy(
           tokenSpan(identifierParser),
           tokenTypeParser[Token.Dot]
@@ -226,7 +228,7 @@ object ExprParser:
       )
     )
 
-    Import(path.init, Import.Selector.Simple.apply.tupled(path.last), span)
+    Import((first, firstSpan) :: path.init, Import.Selector.Simple.apply.tupled(path.last), span)
 
   val definitionParser: Parser[Token, Definition] = Parser.firstOf(
     valDefParser,
