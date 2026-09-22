@@ -18,7 +18,9 @@ import purelogic.*
  * @param frames the current call stack
  * @param modules the loaded modules
  * @param functions the compiled functions
+ * @param owners the owning module of each global variable
  * @param globals the global variables
+ * @param initializedModules the set of already initialized modules to prevent double-initialization
  */
 case class RuntimeContext(
     frames: List[RuntimeFrame],
@@ -36,6 +38,7 @@ object RuntimeContext:
    *
    * @param modules the modules to load
    * @param functions the compiled functions
+   * @param owners the owning module of each global variable
    * @return the initialized runtime context
    */
   def default(
@@ -98,14 +101,14 @@ object RuntimeContext:
     val frame = currentFrame
 
     val function = ctx.functions(frame.currentFunction)
-    if frame.position.value < function.body.length then 
+    if frame.position.value < function.body.length then
       updateCurrentFrame(frame => frame.copy(position = frame.position + 1))
       function.body(frame.position.value)
     else
       popFrame()
       val newFrame = currentFrame
       ctx.functions(newFrame.currentFunction).body(newFrame.position.value - 1)
-      
+
   /**
    * Push a value onto the current frame's stack.
    *

@@ -41,13 +41,13 @@ object ExprParser:
                 tokenTypeParser[Token.ParenOpen],
                 Parser.separatedBy(exprParser, tokenTypeParser[Token.Comma]),
                 Parser.commit(tokenTypeParser[Token.ParenClosed])
-              ),
+              )
             )(params => Expr.Apply(_, params, _)),
             mapParser(
               Parser.inOrder(
                 tokenTypeParser[Token.Dot],
                 identifierParser
-              ),
+              )
             )(member => Expr.Select(_, member, _))
           )
         )

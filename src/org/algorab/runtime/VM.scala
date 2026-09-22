@@ -122,7 +122,7 @@ object VM:
     case Instruction.Store(symbol, span)       => RuntimeContext.storeLocal(symbol, RuntimeContext.pop)
     case Instruction.StoreGlobal(symbol, span) => RuntimeContext.storeGlobal(symbol, RuntimeContext.pop)
     case Instruction.Load(symbol, span)        => RuntimeContext.push(RuntimeContext.loadLocal(symbol))
-    case Instruction.LoadGlobal(symbol, span)  =>
+    case Instruction.LoadGlobal(symbol, span) =>
       val ctx = get
       val moduleId = ctx.owners(symbol)
 
@@ -139,7 +139,7 @@ object VM:
             RuntimeContext.popN(paramCount.value)
           )
 
-        case Value.BuiltinFunction(f) => 
+        case Value.BuiltinFunction(f) =>
           RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
 
         case _ =>

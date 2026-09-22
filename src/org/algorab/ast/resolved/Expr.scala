@@ -1,8 +1,8 @@
 package org.algorab.ast.resolved
 
 import io.github.iltotore.pureparser.Span
-import org.algorab.ast.SymbolId
 import org.algorab.ast.Identifier
+import org.algorab.ast.SymbolId
 
 /**
  * An Algorab expression.
@@ -216,6 +216,15 @@ enum Expr:
    */
   case Assign(symbol: SymbolId, expr: Expr, span: Span)
 
+  /**
+   * A reference to the member of an expression.
+   * At this point, [[Select]] always represents an instance member:
+   * qualified names are turned into a single [[VarCall]] pointing to the right [[SymbolId]].
+   *
+   * @param expr the expression to select from
+   * @param member the name of the member to select
+   * @param span the source position of this declaration
+   */
   case Select(expr: Expr, member: Identifier, span: Span)
 
   /**

@@ -75,10 +75,16 @@ object Compiler:
         else throw AssertionError(s"Wrong types (${left.tpe} and ${right.tpe}) for operator $opInt/$opFloat. Bug in typer?")
     )
 
+  /**
+   * Declare global variables in the programs forming a module.
+   *
+   * @param moduleSymbol the symbol of the module
+   * @param programs the source codes owned by this module
+   */
   def declarePrograms(moduleSymbol: SymbolId, programs: Seq[Program]): Compilation[Unit] =
     programs.flatMap(_.moduleStatements).foreach:
       case definition: Definition => CompilationContext.declareGlobal(definition.symbol, moduleSymbol)
-      case _ =>
+      case _                      =>
 
   /**
    * Compile a set of programs into a module.
@@ -116,7 +122,7 @@ object Compiler:
   def compileAllDeclarations(statements: Seq[Statement]): Compilation[Unit] =
     statements.foreach:
       case definition: Definition => compileDeclaration(definition)
-      case _ =>
+      case _                      =>
 
   /**
    * Compile a definition initialization.
@@ -246,7 +252,7 @@ object Compiler:
   def apply(programs: Seq[Program]): AlgorabProgram[CompiledProgram] =
     val (context, modules) = Compilation(
       programs
-        .groupBy(_.moduleSymbol)
+        .groupBy(_.symbol)
         .tapEach(declarePrograms)
         .map((id, programs) => (id, compilePrograms(id, programs)))
     )

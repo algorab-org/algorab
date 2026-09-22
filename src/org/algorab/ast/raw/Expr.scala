@@ -216,6 +216,14 @@ enum Expr:
    */
   case Assign(name: Identifier, expr: Expr, span: Span)
 
+  /**
+   * A reference to the member of an expression.
+   * Can be used as a qualified identifier (my.package.foo) or an instance member.
+   *
+   * @param expr the expression to select from
+   * @param member the name of the member to select
+   * @param span the source position of this declaration
+   */
   case Select(expr: Expr, member: Identifier, span: Span)
 
   /**

@@ -13,7 +13,7 @@ import purelogic.*
  * The context used during the compilation phase.
  *
  * @param functions the compiled functions
- * @param globals the definitions marked as global, usually top-level ones
+ * @param globals the definitions marked as global, usually top-level ones, with their owning module
  * @param instructions the current instruction body being produced
  * @param position the position of the next instruction, can be different from `instructions`' size
  */
@@ -96,6 +96,7 @@ object CompilationContext:
    * Mark a definition as global.
    *
    * @param symbol the symbol of the definition to declare as global
+   * @param owner the module owning this symbol
    */
   def declareGlobal(symbol: SymbolId, owner: SymbolId): Compilation[Unit] = update(ctx =>
     ctx.copy(

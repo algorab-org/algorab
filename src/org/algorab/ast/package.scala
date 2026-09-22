@@ -59,7 +59,6 @@ type ScopeId = ScopeId.T
 object ScopeId extends RefinedType[Int, GreaterEqual[-1]]:
 
   extension (x: ScopeId)
-
     /**
      * Add a positive integer to this scope id.
      *
@@ -85,10 +84,10 @@ object InstructionPosition extends RefinedType[Int, Positive0]:
     def +(y: Int :| Positive0): InstructionPosition = InstructionPosition.assume(x.value + y)
 
     /**
-     * Substract a positive integer from this instruction position.
+     * Substract an integer from this instruction position.
      * Note that this operation can lead to a negative instruction position.
      *
-     * @param y a positive integer
+     * @param y an integer
      * @return this position's value + [[y]]
      */
     def -(y: Int): InstructionPosition = InstructionPosition.assume(x.value - y)

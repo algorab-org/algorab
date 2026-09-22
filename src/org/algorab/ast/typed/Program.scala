@@ -12,15 +12,16 @@ enum Program:
   case Script(statements: List[Statement])
   case Module(owner: SymbolId, definitions: List[Definition])
 
-  def moduleSymbol: SymbolId = this match
+  /**
+   * The symbol id pointing to this program.
+   */
+  def symbol: SymbolId = this match
     case Script(_)        => SymbolId.Root
     case Module(owner, _) => owner
 
+  /**
+   * The statements of this program. A [[Program.Module]]'s statements are its definitions.
+   */
   def moduleStatements: List[Statement] = this match
     case Script(statements)     => statements
     case Module(_, definitions) => definitions
-
-  def moduleDefinitions: List[Definition] = this match
-    case Script(_) => List.empty
-    case Module(_, definitions) => definitions
-  
