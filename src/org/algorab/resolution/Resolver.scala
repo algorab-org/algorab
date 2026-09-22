@@ -59,16 +59,19 @@ object Resolver:
 
           declarePackage(packageId, scopeId :: scopes, tail)
 
+  def declareProgramPackage(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
+    declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
+
   /**
    * Declare all qualified members of a parsed file.
    *
    * @param program the parsed file to visit
    * @return the package id and scope path of the root of this source file
    */
-  def declareProgram(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
-    val (packageId, packageScope) = declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
-    ResolutionContext.inScopePath(packageScope)(declareAllStatements(program.statements, packageId == SymbolId.Root))
-    (packageId, packageScope)
+  def declareProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[Unit] =
+    ResolutionContext.inScopePath(packageScope)(
+      declareAllStatements(program.statements, owner == SymbolId.Root)
+    )
 
   /**
    * Resolve the given parsed file.
@@ -261,10 +264,13 @@ object Resolver:
    */
   def apply(programs: Seq[raw.Program]): AlgorabProgram[(ResolutionContext, Seq[resolved.Program])] =
     Resolution:
-      val declaredPrograms = programs.map(program => (program, Resolver.declareProgram(program)))
-      if declaredPrograms.count(_._2._1 == SymbolId.Root) > 1 then
+      val declaredPackages = programs.map(program => (program, Resolver.declareProgramPackage(program)))
+      if declaredPackages.count(_._2._1 == SymbolId.Root) > 1 then
         write(ResolutionError.MultipleScriptFiles(Span(0, 0)))
         fail(())
       else
-        declaredPrograms.map:
+        declaredPackages
+        .tapEach:
+          case (program, (packageId, packageScope)) => Resolver.declareProgram(program, packageId, packageScope)
+        .map:
           case (program, (packageId, packageScope)) => Resolver.resolveProgram(program, packageId, packageScope)
