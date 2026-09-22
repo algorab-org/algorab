@@ -82,10 +82,8 @@ object VM:
    *
    * @param module the module to load
    */
-  def loadModule(module: Module): Runtime[Unit] =
-    for dependency <- module.dependencies do
-      loadModule(RuntimeContext.getModule(dependency))
-
+  def loadModule(id: SymbolId, module: Module): Runtime[Unit] =
+    update(ctx => ctx.copy(initializedModules = ctx.initializedModules + id))
     RuntimeContext.pushNewFrame(module.initialization, List.empty)
 
   /**
@@ -124,7 +122,14 @@ object VM:
     case Instruction.Store(symbol, span)       => RuntimeContext.storeLocal(symbol, RuntimeContext.pop)
     case Instruction.StoreGlobal(symbol, span) => RuntimeContext.storeGlobal(symbol, RuntimeContext.pop)
     case Instruction.Load(symbol, span)        => RuntimeContext.push(RuntimeContext.loadLocal(symbol))
-    case Instruction.LoadGlobal(symbol, span)  => RuntimeContext.push(RuntimeContext.loadGlobal(symbol))
+    case Instruction.LoadGlobal(symbol, span) =>
+      val ctx = get
+      val moduleId = ctx.owners(symbol)
+
+      if ctx.initializedModules.contains(moduleId) then RuntimeContext.push(RuntimeContext.loadGlobal(symbol))
+      else
+        loadModule(moduleId, ctx.modules(moduleId))
+
     case Instruction.Apply(paramCount, span) =>
       val function = RuntimeContext.pop
 
@@ -134,7 +139,8 @@ object VM:
             RuntimeContext.popN(paramCount.value)
           )
 
-        case Value.BuiltinFunction(f) => RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
+        case Value.BuiltinFunction(f) =>
+          RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
 
         case _ =>
           fail(RuntimeError.simpleMismatch(Type.Function(List.fill(paramCount.value)(Type.Any), Type.Any), function, span))
@@ -153,7 +159,7 @@ object VM:
    */
   def apply(program: Program): AlgorabProgram[Unit] =
     Runtime(program):
-      loadModule(program.modules(SymbolId.Root))
+      loadModule(SymbolId.Root, program.modules(SymbolId.Root))
       while RuntimeContext.isRunning do
         val instruction = RuntimeContext.nextInstruction
         interpret(instruction)

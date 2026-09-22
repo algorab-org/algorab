@@ -74,6 +74,7 @@ type InstructionPosition = InstructionPosition.T
 object InstructionPosition extends RefinedType[Int, Positive0]:
 
   extension (x: InstructionPosition)
+
     /**
      * Add a positive integer to this instruction position.
      *
@@ -81,6 +82,15 @@ object InstructionPosition extends RefinedType[Int, Positive0]:
      * @return this position's value + [[y]]
      */
     def +(y: Int :| Positive0): InstructionPosition = InstructionPosition.assume(x.value + y)
+
+    /**
+     * Substract an integer from this instruction position.
+     * Note that this operation can lead to a negative instruction position.
+     *
+     * @param y an integer
+     * @return this position's value + [[y]]
+     */
+    def -(y: Int): InstructionPosition = InstructionPosition.assume(x.value - y)
 
 type ParamCount = ParamCount.T
 object ParamCount extends RefinedType[Int, Positive0]

@@ -13,13 +13,13 @@ import purelogic.*
  * The context used during the compilation phase.
  *
  * @param functions the compiled functions
- * @param globals the definitions marked as global, usually top-level ones
+ * @param globals the definitions marked as global, usually top-level ones, with their owning module
  * @param instructions the current instruction body being produced
  * @param position the position of the next instruction, can be different from `instructions`' size
  */
 case class CompilationContext(
     functions: Map[SymbolId, Function],
-    globals: Set[SymbolId],
+    globals: Map[SymbolId, SymbolId],
     instructions: Seq[Instruction],
     position: InstructionPosition
 )
@@ -32,12 +32,12 @@ object CompilationContext:
    */
   val default: CompilationContext = CompilationContext(
     functions = Map.empty,
-    globals = Set(
-      SymbolId.UnitTerm,
-      SymbolId.ToFloatTerm,
-      SymbolId.PrintLnTerm,
-      SymbolId.ReadIntTerm,
-      SymbolId.ReadFloatTerm
+    globals = Map(
+      SymbolId.UnitTerm -> SymbolId.Invalid,
+      SymbolId.ToFloatTerm -> SymbolId.Invalid,
+      SymbolId.PrintLnTerm -> SymbolId.Invalid,
+      SymbolId.ReadIntTerm -> SymbolId.Invalid,
+      SymbolId.ReadFloatTerm -> SymbolId.Invalid
     ),
     instructions = Seq.empty,
     position = InstructionPosition(0)
@@ -96,10 +96,11 @@ object CompilationContext:
    * Mark a definition as global.
    *
    * @param symbol the symbol of the definition to declare as global
+   * @param owner the module owning this symbol
    */
-  def declareGlobal(symbol: SymbolId): Compilation[Unit] = update(ctx =>
+  def declareGlobal(symbol: SymbolId, owner: SymbolId): Compilation[Unit] = update(ctx =>
     ctx.copy(
-      globals = ctx.globals + symbol
+      globals = ctx.globals.updated(symbol, owner)
     )
   )
 

@@ -7,8 +7,10 @@ import org.algorab.ast.SymbolId
  *
  * @param modules the compiled modules
  * @param functions the compiled functions
+ * @param owners the module owner of each global symbol
  */
 case class Program(
     modules: Map[SymbolId, Module],
-    functions: Map[SymbolId, Function]
+    functions: Map[SymbolId, Function],
+    owners: Map[SymbolId, SymbolId]
 )

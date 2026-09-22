@@ -34,18 +34,28 @@ object ExprParser:
     val (first, applications) = Parser.inOrder(
       termParser,
       repeatParser(
-        Parser.span(
-          Parser.inOrder(
-            tokenTypeParser[Token.ParenOpen],
-            Parser.separatedBy(exprParser, tokenTypeParser[Token.Comma]),
-            Parser.commit(tokenTypeParser[Token.ParenClosed])
+        tokenSpan(
+          Parser.firstOf[Token, (Expr, Span) => Expr](
+            mapParser(
+              Parser.inOrder(
+                tokenTypeParser[Token.ParenOpen],
+                Parser.separatedBy(exprParser, tokenTypeParser[Token.Comma]),
+                Parser.commit(tokenTypeParser[Token.ParenClosed])
+              )
+            )(params => Expr.Apply(_, params, _)),
+            mapParser(
+              Parser.inOrder(
+                tokenTypeParser[Token.Dot],
+                identifierParser
+              )
+            )(member => Expr.Select(_, member, _))
           )
         )
       )
     )
 
     applications.foldLeft(first):
-      case (expr, (params, span)) => Expr.Apply(expr, params, span.merge(expr.span))
+      case (expr, (op, span)) => op(expr, span.merge(expr.span))
 
   private val prefixOps: PartialFunction[Token, (Expr, Span) => Expr] =
     case Token.Not(_)   => Expr.Not.apply

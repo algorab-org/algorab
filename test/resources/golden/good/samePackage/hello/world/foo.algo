@@ -1,6 +1,4 @@
 package hello.world
 
--- Need import/select to be used 
-
 val foo: Int = 5
 def bar(): Int = f()

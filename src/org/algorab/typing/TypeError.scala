@@ -43,6 +43,13 @@ enum TypeError:
   case RecursiveInference(span: Span)
 
   /**
+   * OOP is not supported yet. Emitted when trying to select a field/method.
+   *
+   * @param span the source position where the error occurred
+   */
+  case UnsupportedOOP(span: Span)
+
+  /**
    * The source position where the error occurred.
    */
   def span: Span

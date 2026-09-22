@@ -76,6 +76,17 @@ object Compiler:
     )
 
   /**
+   * Declare global variables in the programs forming a module.
+   *
+   * @param moduleSymbol the symbol of the module
+   * @param programs the source codes owned by this module
+   */
+  def declarePrograms(moduleSymbol: SymbolId, programs: Seq[Program]): Compilation[Unit] =
+    programs.flatMap(_.moduleStatements).foreach:
+      case definition: Definition => CompilationContext.declareGlobal(definition.symbol, moduleSymbol)
+      case _                      =>
+
+  /**
    * Compile a set of programs into a module.
    *
    * @param moduleSymbol the symbol identifying the module
@@ -85,13 +96,12 @@ object Compiler:
   def compilePrograms(moduleSymbol: SymbolId, programs: Seq[Program]): Compilation[Module] =
     val initialization = Compilation.locally:
       val allStatements = programs.flatMap(_.moduleStatements)
-      compileAllDeclarations(allStatements, true)
+      compileAllDeclarations(allStatements)
       allStatements.foreach(compileStatement)
 
     CompilationContext.addFunction(moduleSymbol, Function(initialization.toArray))
 
     Module(
-      dependencies = Set.empty,
       initialization = moduleSymbol
     )
 
@@ -108,14 +118,11 @@ object Compiler:
    * Compile the definition of all declarations in a sequence of statements.
    *
    * @param statements the statements containing the declarations
-   * @param global whether the declarations are global
    */
-  def compileAllDeclarations(statements: Seq[Statement], global: Boolean): Compilation[Unit] =
+  def compileAllDeclarations(statements: Seq[Statement]): Compilation[Unit] =
     statements.foreach:
-      case definition: Definition =>
-        if global then CompilationContext.declareGlobal(definition.symbol)
-        compileDeclaration(definition)
-      case _ =>
+      case definition: Definition => compileDeclaration(definition)
+      case _                      =>
 
   /**
    * Compile a definition initialization.
@@ -209,7 +216,7 @@ object Compiler:
       compileExpr(expr)
       CompilationContext.emit(Instruction.Apply(ParamCount.assume(args.size), span))
     case Expr.Block(statements, _, span) =>
-      compileAllDeclarations(statements, false)
+      compileAllDeclarations(statements)
       statements.foreach(compileStatement)
     case Expr.If(cond, ifTrue, ifFalse, _, span) =>
       compileExpr(cond)
@@ -245,11 +252,13 @@ object Compiler:
   def apply(programs: Seq[Program]): AlgorabProgram[CompiledProgram] =
     val (context, modules) = Compilation(
       programs
-        .groupBy(_.moduleSymbol)
+        .groupBy(_.symbol)
+        .tapEach(declarePrograms)
         .map((id, programs) => (id, compilePrograms(id, programs)))
     )
 
     CompiledProgram(
       modules = modules,
-      functions = context.functions
+      functions = context.functions,
+      owners = context.globals
     )

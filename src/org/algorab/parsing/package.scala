@@ -63,3 +63,14 @@ def repeatParser[I, A](parser: Parser[I, A]): Parser[I, List[A]] =
       case None        => accumulator
 
   rec(Nil)
+
+/**
+ * Apply a function on the parser's output.
+ *
+ * Strictly the same as `f(parser)` but sometimes this notation plays better than direct-style.
+ *
+ * @param parser the parser to map
+ * @param f the mapping function
+ * @return a parser behaving the same as the original parser with `f` applied to its result
+ */
+def mapParser[I, A, B](parser: Parser[I, A])(f: A => B): Parser[I, B] = f(parser)
