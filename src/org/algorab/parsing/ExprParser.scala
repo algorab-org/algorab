@@ -10,6 +10,7 @@ import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
+import org.algorab.ast.raw.Import
 
 /**
  * A [[org.algorab.ast.raw\.Expr]] parser.
@@ -214,6 +215,19 @@ object ExprParser:
     )
   )
 
+  val importParser: Parser[Token, Import] =
+    val (path, span) = tokenSpan(
+      Parser.inOrder(
+        tokenTypeParser[Token.Import],
+        Parser.separatedBy(
+          tokenSpan(identifierParser),
+          tokenTypeParser[Token.Dot]
+        )
+      )
+    )
+
+    Import(path.init, Import.Selector.Simple.apply.tupled(path.last), span)
+
   val definitionParser: Parser[Token, Definition] = Parser.firstOf(
     valDefParser,
     funDefParser
@@ -237,6 +251,7 @@ object ExprParser:
 
   val statementParser: Parser[Token, Statement] = Parser.expect(
     Parser.firstOf(
+      importParser,
       definitionParser,
       exprParser
     ),
