@@ -11,4 +11,6 @@ object Import:
   enum Selector:
     case Simple(name: Identifier, span: Span)
 
+    case Wildcard(span: Span)
+
     def span: Span

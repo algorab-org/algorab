@@ -1,0 +1,4 @@
+package foo
+
+val x = 5
+val y = "hey"

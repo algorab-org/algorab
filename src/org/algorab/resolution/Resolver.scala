@@ -140,10 +140,12 @@ object Resolver:
 
   def resolveImport(importClause: raw.Import): Resolution[Unit] =
     val (head, headSpan) :: tail = importClause.path.runtimeChecked
-    val qualifier = tail.foldLeft(ResolutionContext.getLocalTerm(head, headSpan)):
-        case (symbol, (segment, span)) => ResolutionContext.getMember(symbol, segment, span)
+    val (qualifier, qualifierSpan) = tail.foldLeft((ResolutionContext.getLocalTerm(head, headSpan), headSpan)):
+        case ((symbol, symbolSpan), (segment, segmentSpan)) =>
+          if symbol == SymbolId.Invalid then (symbol, symbolSpan)
+          else (ResolutionContext.getMemberTermOrFail(symbol, segment, symbolSpan, segmentSpan), segmentSpan)
 
-    resolveSelector(qualifier, importClause.selector)
+    resolveSelector(qualifier, importClause.selector, qualifierSpan)
 
   /**
    * Declare the given definition.
@@ -227,8 +229,11 @@ object Resolver:
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
     case raw.Expr.Select(expr, member, span) =>
       resolveExpr(expr) match
-        case resolved.Expr.VarCall(symbol, _) =>
-          resolved.Expr.VarCall(ResolutionContext.getMember(symbol, member, span), span)
+        case resolved.Expr.VarCall(symbol, symbolSpan) =>
+          resolved.Expr.VarCall(
+            ResolutionContext.getMemberTermOrFail(symbol, member, symbolSpan, span),
+            span
+          )
 
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, span)
 
@@ -249,12 +254,34 @@ object Resolver:
       )
     case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
 
-  def resolveSelector(qualifier: SymbolId, selector: Selector): Resolution[Unit] = selector match
+  def resolveSelector(qualifier: SymbolId, selector: Selector, qualifierSpan: Span): Resolution[Unit] = selector match
     case Selector.Simple(name, span) =>
-      val member = ResolutionContext.getMember(qualifier, name, span)
-      if !ResolutionContext.currentScope.localTerms.contains(name) then ResolutionContext.updateCurrentScope(
-        _.withLocalTerm(name, member, true)
-      )
+      val memberTerm = ResolutionContext.getMemberTerm(qualifier, name, qualifierSpan, span)
+      val memberType = ResolutionContext.getMemberType(qualifier, name, qualifierSpan, span)
+      if memberTerm.isEmpty && memberType.isEmpty then
+          write(ResolutionError.UnknownName(name, span))
+      else
+        ResolutionContext.updateCurrentScope(scope =>
+          val withTerm = memberTerm
+            .filterNot(_ => scope.localTerms.contains(name))
+            .fold(scope)(scope.withLocalTerm(name, _, true))
+          val res = memberType
+            .filterNot(_ => scope.localTypes.contains(name))
+            .fold(withTerm)(withTerm.withLocalType(name, _))
+          res
+        )
+
+    case Selector.Wildcard(span) =>
+      get.symbols(qualifier) match
+        case namespace: Namespace =>
+          val namespaceScope = get.scopes(namespace.memberScope)
+          ResolutionContext.updateCurrentScope(scope => scope.copy(
+            localTerms = scope.localTerms ++ namespaceScope.localTerms,
+            localTypes = scope.localTypes ++ namespaceScope.localTypes
+          ))
+        case sym =>
+          write(ResolutionError.NotANamespace(sym, qualifierSpan))
+      
 
   /**
    * Resolve the names of the given programs.

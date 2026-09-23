@@ -207,18 +207,41 @@ object ResolutionContext:
         write(ResolutionError.UnknownName(name, span))
         SymbolId.Invalid
 
-  def getMember(symbol: SymbolId, member: Identifier, span: Span): Resolution[SymbolId] =
+  def getMemberTerm(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[Option[SymbolId]] =
     get.symbols(symbol) match
       case namespace: Symbol.Namespace =>
-        get.scopes(namespace.memberScope).localTerms.get(member) match
-          case Some((memberSymbol, _)) => memberSymbol
-          case None =>
-            write(ResolutionError.UnknownName(member, span))
-            SymbolId.Invalid
+        get
+          .scopes(namespace.memberScope)
+          .localTerms
+          .get(member)
+          .map(_._1)
 
       case sym =>
-        write(ResolutionError.NotANamespace(sym, span))
-        SymbolId.Invalid
+        write(ResolutionError.NotANamespace(sym, symbolSpan))
+        Some(SymbolId.Invalid)
+
+  def getMemberType(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[Option[SymbolId]] =
+    get.symbols(symbol) match
+      case namespace: Symbol.Namespace =>
+        get
+          .scopes(namespace.memberScope)
+          .localTypes
+          .get(member)
+
+      case sym =>
+        write(ResolutionError.NotANamespace(sym, symbolSpan))
+        Some(SymbolId.Invalid)
+
+  def getMemberTermOrFail(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[SymbolId] =
+    getMemberTerm(symbol, member, symbolSpan, memberSpan).getOrElse:
+      println(s"Unknown term")
+      write(ResolutionError.UnknownName(member, memberSpan))
+      SymbolId.Invalid
+
+  def getMemberTypeOrFail(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[SymbolId] =
+    getMemberType(symbol, member, symbolSpan, memberSpan).getOrElse:
+      write(ResolutionError.UnknownName(member, memberSpan))
+      SymbolId.Invalid
 
   /**
    * Declare the given symbol.
