@@ -256,20 +256,7 @@ object Resolver:
 
   def resolveSelector(qualifier: SymbolId, selector: Selector, qualifierSpan: Span): Resolution[Unit] = selector match
     case Selector.Simple(name, span) =>
-      val memberTerm = ResolutionContext.getMemberTerm(qualifier, name, qualifierSpan, span)
-      val memberType = ResolutionContext.getMemberType(qualifier, name, qualifierSpan, span)
-      if memberTerm.isEmpty && memberType.isEmpty then
-          write(ResolutionError.UnknownName(name, span))
-      else
-        ResolutionContext.updateCurrentScope(scope =>
-          val withTerm = memberTerm
-            .filterNot(_ => scope.localTerms.contains(name))
-            .fold(scope)(scope.withLocalTerm(name, _, true))
-          val res = memberType
-            .filterNot(_ => scope.localTypes.contains(name))
-            .fold(withTerm)(withTerm.withLocalType(name, _))
-          res
-        )
+      ResolutionContext.importMember(qualifier, name, name, qualifierSpan, span)
 
     case Selector.Wildcard(span) =>
       get.symbols(qualifier) match
@@ -281,6 +268,9 @@ object Resolver:
           ))
         case sym =>
           write(ResolutionError.NotANamespace(sym, qualifierSpan))
+
+    case Selector.Rename(name, alias, span) =>
+      ResolutionContext.importMember(qualifier, name, alias, qualifierSpan, span)
       
 
   /**

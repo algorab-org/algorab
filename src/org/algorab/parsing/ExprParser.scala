@@ -216,13 +216,24 @@ object ExprParser:
     )
   )
 
+  val selectorParser: Parser[Token, Import.Selector] = Parser.firstOf(
+    Import.Selector.Wildcard(tokenSpan(tokenTypeParser[Token.Mul])),
+    Import.Selector.Rename.apply.tupled(tokenSpan(
+      Parser.inOrder(
+        identifierParser,
+        tokenTypeParser[Token.As],
+        identifierParser
+      )
+    ))
+  )
+
   def importPathParser(acc: List[(Identifier, Span)]): Parser[Token, (List[(Identifier, Span)], Import.Selector)] =
     Parser.inOrder(
       tokenTypeParser[Token.Dot],
       Parser.firstOf(
         (
           acc,
-          Import.Selector.Wildcard(tokenSpan(tokenTypeParser[Token.Mul]))
+          selectorParser
         ),
         importPathParser(acc :+ tokenSpan(identifierParser)),
         (acc, Import.Selector.Simple.apply.tupled(tokenSpan(identifierParser)))

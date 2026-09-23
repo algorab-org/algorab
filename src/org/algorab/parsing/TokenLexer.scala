@@ -133,7 +133,8 @@ object TokenLexer:
     "val" -> Token.Val.apply,
     "mut" -> Token.Mut.apply,
     "package" -> Token.Package.apply,
-    "import" -> Token.Import.apply
+    "import" -> Token.Import.apply,
+    "as" -> Token.As.apply
   )
 
   private val symbols: IndexedSeq[(String, Span => Token)] = Seq(

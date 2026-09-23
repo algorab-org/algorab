@@ -243,6 +243,22 @@ object ResolutionContext:
       write(ResolutionError.UnknownName(member, memberSpan))
       SymbolId.Invalid
 
+  def importMember(owner: SymbolId, member: Identifier, alias: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[Unit] =
+    val memberTerm = ResolutionContext.getMemberTerm(owner, member, ownerSpan, memberSpan)
+    val memberType = ResolutionContext.getMemberType(owner, member, ownerSpan, memberSpan)
+    if memberTerm.isEmpty && memberType.isEmpty then
+        write(ResolutionError.UnknownName(member, memberSpan))
+    else
+      ResolutionContext.updateCurrentScope(scope =>
+        val withTerm = memberTerm
+          .filterNot(_ => scope.localTerms.contains(alias))
+          .fold(scope)(scope.withLocalTerm(alias, _, true))
+        val res = memberType
+          .filterNot(_ => scope.localTypes.contains(alias))
+          .fold(withTerm)(withTerm.withLocalType(alias, _))
+        res
+      )
+
   /**
    * Declare the given symbol.
    *

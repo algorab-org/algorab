@@ -13,4 +13,6 @@ object Import:
 
     case Wildcard(span: Span)
 
+    case Rename(name: Identifier, alias: Identifier, span: Span)
+
     def span: Span
