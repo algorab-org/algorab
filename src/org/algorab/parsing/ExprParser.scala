@@ -5,12 +5,12 @@ import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
 import org.algorab.ast.raw.Definition
 import org.algorab.ast.raw.Expr
+import org.algorab.ast.raw.Import
 import org.algorab.ast.raw.Program
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
-import org.algorab.ast.raw.Import
 import scala.annotation.tailrec
 
 /**

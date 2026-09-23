@@ -9,10 +9,10 @@ import org.algorab.ast.Symbol
 import org.algorab.ast.Symbol.Namespace
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw
+import org.algorab.ast.raw.Import.Selector
 import org.algorab.ast.resolved
 import purelogic.*
 import scala.annotation.tailrec
-import org.algorab.ast.raw.Import.Selector
 
 /**
  * The name resolution phase.
@@ -132,18 +132,23 @@ object Resolver:
    * @return a representation of the same statement with all its names resolved
    */
   def resolveStatement(statement: raw.Statement): Resolution[Option[resolved.Statement]] = statement match
-    case importClause: raw.Import   =>
+    case importClause: raw.Import =>
       resolveImport(importClause)
       None
     case definition: raw.Definition => Some(resolveDefinition(definition))
     case expr: raw.Expr             => Some(resolveExpr(expr))
 
+  /**
+   * Resolve the given import clause.
+   *
+   * @param importClause the import clause to resolve
+   */
   def resolveImport(importClause: raw.Import): Resolution[Unit] =
     val (head, headSpan) :: tail = importClause.path.runtimeChecked
     val (qualifier, qualifierSpan) = tail.foldLeft((ResolutionContext.getLocalTerm(head, headSpan), headSpan)):
-        case ((symbol, symbolSpan), (segment, segmentSpan)) =>
-          if symbol == SymbolId.Invalid then (symbol, symbolSpan)
-          else (ResolutionContext.getMemberTermOrFail(symbol, segment, symbolSpan, segmentSpan), segmentSpan)
+      case ((symbol, symbolSpan), (segment, segmentSpan)) =>
+        if symbol == SymbolId.Invalid then (symbol, symbolSpan)
+        else (ResolutionContext.getMemberTermOrFail(symbol, segment, symbolSpan, segmentSpan), segmentSpan)
 
     resolveSelector(qualifier, importClause.selector, qualifierSpan)
 
@@ -254,6 +259,13 @@ object Resolver:
       )
     case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
 
+  /**
+   * Resolve the given selector.
+   *
+   * @param qualifier the symbol owning the members to import
+   * @param selector the member selector
+   * @param qualifierSpan the source position of the owning symbol, used for error production
+   */
   def resolveSelector(qualifier: SymbolId, selector: Selector, qualifierSpan: Span): Resolution[Unit] = selector match
     case Selector.Simple(name, span) =>
       ResolutionContext.importMember(qualifier, name, name, qualifierSpan, span)
@@ -262,16 +274,17 @@ object Resolver:
       get.symbols(qualifier) match
         case namespace: Namespace =>
           val namespaceScope = get.scopes(namespace.memberScope)
-          ResolutionContext.updateCurrentScope(scope => scope.copy(
-            localTerms = scope.localTerms ++ namespaceScope.localTerms,
-            localTypes = scope.localTypes ++ namespaceScope.localTypes
-          ))
+          ResolutionContext.updateCurrentScope(scope =>
+            scope.copy(
+              localTerms = scope.localTerms ++ namespaceScope.localTerms,
+              localTypes = scope.localTypes ++ namespaceScope.localTypes
+            )
+          )
         case sym =>
           write(ResolutionError.NotANamespace(sym, qualifierSpan))
 
     case Selector.Rename(name, alias, span) =>
       ResolutionContext.importMember(qualifier, name, alias, qualifierSpan, span)
-      
 
   /**
    * Resolve the names of the given programs.
@@ -287,7 +300,7 @@ object Resolver:
         fail(())
       else
         declaredPackages
-        .tapEach:
-          case (program, (packageId, packageScope)) => Resolver.declareProgram(program, packageId, packageScope)
-        .map:
-          case (program, (packageId, packageScope)) => Resolver.resolveProgram(program, packageId, packageScope)
+          .tapEach:
+            case (program, (packageId, packageScope)) => Resolver.declareProgram(program, packageId, packageScope)
+          .map:
+            case (program, (packageId, packageScope)) => Resolver.resolveProgram(program, packageId, packageScope)

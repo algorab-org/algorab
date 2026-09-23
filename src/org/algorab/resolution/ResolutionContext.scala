@@ -207,8 +207,16 @@ object ResolutionContext:
         write(ResolutionError.UnknownName(name, span))
         SymbolId.Invalid
 
-  def getMemberTerm(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[Option[SymbolId]] =
-    get.symbols(symbol) match
+  /**
+   * Get a member term of a symbol.
+   *
+   * @param owner the symbol owning the term to get
+   * @param member the member to get
+   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @return the symbol's member if it exists
+   */
+  def getMemberTerm(owner: SymbolId, member: Identifier, ownerSpan: Span): Resolution[Option[SymbolId]] =
+    get.symbols(owner) match
       case namespace: Symbol.Namespace =>
         get
           .scopes(namespace.memberScope)
@@ -217,11 +225,19 @@ object ResolutionContext:
           .map(_._1)
 
       case sym =>
-        write(ResolutionError.NotANamespace(sym, symbolSpan))
+        write(ResolutionError.NotANamespace(sym, ownerSpan))
         Some(SymbolId.Invalid)
 
-  def getMemberType(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[Option[SymbolId]] =
-    get.symbols(symbol) match
+  /**
+   * Get a member type of a symbol.
+   *
+   * @param owner the symbol owning the type to get
+   * @param member the member to get
+   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @return the symbol's member if it exists
+   */
+  def getMemberType(owner: SymbolId, member: Identifier, ownerSpan: Span): Resolution[Option[SymbolId]] =
+    get.symbols(owner) match
       case namespace: Symbol.Namespace =>
         get
           .scopes(namespace.memberScope)
@@ -229,25 +245,52 @@ object ResolutionContext:
           .get(member)
 
       case sym =>
-        write(ResolutionError.NotANamespace(sym, symbolSpan))
+        write(ResolutionError.NotANamespace(sym, ownerSpan))
         Some(SymbolId.Invalid)
 
-  def getMemberTermOrFail(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[SymbolId] =
-    getMemberTerm(symbol, member, symbolSpan, memberSpan).getOrElse:
-      println(s"Unknown term")
+  /**
+   * Get a member term of a symbol or fail with a [[ResolutionError.UnknownName]].
+   *
+   * @param owner the symbol owning the term to get
+   * @param member the member to get
+   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @param memberSpan the source position of the member reference, used for error production
+   * @return the symbol's member or [[SymbolId.Invalid]]
+   */
+  def getMemberTermOrFail(owner: SymbolId, member: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[SymbolId] =
+    getMemberTerm(owner, member, ownerSpan).getOrElse:
       write(ResolutionError.UnknownName(member, memberSpan))
       SymbolId.Invalid
 
-  def getMemberTypeOrFail(symbol: SymbolId, member: Identifier, symbolSpan: Span, memberSpan: Span): Resolution[SymbolId] =
-    getMemberType(symbol, member, symbolSpan, memberSpan).getOrElse:
+  /**
+   * Get a member type of a symbol or fail with a [[ResolutionError.UnknownName]].
+   *
+   * @param owner the symbol owning the type to get
+   * @param member the member to get
+   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @param memberSpan the source position of the member reference, used for error production
+   * @return the symbol's member or [[SymbolId.Invalid]]
+   */
+  def getMemberTypeOrFail(owner: SymbolId, member: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[SymbolId] =
+    getMemberType(owner, member, ownerSpan).getOrElse:
       write(ResolutionError.UnknownName(member, memberSpan))
       SymbolId.Invalid
 
+  /**
+   * Import a member in the current scope.
+   * In case both a type a term have the same name, both are imported.
+   *
+   * @param owner the symbol owning the member to import
+   * @param member the name of the member to import
+   * @param alias the name the member is imported as
+   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @param memberSpan the source position of the member reference, used for error production
+   */
   def importMember(owner: SymbolId, member: Identifier, alias: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[Unit] =
-    val memberTerm = ResolutionContext.getMemberTerm(owner, member, ownerSpan, memberSpan)
-    val memberType = ResolutionContext.getMemberType(owner, member, ownerSpan, memberSpan)
+    val memberTerm = ResolutionContext.getMemberTerm(owner, member, ownerSpan)
+    val memberType = ResolutionContext.getMemberType(owner, member, ownerSpan)
     if memberTerm.isEmpty && memberType.isEmpty then
-        write(ResolutionError.UnknownName(member, memberSpan))
+      write(ResolutionError.UnknownName(member, memberSpan))
     else
       ResolutionContext.updateCurrentScope(scope =>
         val withTerm = memberTerm
