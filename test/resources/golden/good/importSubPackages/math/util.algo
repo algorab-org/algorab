@@ -1,0 +1,5 @@
+package math.util
+
+def id(x: Int): Int = x
+
+def minus(x: Int): Int = -x

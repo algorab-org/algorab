@@ -9,8 +9,8 @@ import org.algorab.ast.Symbol
 import org.algorab.ast.Symbol.Namespace
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw
+import org.algorab.ast.raw.Import.Selector
 import org.algorab.ast.resolved
-import org.algorab.resolution.ResolutionContext.currentScope
 import purelogic.*
 import scala.annotation.tailrec
 
@@ -59,16 +59,19 @@ object Resolver:
 
           declarePackage(packageId, scopeId :: scopes, tail)
 
+  def declareProgramPackage(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
+    declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
+
   /**
    * Declare all qualified members of a parsed file.
    *
    * @param program the parsed file to visit
    * @return the package id and scope path of the root of this source file
    */
-  def declareProgram(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
-    val (packageId, packageScope) = declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
-    ResolutionContext.inScopePath(packageScope)(declareAllStatements(program.statements, packageId == SymbolId.Root))
-    (packageId, packageScope)
+  def declareProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[Unit] =
+    ResolutionContext.inScopePath(packageScope)(
+      declareAllStatements(program.statements, owner == SymbolId.Root)
+    )
 
   /**
    * Resolve the given parsed file.
@@ -81,7 +84,7 @@ object Resolver:
   def resolveProgram(program: raw.Program, owner: SymbolId, packageScope: List[ScopeId]): Resolution[resolved.Program] =
     if owner == SymbolId.Root then
       resolved.Program.Script(
-        statements = ResolutionContext.inScopePath(packageScope)(program.statements.map(resolveStatement))
+        statements = ResolutionContext.inScopePath(packageScope)(program.statements.flatMap(resolveStatement))
       )
     else
       resolved.Program.Module(
@@ -91,6 +94,9 @@ object Resolver:
             .statements
             .flatMap:
               case definition: raw.Definition => Some(resolveDefinition(definition))
+              case importClause: raw.Import =>
+                resolveImport(importClause)
+                None
               case expr: raw.Expr =>
                 write(ResolutionError.TopLevelStatementInModule(expr.span))
                 None
@@ -125,9 +131,26 @@ object Resolver:
    * @param statement the statement to resolve
    * @return a representation of the same statement with all its names resolved
    */
-  def resolveStatement(statement: raw.Statement): Resolution[resolved.Statement] = statement match
-    case definition: raw.Definition => resolveDefinition(definition)
-    case expr: raw.Expr             => resolveExpr(expr)
+  def resolveStatement(statement: raw.Statement): Resolution[Option[resolved.Statement]] = statement match
+    case importClause: raw.Import =>
+      resolveImport(importClause)
+      None
+    case definition: raw.Definition => Some(resolveDefinition(definition))
+    case expr: raw.Expr             => Some(resolveExpr(expr))
+
+  /**
+   * Resolve the given import clause.
+   *
+   * @param importClause the import clause to resolve
+   */
+  def resolveImport(importClause: raw.Import): Resolution[Unit] =
+    val (head, headSpan) :: tail = importClause.path.runtimeChecked
+    val (qualifier, qualifierSpan) = tail.foldLeft((ResolutionContext.getLocalTerm(head, headSpan), headSpan)):
+      case ((symbol, symbolSpan), (segment, segmentSpan)) =>
+        if symbol == SymbolId.Invalid then (symbol, symbolSpan)
+        else (ResolutionContext.getMemberTermOrFail(symbol, segment, symbolSpan, segmentSpan), segmentSpan)
+
+    resolveSelector(qualifier, importClause.selector, qualifierSpan)
 
   /**
    * Declare the given definition.
@@ -211,25 +234,18 @@ object Resolver:
     case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
     case raw.Expr.Select(expr, member, span) =>
       resolveExpr(expr) match
-        case resolved.Expr.VarCall(symbol, _) => get.symbols(symbol) match
-            case namespace: Symbol.Namespace =>
-              val finalSymbol = get.scopes(namespace.memberScope).localTerms.get(member) match
-                case Some((memberSymbol, _)) => memberSymbol
-                case None =>
-                  write(ResolutionError.UnknownName(member, span))
-                  SymbolId.Invalid
-              resolved.Expr.VarCall(finalSymbol, span)
-
-            case sym =>
-              write(ResolutionError.NotANamespace(sym, span))
-              resolved.Expr.Invalid(span)
+        case resolved.Expr.VarCall(symbol, symbolSpan) =>
+          resolved.Expr.VarCall(
+            ResolutionContext.getMemberTermOrFail(symbol, member, symbolSpan, span),
+            span
+          )
 
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, span)
 
     case raw.Expr.Apply(expr, args, span) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
     case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
-        resolved.Expr.Block(statements.map(resolveStatement), span)
+        resolved.Expr.Block(statements.flatMap(resolveStatement), span)
     case raw.Expr.If(cond, ifTrue, ifFalse, span) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
     case raw.Expr.While(cond, body, span)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), span)
     case raw.Expr.For(iterator, iterable, body, span) =>
@@ -244,6 +260,33 @@ object Resolver:
     case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
 
   /**
+   * Resolve the given selector.
+   *
+   * @param qualifier the symbol owning the members to import
+   * @param selector the member selector
+   * @param qualifierSpan the source position of the owning symbol, used for error production
+   */
+  def resolveSelector(qualifier: SymbolId, selector: Selector, qualifierSpan: Span): Resolution[Unit] = selector match
+    case Selector.Simple(name, span) =>
+      ResolutionContext.importMember(qualifier, name, name, qualifierSpan, span)
+
+    case Selector.Wildcard(span) =>
+      get.symbols(qualifier) match
+        case namespace: Namespace =>
+          val namespaceScope = get.scopes(namespace.memberScope)
+          ResolutionContext.updateCurrentScope(scope =>
+            scope.copy(
+              localTerms = scope.localTerms ++ namespaceScope.localTerms,
+              localTypes = scope.localTypes ++ namespaceScope.localTypes
+            )
+          )
+        case sym =>
+          write(ResolutionError.NotANamespace(sym, qualifierSpan))
+
+    case Selector.Rename(name, alias, span) =>
+      ResolutionContext.importMember(qualifier, name, alias, qualifierSpan, span)
+
+  /**
    * Resolve the names of the given programs.
    *
    * @param programs the parsed programs to resolve
@@ -251,10 +294,13 @@ object Resolver:
    */
   def apply(programs: Seq[raw.Program]): AlgorabProgram[(ResolutionContext, Seq[resolved.Program])] =
     Resolution:
-      val declaredPrograms = programs.map(program => (program, Resolver.declareProgram(program)))
-      if declaredPrograms.count(_._2._1 == SymbolId.Root) > 1 then
+      val declaredPackages = programs.map(program => (program, Resolver.declareProgramPackage(program)))
+      if declaredPackages.count(_._2._1 == SymbolId.Root) > 1 then
         write(ResolutionError.MultipleScriptFiles(Span(0, 0)))
         fail(())
       else
-        declaredPrograms.map:
-          case (program, (packageId, packageScope)) => Resolver.resolveProgram(program, packageId, packageScope)
+        declaredPackages
+          .tapEach:
+            case (program, (packageId, packageScope)) => Resolver.declareProgram(program, packageId, packageScope)
+          .map:
+            case (program, (packageId, packageScope)) => Resolver.resolveProgram(program, packageId, packageScope)

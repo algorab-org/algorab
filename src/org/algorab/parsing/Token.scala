@@ -309,6 +309,20 @@ enum Token derives CanEqual:
   case Package(span: Span)
 
   /**
+   * The `import` symbol.
+   *
+   * @param span the source position of this token
+   */
+  case Import(span: Span)
+
+  /**
+   * The `as` symbol.
+   *
+   * @param span the source position of this token
+   */
+  case As(span: Span)
+
+  /**
    * The source position of this token.
    */
   def span: Span

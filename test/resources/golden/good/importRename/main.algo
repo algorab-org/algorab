@@ -1,0 +1,3 @@
+import foo.x as a
+
+println(a)

@@ -5,11 +5,13 @@ import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
 import org.algorab.ast.raw.Definition
 import org.algorab.ast.raw.Expr
+import org.algorab.ast.raw.Import
 import org.algorab.ast.raw.Program
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
+import scala.annotation.tailrec
 
 /**
  * A [[org.algorab.ast.raw\.Expr]] parser.
@@ -214,6 +216,39 @@ object ExprParser:
     )
   )
 
+  val selectorParser: Parser[Token, Import.Selector] = Parser.firstOf(
+    Import.Selector.Wildcard(tokenSpan(tokenTypeParser[Token.Mul])),
+    Import.Selector.Rename.apply.tupled(tokenSpan(
+      Parser.inOrder(
+        identifierParser,
+        tokenTypeParser[Token.As],
+        identifierParser
+      )
+    ))
+  )
+
+  def importPathParser(acc: List[(Identifier, Span)]): Parser[Token, (List[(Identifier, Span)], Import.Selector)] =
+    Parser.inOrder(
+      tokenTypeParser[Token.Dot],
+      Parser.firstOf(
+        (
+          acc,
+          selectorParser
+        ),
+        importPathParser(acc :+ tokenSpan(identifierParser)),
+        (acc, Import.Selector.Simple.apply.tupled(tokenSpan(identifierParser)))
+      )
+    )
+
+  val importParser: Parser[Token, Import] = Import.apply.tupled(
+    tokenSpan(
+      Parser.inOrder(
+        tokenTypeParser[Token.Import],
+        importPathParser(List(tokenSpan(identifierParser)))
+      )
+    )
+  )
+
   val definitionParser: Parser[Token, Definition] = Parser.firstOf(
     valDefParser,
     funDefParser
@@ -237,6 +272,7 @@ object ExprParser:
 
   val statementParser: Parser[Token, Statement] = Parser.expect(
     Parser.firstOf(
+      importParser,
       definitionParser,
       exprParser
     ),

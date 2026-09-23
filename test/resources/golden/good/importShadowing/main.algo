@@ -1,0 +1,10 @@
+import foo.bar
+
+val bar = 4
+
+def f(): Unit =
+  import foo.bar
+  println(bar)
+
+println(bar)
+f()
