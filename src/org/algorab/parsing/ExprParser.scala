@@ -12,13 +12,15 @@ import org.algorab.ast.raw.Type
 import purelogic.Abort
 import purelogic.Writer
 import scala.annotation.tailrec
+import purelogic.Reader
+import org.algorab.util.FileName
 
 /**
  * A [[org.algorab.ast.raw\.Expr]] parser.
  */
 object ExprParser:
 
-  val literalParser: Parser[Token, Expr] = Parser.next match
+  val literalParser: AlgorabParser[Token, Expr] = Parser.next match
     case Token.LBool(value, span)      => Expr.LBool(value, span)
     case Token.LInt(value, span)       => Expr.LInt(value, span)
     case Token.LFloat(value, span)     => Expr.LFloat(value, span)
@@ -27,12 +29,12 @@ object ExprParser:
     case Token.Ident(identifier, span) => Expr.VarCall(identifier, span)
     case _                             => Parser.backtrack
 
-  val termParser: Parser[Token, Expr] = Parser.firstOf(
+  val termParser: AlgorabParser[Token, Expr] = Parser.firstOf(
     literalParser,
     Parser.inOrder(AlgorabParser.token[Token.ParenOpen], exprParser, Parser.commit(AlgorabParser.token[Token.ParenClosed]))
   )
 
-  val applyParser: Parser[Token, Expr] =
+  val applyParser: AlgorabParser[Token, Expr] =
     val (first, applications) = Parser.inOrder(
       termParser,
       AlgorabParser.repeat(
@@ -86,7 +88,7 @@ object ExprParser:
     case Token.And(_) => Expr.And.apply
     case Token.Or(_)  => Expr.Or.apply
 
-  private def binaryOpParser(operandParser: Parser[Token, Expr], operators: PartialFunction[Token, (Expr, Expr, Span) => Expr]): Parser[Token, Expr] =
+  private def binaryOpParser(operandParser: AlgorabParser[Token, Expr], operators: PartialFunction[Token, (Expr, Expr, Span) => Expr]): AlgorabParser[Token, Expr] =
     Parser.separatedByReduce(
       operandParser,
       AlgorabParser.matching:
@@ -94,7 +96,7 @@ object ExprParser:
           (left, right) => operator(left, right, left.span.merge(right.span))
     )
 
-  val prefixOpParser: Parser[Token, Expr] = Parser.firstOf(
+  val prefixOpParser: AlgorabParser[Token, Expr] = Parser.firstOf(
     AlgorabParser.matching:
       case token @ prefixOps(operator) =>
         val term = prefixOpParser
@@ -103,20 +105,20 @@ object ExprParser:
     applyParser
   )
 
-  val binaryMulOpParser: Parser[Token, Expr] = binaryOpParser(prefixOpParser, binaryMulOps)
-  val binaryAddOpParser: Parser[Token, Expr] = binaryOpParser(binaryMulOpParser, binaryAddOps)
-  val binaryCompOpParser: Parser[Token, Expr] = binaryOpParser(binaryAddOpParser, binaryCompOps)
-  val binaryBoolOpParser: Parser[Token, Expr] = binaryOpParser(binaryCompOpParser, binaryBoolOps)
+  val binaryMulOpParser: AlgorabParser[Token, Expr] = binaryOpParser(prefixOpParser, binaryMulOps)
+  val binaryAddOpParser: AlgorabParser[Token, Expr] = binaryOpParser(binaryMulOpParser, binaryAddOps)
+  val binaryCompOpParser: AlgorabParser[Token, Expr] = binaryOpParser(binaryAddOpParser, binaryCompOps)
+  val binaryBoolOpParser: AlgorabParser[Token, Expr] = binaryOpParser(binaryCompOpParser, binaryBoolOps)
 
-  private val blockParser: Parser[Token, Expr] =
+  private val blockParser: AlgorabParser[Token, Expr] =
     Expr.Block.apply.tupled(AlgorabParser.tokenPosition(Parser.separatedBy(statementParser, AlgorabParser.token[Token.Newline])))
 
-  private val identifierParser: Parser[Token, Identifier] = AlgorabParser.matching:
+  private val identifierParser: AlgorabParser[Token, Identifier] = AlgorabParser.matching:
     case Token.Ident(identifier, _) => identifier
 
-  val typeParser: Parser[Token, Type] = Type.Ref(identifierParser)
+  val typeParser: AlgorabParser[Token, Type] = Type.Ref(identifierParser)
 
-  val ifParser: Parser[Token, Expr] = Expr.If.apply.tupled(
+  val ifParser: AlgorabParser[Token, Expr] = Expr.If.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.If],
@@ -136,7 +138,7 @@ object ExprParser:
     )
   )
 
-  val forParser: Parser[Token, Expr] = Expr.For.apply.tupled(
+  val forParser: AlgorabParser[Token, Expr] = Expr.For.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.For],
@@ -151,7 +153,7 @@ object ExprParser:
     )
   )
 
-  val whileParser: Parser[Token, Expr] = Expr.While.apply.tupled(
+  val whileParser: AlgorabParser[Token, Expr] = Expr.While.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.While],
@@ -164,7 +166,7 @@ object ExprParser:
     )
   )
 
-  val valDefParser: Parser[Token, Definition] =
+  val valDefParser: AlgorabParser[Token, Definition] =
     val (mutable, name, tpe, expr, span) = AlgorabParser.tokenPosition(
       Parser.inOrder(
         Parser.firstOf(Parser.as(AlgorabParser.token[Token.Mut], true), false),
@@ -183,7 +185,7 @@ object ExprParser:
 
     Definition.Val(name, tpe, expr, mutable, span)
 
-  val assignParser: Parser[Token, Expr] = Expr.Assign.apply.tupled(
+  val assignParser: AlgorabParser[Token, Expr] = Expr.Assign.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         identifierParser,
@@ -193,7 +195,7 @@ object ExprParser:
     )
   )
 
-  val funDefParser: Parser[Token, Definition] = Definition.Function.apply.tupled(
+  val funDefParser: AlgorabParser[Token, Definition] = Definition.Function.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.Def],
@@ -216,7 +218,7 @@ object ExprParser:
     )
   )
 
-  val selectorParser: Parser[Token, Import.Selector] = Parser.firstOf(
+  val selectorParser: AlgorabParser[Token, Import.Selector] = Parser.firstOf(
     Import.Selector.Wildcard(AlgorabParser.tokenPosition(AlgorabParser.token[Token.Mul])),
     Import.Selector.Rename.apply.tupled(AlgorabParser.tokenPosition(
       Parser.inOrder(
@@ -227,7 +229,7 @@ object ExprParser:
     ))
   )
 
-  def importPathParser(acc: List[(Identifier, Span)]): Parser[Token, (List[(Identifier, Span)], Import.Selector)] =
+  def importPathParser(acc: List[(Identifier, Span)]): AlgorabParser[Token, (List[(Identifier, Span)], Import.Selector)] =
     Parser.inOrder(
       AlgorabParser.token[Token.Dot],
       Parser.firstOf(
@@ -240,7 +242,7 @@ object ExprParser:
       )
     )
 
-  val importParser: Parser[Token, Import] = Import.apply.tupled(
+  val importParser: AlgorabParser[Token, Import] = Import.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.Import],
@@ -249,12 +251,12 @@ object ExprParser:
     )
   )
 
-  val definitionParser: Parser[Token, Definition] = Parser.firstOf(
+  val definitionParser: AlgorabParser[Token, Definition] = Parser.firstOf(
     valDefParser,
     funDefParser
   )
 
-  val exprParser: Parser[Token, Expr] = Parser.expect(
+  val exprParser: AlgorabParser[Token, Expr] = Parser.expect(
     Parser.firstOf(
       Parser.inOrder(
         AlgorabParser.token[Token.Indent],
@@ -270,7 +272,7 @@ object ExprParser:
     "Valid expression"
   )
 
-  val statementParser: Parser[Token, Statement] = Parser.expect(
+  val statementParser: AlgorabParser[Token, Statement] = Parser.expect(
     Parser.firstOf(
       importParser,
       definitionParser,
@@ -279,7 +281,7 @@ object ExprParser:
     "Valid statement"
   )
 
-  val packageParser: Parser[Token, List[(Identifier, Span)]] = Parser.inOrder(
+  val packageParser: AlgorabParser[Token, List[(Identifier, Span)]] = Parser.inOrder(
     AlgorabParser.token[Token.Package],
     Parser.separatedBy(
       AlgorabParser.tokenPosition(identifierParser),
@@ -287,7 +289,7 @@ object ExprParser:
     )
   )
 
-  val programParser: Parser[Token, Program] = Program.apply.tupled(
+  val programParser: AlgorabParser[Token, Program] = Program.apply.tupled(
     Parser.inOrder(
       Parser.firstOf(packageParser, Nil),
       Parser.repeatDiscard0(AlgorabParser.token[Token.Newline]),
@@ -301,7 +303,7 @@ object ExprParser:
    * @param tokens the tokens to read
    * @return the parsed [[org.algorab.ast.raw\.Program]]
    */
-  def apply(tokens: List[Token]): AlgorabProgram[Program] =
+  def apply(tokens: List[Token]): Reader[FileName] ?=> AlgorabProgram[Program] =
     val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(programParser, Parser.eof))
     Writer.writeAll(result.errors)
     Abort.extractOption(result.output, ())

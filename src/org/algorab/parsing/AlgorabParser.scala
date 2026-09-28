@@ -4,13 +4,18 @@ import io.github.iltotore.pureparser.ParseError
 import io.github.iltotore.pureparser.Parser
 import io.github.iltotore.pureparser.Span
 import io.github.iltotore.pureparser.util.Zip
+import org.algorab.util.FileName
 import purelogic.*
 import scala.annotation.tailrec
 import scala.reflect.TypeTest
+import org.algorab.AlgorabProgram
+import org.algorab.ast.raw.Program
 
-type AlgorabParser[I, +A] = Parser[I, A]
+type AlgorabParser[I, +A] = Reader[FileName] ?=> Parser[I, A]
 
 object AlgorabParser:
+
+  def apply(file: FileName, source: String): AlgorabProgram[Program] = Reader(file)(ExprParser(TokenLexer(source)))
 
   /**
    * Try the given parser.
@@ -18,7 +23,7 @@ object AlgorabParser:
    * @param parser the parser to try
    * @return the result wrapped in [[Some]], or [[None]] if it failed
    */
-  def option[I, A](parser: Parser[I, A]): Parser[I, Option[A]] = Parser.firstOf(Some(parser), None)
+  def option[I, A](parser: AlgorabParser[I, A]): AlgorabParser[I, Option[A]] = Parser.firstOf(Some(parser), None)
 
   /**
    * Match on the next token.
@@ -26,13 +31,13 @@ object AlgorabParser:
    * @param f the function used to pattern match on the token
    * @return the result of [[f]] applied to the next token
    */
-  def matching[A](f: PartialFunction[Token, A]): Parser[Token, A] =
+  def matching[A](f: PartialFunction[Token, A]): AlgorabParser[Token, A] =
     f.applyOrElse(Parser.next, _ => Parser.errorAndAbort(ParseError(ParseError.Pattern.SomethingElse, get)))
 
   /**
    * Expect the given token type for the next token.
    */
-  def token[A <: Token](using test: TypeTest[Token, A]): Parser[Token, Unit] = matching:
+  def token[A <: Token](using test: TypeTest[Token, A]): AlgorabParser[Token, Unit] = matching:
     case test(value) => ()
 
   /**
@@ -41,7 +46,7 @@ object AlgorabParser:
    * @param parser the wrapped parser
    * @return the parsed result and the [[Span]] covering the spans of all parsed tokens
    */
-  def tokenPosition[A](parser: Parser[Token, A])(using zip: Zip[A, Span]): Parser[Token, zip.Zipped] =
+  def tokenPosition[A](parser: AlgorabParser[Token, A])(using zip: Zip[A, Span]): AlgorabParser[Token, zip.Zipped] =
     val start = get
     val result = parser
     val end = get
@@ -59,10 +64,10 @@ object AlgorabParser:
    * @param parser the parser to repeat
    * @return all the parsed outputs
    */
-  def repeat[I, A](parser: Parser[I, A]): Parser[I, List[A]] =
+  def repeat[I, A](parser: AlgorabParser[I, A]): AlgorabParser[I, List[A]] =
 
     @tailrec
-    def rec(accumulator: List[A]): Parser[I, List[A]] =
+    def rec(accumulator: List[A]): AlgorabParser[I, List[A]] =
       option(parser) match
         case Some(value) => rec(accumulator :+ value)
         case None        => accumulator
@@ -78,4 +83,4 @@ object AlgorabParser:
    * @param f the mapping function
    * @return a parser behaving the same as the original parser with `f` applied to its result
    */
-  def map[I, A, B](parser: Parser[I, A])(f: A => B): Parser[I, B] = f(parser)
+  def map[I, A, B](parser: AlgorabParser[I, A])(f: A => B): AlgorabParser[I, B] = f(parser)

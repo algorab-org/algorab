@@ -5,6 +5,7 @@ import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.util.FileName
 
 /**
  * A [[Token]] parser, also called a lexer.
@@ -319,7 +320,7 @@ object TokenLexer:
    * @param source the source code to read
    * @return the parsed [[Token]]s
    */
-  def apply(source: String): AlgorabProgram[List[Token]] =
+  def apply(source: String): Reader[FileName] ?=> AlgorabProgram[List[Token]] =
     val result = Parser(source)(indentationParser(tokenListParser, source))
     Writer.writeAll(result.errors)
     Abort.extractOption(result.output, ())

@@ -22,6 +22,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
+import org.algorab.util.FileName
 
 object resources:
 
@@ -48,13 +49,21 @@ object resources:
   def readResource(path: String): String =
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.mkString)
 
-  def readAllResources(root: String): List[String] =
-    listResourceTree(getResourcePath(root)).map(Files.readString(_, StandardCharsets.UTF_8))
+  def readAllResources(root: String): List[(FileName, String)] =
+    val rootPath = getResourcePath(root)
+    listResourceTree(rootPath).map(path =>
+      val relativized = rootPath.relativize(path).toString
+      
+      (
+        FileName.assume(if relativized.isBlank then path.getFileName().toString() else relativized),
+        Files.readString(path, StandardCharsets.UTF_8)
+      )
+    )
 
   def readResourceLines(path: String): Iterable[String] =
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
-  def runGoldenTest(codes: List[String], input: String, expectedOutput: Option[String]): Unit =
+  def runGoldenTest(codes: List[(FileName, String)], input: String, expectedOutput: Option[String]): Unit =
     val (output, errors, result) = Await.result(
       Future(
         AlgorabProgram.withInput(input)(runProgram(codes*))
