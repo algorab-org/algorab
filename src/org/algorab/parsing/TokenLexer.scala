@@ -3,17 +3,18 @@ package org.algorab.parsing
 import io.github.iltotore.pureparser.*
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
+import org.algorab.util.FileName
+import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
-import org.algorab.util.FileName
 
 /**
  * A [[Token]] parser, also called a lexer.
  */
 object TokenLexer:
 
-  val booleanParser: Parser[Char, Token] = Token.LBool.apply.tupled(
-    Parser.span(
+  val booleanParser: AlgorabParser[Char, Token] = Token.LBool.apply.tupled(
+    AlgorabParser.position(
       Parser.firstOf(
         Parser.as(Parser.literal("true"), true),
         Parser.as(Parser.literal("false"), false)
@@ -21,26 +22,26 @@ object TokenLexer:
     )
   )
 
-  val rawIntParser: Parser[Char, Int] =
+  val rawIntParser: AlgorabParser[Char, Int] =
     val (intStr, span) = Parser.span(Parser.regex("[0-9]+"))
     intStr.toIntOption.getOrElse(
       Parser.errorAndAbort(ParseError(ParseError.Pattern.Label("Valid Int"), span.start), fatal = true)
     )
 
-  val rawFloatParser: Parser[Char, Double] =
+  val rawFloatParser: AlgorabParser[Char, Double] =
     val (floatStr, span) = Parser.span(Parser.regex(raw"[0-9]+\.[0-9]+"))
     floatStr.toDoubleOption.getOrElse(
       Parser.errorAndAbort(ParseError(ParseError.Pattern.Label("Valid Float"), span.start), fatal = true)
     )
 
-  val exponentParser: Parser[Char, Int] = Parser.expect(
+  val exponentParser: AlgorabParser[Char, Int] = Parser.expect(
     Parser.regex(raw"(\+|\-)?[0-9]+").toIntOption.getOrElse(Parser.backtrack),
     "Exponent"
   )
 
-  val numberParser: Parser[Char, Token] = Parser.firstOf(
+  val numberParser: AlgorabParser[Char, Token] = Parser.firstOf(
     Token.LFloat.apply.tupled:
-      val (mantissa, exponent, span) = Parser.span(
+      val (mantissa, exponent, position) = AlgorabParser.position(
         Parser.inOrder(
           Parser.firstOf(rawFloatParser, rawIntParser.toDouble),
           Parser.unit(Parser.oneOf("eE")),
@@ -48,10 +49,10 @@ object TokenLexer:
         )
       )
 
-      (mantissa * math.pow(10, exponent), span)
+      (mantissa * math.pow(10, exponent), position)
     ,
-    Token.LFloat.apply.tupled(Parser.span(rawFloatParser)),
-    Token.LInt.apply.tupled(Parser.span(rawIntParser))
+    Token.LFloat.apply.tupled(AlgorabParser.position(rawFloatParser)),
+    Token.LInt.apply.tupled(AlgorabParser.position(rawIntParser))
   )
 
   private val escapeSequences: Map[Char, Char] = Map(
@@ -65,7 +66,7 @@ object TokenLexer:
     '\\' -> '\\'
   )
 
-  private val rawCharParser: Parser[Char, Char] = Parser.firstOf(
+  private val rawCharParser: AlgorabParser[Char, Char] = Parser.firstOf(
     Parser.inOrder(
       Parser.literal('\\'),
       Parser.recoverWith(
@@ -76,8 +77,8 @@ object TokenLexer:
     Parser.next
   )
 
-  val charParser: Parser[Char, Token] = Token.LChar.apply.tupled(
-    Parser.span(
+  val charParser: AlgorabParser[Char, Token] = Token.LChar.apply.tupled(
+    AlgorabParser.position(
       Parser.inOrder(
         Parser.literal('\''),
         Parser.commit(
@@ -91,8 +92,8 @@ object TokenLexer:
     )
   )
 
-  val stringParser: Parser[Char, Token] = Token.LString.apply.tupled(
-    Parser.span(
+  val stringParser: AlgorabParser[Char, Token] = Token.LString.apply.tupled(
+    AlgorabParser.position(
       Parser.inOrder(
         Parser.literal("\""),
         Parser.repeatUntil(
@@ -106,20 +107,20 @@ object TokenLexer:
     )
   )
 
-  val literalParser: Parser[Char, Token] = Parser.firstOf(
+  val literalParser: AlgorabParser[Char, Token] = Parser.firstOf(
     booleanParser,
     numberParser,
     charParser,
     stringParser
   )
 
-  private val word: Parser[Char, (String, Span)] = Parser.span(Parser.regex("[a-zA-Z_][a-zA-Z0-9_]*"))
+  private val word: AlgorabParser[Char, (String, SourcePosition)] = AlgorabParser.position(Parser.regex("[a-zA-Z_][a-zA-Z0-9_]*"))
 
-  private val identifierParser: Parser[Char, Token] =
-    val (ident, span) = word
-    Token.Ident(Identifier.assume(ident), span)
+  private val identifierParser: AlgorabParser[Char, Token] =
+    val (ident, position) = word
+    Token.Ident(Identifier.assume(ident), position)
 
-  private val keywords: Map[String, Span => Token] = Map(
+  private val keywords: Map[String, SourcePosition => Token] = Map(
     "and" -> Token.And.apply,
     "or" -> Token.Or.apply,
     "not" -> Token.Not.apply,
@@ -138,7 +139,7 @@ object TokenLexer:
     "as" -> Token.As.apply
   )
 
-  private val symbols: IndexedSeq[(String, Span => Token)] = Seq(
+  private val symbols: IndexedSeq[(String, SourcePosition => Token)] = Seq(
     "(" -> Token.ParenOpen.apply,
     ")" -> Token.ParenClosed.apply,
     "," -> Token.Comma.apply,
@@ -161,15 +162,15 @@ object TokenLexer:
     .sortBy(-_._1.length)
     .toIndexedSeq
 
-  val keywordParser: Parser[Char, Token] =
-    val (w, span) = word
-    keywords.getOrElse(w, Parser.backtrack)(span)
+  val keywordParser: AlgorabParser[Char, Token] =
+    val (w, position) = word
+    keywords.getOrElse(w, Parser.backtrack)(position)
 
-  val symbolParser: Parser[Char, Token] = Parser.firstOfSeq(
-    symbols.map((symbol, token) => token(Parser.span(Parser.literal(symbol))))
+  val symbolParser: AlgorabParser[Char, Token] = Parser.firstOfSeq(
+    symbols.map((symbol, token) => token(AlgorabParser.position(Parser.literal(symbol))))
   )
 
-  val tokenParser: Parser[Char, Token] = Parser.expect(
+  val tokenParser: AlgorabParser[Char, Token] = Parser.expect(
     Parser.firstOf(
       literalParser,
       symbolParser,
@@ -179,7 +180,7 @@ object TokenLexer:
     "Token"
   )
 
-  val commentParser: Parser[Char, Unit] = Parser.spaced(
+  val commentParser: AlgorabParser[Char, Unit] = Parser.spaced(
     Parser.unit(
       Parser.firstOf(
         Parser.inOrder(
@@ -197,7 +198,7 @@ object TokenLexer:
     )
   )
 
-  val tokenListParser: Parser[Char, List[Token]] = Parser.repeatUntil0(
+  val tokenListParser: AlgorabParser[Char, List[Token]] = Parser.repeatUntil0(
     Parser.recoverWith(
       Parser.inOrder(Parser.repeatDiscard0(commentParser), Parser.spaced(tokenParser), Parser.repeatDiscard0(commentParser)),
       RecoverStrategy.skipThenRetryUntil(Parser.eof)
@@ -229,7 +230,7 @@ object TokenLexer:
       stack: List[LayoutContext],
       output: List[Token],
       pendingLayout: Boolean,
-      previousPosition: (Int, Int)
+      previousPosition: SourcePosition.Point
   )
 
   private def isLayoutStart(token: Token): Boolean = token match
@@ -247,40 +248,31 @@ object TokenLexer:
    * @param source the textual source code, used for getting line and column of a chatacter based on its absolute position
    * @return the token list with [[Token.Indent]]/[[Token.DeIndent]]/[[Token.Newline]] inserted
    */
-  def indentationParser(tokens: List[Token], source: String): Parser[Char, List[Token]] =
-    val lineSpans =
-      source
-        .split("(\n|\r(?!\n))")
-        .scanLeft(Span(0, 0))((spanBefore, line) => Span(spanBefore.end, spanBefore.end + line.length + 1))
-        .tail
-        .zipWithIndex
-
-    def lineAndColumn(position: Int): (Int, Int) =
-      lineSpans
-        .collectFirst:
-          case (Span(start, end), line) if position < end => (line, position - start)
-        .get
-
-    val startPosition = tokens.headOption.fold((0, 0))(token => lineAndColumn(token.span.start))
+  def indentationParser(tokens: List[Token], source: String): AlgorabParser[Char, List[Token]] =
+    val startPosition = tokens.headOption.fold(SourcePosition.Point(0, 0))(_.position.start)
 
     val finalState = tokens.foldLeft(LayoutState(List(LayoutContext.Layout(0)), Nil, false, startPosition)): (state, token) =>
-      val (line, column) = lineAndColumn(token.span.start)
+      val SourcePosition.Point(line, column) = token.position.start
       val isSameLine = line == state.previousPosition._1
 
       val withIndent =
         if state.pendingLayout && !isSameLine then
           if !state.stack.head.isMoreIndented(column) then
-            write(ParseError(s"Greater indentation than ${state.stack.head}", token.span.start))
+            write(ParseError(s"Greater indentation than ${state.stack.head}", AlgorabParser.toSpan(token.position).start))
 
           state.copy(
             stack = LayoutContext.Layout(column) :: state.stack,
-            output = state.output :+ Token.Indent(Span(lineSpans(line)._1.start, token.span.start))
+            output = state.output :+ Token.Indent(SourcePosition(
+              file = read[FileInfo].name,
+              start = SourcePosition.Point(line, 0),
+              `end` = token.position.start
+            ))
           )
         else state
 
       val (dropped, remainingLayouts) = withIndent.stack.span(_.isLessIndented(column))
       val deindents = dropped.map:
-        case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
+        case LayoutContext.Layout(column) => Token.DeIndent(SourcePosition.at(read[FileInfo].name, line, column))
         case invalid                      => throw AssertionError(s"Unexpected deindent of non-layout context: $invalid")
 
       val withDeindents = withIndent.copy(
@@ -289,12 +281,12 @@ object TokenLexer:
       )
 
       if withDeindents.stack.head.isMoreIndented(withIndent.stack.head) && withDeindents.stack.head.isMoreIndented(column) then
-        write(ParseError(s"Greater or equal indentation than ${state.stack.head}", token.span.start))
+        write(ParseError(s"Greater or equal indentation than ${state.stack.head}", AlgorabParser.toSpan(token.position).start))
 
       val withNewline =
         if !isSameLine && withDeindents.stack.head.isAsIndented(column) && !withDeindents.pendingLayout && !isLayoutEnd(token) then
           withDeindents.copy(
-            output = withDeindents.output :+ Token.Newline(Span(token.span.start, token.span.start))
+            output = withDeindents.output :+ Token.Newline(SourcePosition.at(read[FileInfo].name, line, 0))
           )
         else withDeindents
 
@@ -308,11 +300,11 @@ object TokenLexer:
       withParenHandling.copy(
         output = withParenHandling.output :+ token,
         pendingLayout = isLayoutStart(token),
-        previousPosition = (line, column)
+        previousPosition = SourcePosition.Point(line, column)
       )
 
     finalState.output ++ finalState.stack.init.collect:
-      case LayoutContext.Layout(column) => Token.DeIndent(Span(column, column))
+      case LayoutContext.Layout(column) => Token.DeIndent(SourcePosition.at(read[FileInfo].name, read[FileInfo].lineSpans.length, 0))
 
   /**
    * Parse a token list from a textual source code.
@@ -320,7 +312,7 @@ object TokenLexer:
    * @param source the source code to read
    * @return the parsed [[Token]]s
    */
-  def apply(source: String): Reader[FileName] ?=> AlgorabProgram[List[Token]] =
+  def apply(source: String): Reader[FileInfo] ?=> AlgorabProgram[List[Token]] =
     val result = Parser(source)(indentationParser(tokenListParser, source))
     Writer.writeAll(result.errors)
     Abort.extractOption(result.output, ())

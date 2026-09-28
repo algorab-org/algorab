@@ -1,7 +1,7 @@
 package org.algorab.parsing
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.Identifier
+import org.algorab.util.SourcePosition
 
 /**
  * A token, a "word" in the source code.
@@ -12,317 +12,317 @@ enum Token derives CanEqual:
    * A boolean literal.
    *
    * @param value the literal value
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case LBool(value: Boolean, span: Span)
+  case LBool(value: Boolean, position: SourcePosition)
 
   /**
    * An integer literal.
    *
    * @param value the literal value
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case LInt(value: Int, span: Span)
+  case LInt(value: Int, position: SourcePosition)
 
   /**
    * A float literal.
    *
    * @param value the literal value
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case LFloat(value: Double, span: Span)
+  case LFloat(value: Double, position: SourcePosition)
 
   /**
    * A character literal.
    *
    * @param value the literal value
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case LChar(value: Char, span: Span)
+  case LChar(value: Char, position: SourcePosition)
 
   /**
    * A string literal.
    *
    * @param value the literal value
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case LString(value: String, span: Span)
+  case LString(value: String, position: SourcePosition)
 
   /**
    * An identifier.
    *
    * @param identifier the referenced name
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Ident(identifier: Identifier, span: Span)
+  case Ident(identifier: Identifier, position: SourcePosition)
 
   /**
    * An indentation token, similar to `{` in brace-based languages.
    * This token is inserted by the lexer after parsing the other tokens.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Indent(span: Span)
+  case Indent(position: SourcePosition)
 
   /**
    * An de-indentation token, similar to `}` in brace-based languages.
    * This token is inserted by the lexer after parsing the other tokens.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case DeIndent(span: Span)
+  case DeIndent(position: SourcePosition)
 
   /**
    * An newline token, similar to `;` in semicolon-based languages.
    * This token is inserted by the lexer after parsing the other tokens.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Newline(span: Span)
+  case Newline(position: SourcePosition)
 
   // Symbols
 
   /**
    * The `(` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case ParenOpen(span: Span)
+  case ParenOpen(position: SourcePosition)
 
   /**
    * The `)` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case ParenClosed(span: Span)
+  case ParenClosed(position: SourcePosition)
 
   /**
    * The `,` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Comma(span: Span)
+  case Comma(position: SourcePosition)
 
   /**
    * The `:` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Colon(span: Span)
+  case Colon(position: SourcePosition)
 
   /**
    * The `.` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Dot(span: Span)
+  case Dot(position: SourcePosition)
 
   /**
    * The `+` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Plus(span: Span)
+  case Plus(position: SourcePosition)
 
   /**
    * The `-` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Minus(span: Span)
+  case Minus(position: SourcePosition)
 
   /**
    * The `*` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Mul(span: Span)
+  case Mul(position: SourcePosition)
 
   /**
    * The `/` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Div(span: Span)
+  case Div(position: SourcePosition)
 
   /**
    * The `//` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case IntDiv(span: Span)
+  case IntDiv(position: SourcePosition)
 
   /**
    * The `%` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Percent(span: Span)
+  case Percent(position: SourcePosition)
 
   /**
    * The `=` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Equal(span: Span)
+  case Equal(position: SourcePosition)
 
   /**
    * The `==` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case EqualEqual(span: Span)
+  case EqualEqual(position: SourcePosition)
 
   /**
    * The `!=` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case NotEqual(span: Span)
+  case NotEqual(position: SourcePosition)
 
   /**
    * The `<` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Less(span: Span)
+  case Less(position: SourcePosition)
 
   /**
    * The `<=` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case LessEqual(span: Span)
+  case LessEqual(position: SourcePosition)
 
   /**
    * The `>` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Greater(span: Span)
+  case Greater(position: SourcePosition)
 
   /**
    * The `>=` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case GreaterEqual(span: Span)
+  case GreaterEqual(position: SourcePosition)
 
   // Keywords
 
   /**
    * The `and` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case And(span: Span)
+  case And(position: SourcePosition)
 
   /**
    * The `or` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Or(span: Span)
+  case Or(position: SourcePosition)
 
   /**
    * The `not` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Not(span: Span)
+  case Not(position: SourcePosition)
 
   /**
    * The `if` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case If(span: Span)
+  case If(position: SourcePosition)
 
   /**
    * The `then` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Then(span: Span)
+  case Then(position: SourcePosition)
 
   /**
    * The `else` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Else(span: Span)
+  case Else(position: SourcePosition)
 
   /**
    * The `for` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case For(span: Span)
+  case For(position: SourcePosition)
 
   /**
    * The `while` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case While(span: Span)
+  case While(position: SourcePosition)
 
   /**
    * The `do` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Do(span: Span)
+  case Do(position: SourcePosition)
 
   /**
    * The `in` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case In(span: Span)
+  case In(position: SourcePosition)
 
   /**
    * The `def` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Def(span: Span)
+  case Def(position: SourcePosition)
 
   /**
    * The `val` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Val(span: Span)
+  case Val(position: SourcePosition)
 
   /**
    * The `mut` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Mut(span: Span)
+  case Mut(position: SourcePosition)
 
   /**
    * The `package` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Package(span: Span)
+  case Package(position: SourcePosition)
 
   /**
    * The `import` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case Import(span: Span)
+  case Import(position: SourcePosition)
 
   /**
    * The `as` symbol.
    *
-   * @param span the source position of this token
+   * @param position the source position of this token
    */
-  case As(span: Span)
+  case As(position: SourcePosition)
 
   /**
    * The source position of this token.
    */
-  def span: Span
+  def position: SourcePosition

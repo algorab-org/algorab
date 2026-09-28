@@ -1,9 +1,8 @@
 package org.algorab.typing
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Symbol
-import org.algorab.ast.Symbol.Root.span
+import org.algorab.ast.Symbol.Root.position
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.resolved
@@ -64,7 +63,7 @@ object Typer:
     if expr.tpe == typed.Type.Int && to == typed.Type.Float then
       typed.Expr.ToFloat(expr)
     else
-      if !TypeContext.isSubtype(expr.tpe, to) then write(TypeError.simpleMismatch(List(to), expr.tpe, expr.span))
+      if !TypeContext.isSubtype(expr.tpe, to) then write(TypeError.simpleMismatch(List(to), expr.tpe, expr.position))
       expr
 
   /**
@@ -75,7 +74,7 @@ object Typer:
    */
   def assertNumeric(expr: typed.Expr): Typing[typed.Expr] =
     if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float then
-      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, span))
+      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, position))
     expr
 
   /**
@@ -111,7 +110,7 @@ object Typer:
             )
           ),
           got = List(leftType, rightType),
-          span = span
+          position = position
         ))
         op(typedLeft, typedRight, typed.Type.Invalid)
 
@@ -139,7 +138,7 @@ object Typer:
     if TypeContext.isTyped(symbol) then TypeContext.getType(symbol)
     else
       val definitionType = TypeContext.getDeclaration(symbol) match
-        case resolved.Definition.Val(symbol, tpe, expr, mutable, span) =>
+        case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
           if tpe == resolved.Type.Inferred then
             TypeContext.startInferring(symbol)
             val typedExpr = typeExpr(expr)
@@ -147,7 +146,7 @@ object Typer:
           else
             resolveType(tpe)
 
-        case resolved.Definition.Function(symbol, params, retType, body, span) =>
+        case resolved.Definition.Function(symbol, params, retType, body, position) =>
           val resolvedParams = params.map((sym, tpe) => (sym, resolveType(tpe)))
           val resolvedRetType = resolveType(retType)
           resolvedParams.foreach(TypeContext.assignType)
@@ -159,83 +158,85 @@ object Typer:
   def typeDefinition(definition: resolved.Definition): Typing[typed.Definition] =
     val resolvedType = resolveDefinitionType(definition.symbol)
     definition match
-      case resolved.Definition.Val(symbol, tpe, expr, mutable, span) =>
-        typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, span)
-      case resolved.Definition.Function(symbol, params, retType, body, span) =>
+      case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
+        typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, position)
+      case resolved.Definition.Function(symbol, params, retType, body, position) =>
         val resolvedParams = params.map(_._1).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
         val resolvedRetType = resolvedType.asInstanceOf[typed.Type.Function].output
-        typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), span)
+        typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), position)
 
   def typeExpr(expr: resolved.Expr): Typing[typed.Expr] = expr match
-    case resolved.Expr.LBool(value, span)          => typed.Expr.LBool(value, typed.Type.Boolean, span)
-    case resolved.Expr.LInt(value, span)           => typed.Expr.LInt(value, typed.Type.Int, span)
-    case resolved.Expr.LFloat(value, span)         => typed.Expr.LFloat(value, typed.Type.Float, span)
-    case resolved.Expr.LChar(value, span)          => typed.Expr.LChar(value, typed.Type.Char, span)
-    case resolved.Expr.LString(value, span)        => typed.Expr.LString(value, typed.Type.String, span)
-    case resolved.Expr.Not(expr, span)             => typed.Expr.Not(typeExprTo(expr, typed.Type.Boolean), typed.Type.Boolean, span)
-    case resolved.Expr.Equal(left, right, span)    => typed.Expr.Equal(typeExpr(left), typeExpr(right), typed.Type.Boolean, span)
-    case resolved.Expr.NotEqual(left, right, span) => typed.Expr.NotEqual(typeExpr(left), typeExpr(right), typed.Type.Boolean, span)
-    case resolved.Expr.Less(left, right, span) =>
-      typed.Expr.Less(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, span)
-    case resolved.Expr.LessEqual(left, right, span) =>
-      typed.Expr.LessEqual(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, span)
-    case resolved.Expr.Greater(left, right, span) =>
-      typed.Expr.Greater(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, span)
-    case resolved.Expr.GreaterEqual(left, right, span) =>
-      typed.Expr.GreaterEqual(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, span)
-    case resolved.Expr.Plus(expr, span) =>
+    case resolved.Expr.LBool(value, position)          => typed.Expr.LBool(value, typed.Type.Boolean, position)
+    case resolved.Expr.LInt(value, position)           => typed.Expr.LInt(value, typed.Type.Int, position)
+    case resolved.Expr.LFloat(value, position)         => typed.Expr.LFloat(value, typed.Type.Float, position)
+    case resolved.Expr.LChar(value, position)          => typed.Expr.LChar(value, typed.Type.Char, position)
+    case resolved.Expr.LString(value, position)        => typed.Expr.LString(value, typed.Type.String, position)
+    case resolved.Expr.Not(expr, position)             => typed.Expr.Not(typeExprTo(expr, typed.Type.Boolean), typed.Type.Boolean, position)
+    case resolved.Expr.Equal(left, right, position)    => typed.Expr.Equal(typeExpr(left), typeExpr(right), typed.Type.Boolean, position)
+    case resolved.Expr.NotEqual(left, right, position) => typed.Expr.NotEqual(typeExpr(left), typeExpr(right), typed.Type.Boolean, position)
+    case resolved.Expr.Less(left, right, position) =>
+      typed.Expr.Less(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, position)
+    case resolved.Expr.LessEqual(left, right, position) =>
+      typed.Expr.LessEqual(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, position)
+    case resolved.Expr.Greater(left, right, position) =>
+      typed.Expr.Greater(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, position)
+    case resolved.Expr.GreaterEqual(left, right, position) =>
+      typed.Expr.GreaterEqual(assertNumeric(typeExpr(left)), assertNumeric(typeExpr(right)), typed.Type.Boolean, position)
+    case resolved.Expr.Plus(expr, position) =>
       val typedExpr = typeExpr(expr)
-      typed.Expr.Plus(assertNumeric(typedExpr), typedExpr.tpe, span)
-    case resolved.Expr.Minus(expr, span) =>
+      typed.Expr.Plus(assertNumeric(typedExpr), typedExpr.tpe, position)
+    case resolved.Expr.Minus(expr, position) =>
       val typedExpr = typeExpr(expr)
-      typed.Expr.Minus(assertNumeric(typedExpr), typedExpr.tpe, span)
-    case resolved.Expr.Add(left, right, span)    => typeBinaryNumOp(left, right, "+", typed.Expr.Add(_, _, _, span))
-    case resolved.Expr.Sub(left, right, span)    => typeBinaryNumOp(left, right, "-", typed.Expr.Sub(_, _, _, span))
-    case resolved.Expr.Mul(left, right, span)    => typeBinaryNumOp(left, right, "*", typed.Expr.Mul(_, _, _, span))
-    case resolved.Expr.Div(left, right, span)    => typeBinaryNumOp(left, right, "/", typed.Expr.Div(_, _, _, span))
-    case resolved.Expr.IntDiv(left, right, span) => typeBinaryNumOp(left, right, "//", typed.Expr.IntDiv(_, _, _, span))
-    case resolved.Expr.Mod(left, right, span)    => typeBinaryNumOp(left, right, "+", typed.Expr.Mod(_, _, _, span))
-    case resolved.Expr.And(left, right, span) =>
-      typed.Expr.And(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, span)
-    case resolved.Expr.Or(left, right, span) =>
-      typed.Expr.Or(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, span)
-    case resolved.Expr.VarCall(symbol, span)      => typed.Expr.VarCall(symbol, resolveDefinitionType(symbol), span)
-    case resolved.Expr.Assign(symbol, expr, span) => typed.Expr.Assign(symbol, typeExprTo(expr, TypeContext.getType(symbol)), typed.Type.Unit, span)
-    case resolved.Expr.Select(expr, member, span) =>
-      write(TypeError.UnsupportedOOP(span))
-      typed.Expr.Invalid(typed.Type.Invalid, span)
+      typed.Expr.Minus(assertNumeric(typedExpr), typedExpr.tpe, position)
+    case resolved.Expr.Add(left, right, position)    => typeBinaryNumOp(left, right, "+", typed.Expr.Add(_, _, _, position))
+    case resolved.Expr.Sub(left, right, position)    => typeBinaryNumOp(left, right, "-", typed.Expr.Sub(_, _, _, position))
+    case resolved.Expr.Mul(left, right, position)    => typeBinaryNumOp(left, right, "*", typed.Expr.Mul(_, _, _, position))
+    case resolved.Expr.Div(left, right, position)    => typeBinaryNumOp(left, right, "/", typed.Expr.Div(_, _, _, position))
+    case resolved.Expr.IntDiv(left, right, position) => typeBinaryNumOp(left, right, "//", typed.Expr.IntDiv(_, _, _, position))
+    case resolved.Expr.Mod(left, right, position)    => typeBinaryNumOp(left, right, "+", typed.Expr.Mod(_, _, _, position))
+    case resolved.Expr.And(left, right, position) =>
+      typed.Expr.And(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, position)
+    case resolved.Expr.Or(left, right, position) =>
+      typed.Expr.Or(typeExprTo(left, typed.Type.Boolean), typeExprTo(right, typed.Type.Boolean), typed.Type.Boolean, position)
+    case resolved.Expr.VarCall(symbol, position) => typed.Expr.VarCall(symbol, resolveDefinitionType(symbol), position)
+    case resolved.Expr.Assign(symbol, expr, position) =>
+      typed.Expr.Assign(symbol, typeExprTo(expr, TypeContext.getType(symbol)), typed.Type.Unit, position)
+    case resolved.Expr.Select(expr, member, position) =>
+      write(TypeError.UnsupportedOOP(position))
+      typed.Expr.Invalid(typed.Type.Invalid, position)
 
-    case resolved.Expr.Apply(expr, args, span) =>
+    case resolved.Expr.Apply(expr, args, position) =>
       val typedExpr = typeExpr(expr)
       val typedArgs = args.map(typeExpr)
       typedExpr.tpe match
         case typed.Type.Function(inputs, output) =>
-          if inputs.sizeCompare(typedArgs) != 0 then write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), span))
-          typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, span)
+          if inputs.sizeCompare(typedArgs) != 0 then write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
+          typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, position)
         case _ =>
-          if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, span))
-          typed.Expr.Apply(typedExpr, typedArgs, typed.Type.Invalid, span)
+          if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
+          typed.Expr.Apply(typedExpr, typedArgs, typed.Type.Invalid, position)
 
-    case resolved.Expr.Block(statements, span) =>
+    case resolved.Expr.Block(statements, position) =>
       val typedStatements = statements.map(typeStatement)
       val blockType = typedStatements.lastOption match
         case Some(expr: typed.Expr) => expr.tpe
         case _                      => typed.Type.Unit
 
-      typed.Expr.Block(typedStatements, blockType, span)
-    case resolved.Expr.If(cond, ifTrue, ifFalse, span) =>
+      typed.Expr.Block(typedStatements, blockType, position)
+    case resolved.Expr.If(cond, ifTrue, ifFalse, position) =>
       val typedCond = typeExprTo(cond, typed.Type.Boolean)
       val typedIfTrue = typeExpr(ifTrue)
       val typedIfFalse = typeExpr(ifFalse)
       val ifType = unify(typedIfTrue.tpe, typedIfFalse.tpe)
 
-      typed.Expr.If(typedCond, castExpr(typedIfTrue, ifType), castExpr(typedIfFalse, ifType), ifType, span)
+      typed.Expr.If(typedCond, castExpr(typedIfTrue, ifType), castExpr(typedIfFalse, ifType), ifType, position)
 
-    case resolved.Expr.While(cond, body, span) => typed.Expr.While(typeExprTo(cond, typed.Type.Boolean), typeExpr(body), typed.Type.Unit, span)
-    case resolved.Expr.For(iterator, iterable, body, span) =>
+    case resolved.Expr.While(cond, body, position) =>
+      typed.Expr.While(typeExprTo(cond, typed.Type.Boolean), typeExpr(body), typed.Type.Unit, position)
+    case resolved.Expr.For(iterator, iterable, body, position) =>
       TypeContext.assignType(iterator, typed.Type.Any)
-      typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, span)
-    case resolved.Expr.Invalid(span) => typed.Expr.Invalid(typed.Type.Invalid, span)
+      typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, position)
+    case resolved.Expr.Invalid(position) => typed.Expr.Invalid(typed.Type.Invalid, position)
 
   /**
    * Type the given programs.

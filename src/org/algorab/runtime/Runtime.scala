@@ -35,4 +35,4 @@ object Runtime:
    * @return a [[Runtime]] describing the same computation
    */
   def convertConsoleError[A](program: (State[RuntimeContext], Abort[ConsoleError]) ?=> A): Runtime[A] =
-    Abort.recover(program)(error => fail(RuntimeError.Console(error, RuntimeContext.currentSpan)))
+    Abort.recover(program)(error => fail(RuntimeError.Console(error, RuntimeContext.currentPosition)))

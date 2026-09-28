@@ -4,18 +4,31 @@ import io.github.iltotore.pureparser.ParseError
 import io.github.iltotore.pureparser.Parser
 import io.github.iltotore.pureparser.Span
 import io.github.iltotore.pureparser.util.Zip
+import org.algorab.AlgorabProgram
+import org.algorab.ast.raw.Program
 import org.algorab.util.FileName
+import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
 import scala.reflect.TypeTest
-import org.algorab.AlgorabProgram
-import org.algorab.ast.raw.Program
 
-type AlgorabParser[I, +A] = Reader[FileName] ?=> Parser[I, A]
+/**
+ * A program to be evaluated during the name resolution phase.
+ * Basically PureParser's [[Parser]] with extra information.
+ */
+type AlgorabParser[I, +A] = Reader[FileInfo] ?=> Parser[I, A]
 
 object AlgorabParser:
 
-  def apply(file: FileName, source: String): AlgorabProgram[Program] = Reader(file)(ExprParser(TokenLexer(source)))
+  /**
+    * Parse the given textual source.
+    *
+    * @param file the source file's name
+    * @param source the source's content
+    * @return the [[Program]] parsed from the source
+    */
+  def apply(file: FileName, source: String): AlgorabProgram[Program] =
+    Reader(FileInfo.fromSource(file, source))(ExprParser(TokenLexer(source)))
 
   /**
    * Try the given parser.
@@ -35,26 +48,40 @@ object AlgorabParser:
     f.applyOrElse(Parser.next, _ => Parser.errorAndAbort(ParseError(ParseError.Pattern.SomethingElse, get)))
 
   /**
+    * Return both the output of the given [[AlgorabParser]] and the [[SourcePosition]] between the first and last read token.
+    *
+    * @tparam I the type of a token.
+    * @tparam A the output type.
+    * @param parser the [[AlgorabParser]] to wrap.
+    */
+  def position[I, A](parser: AlgorabParser[I, A])(using zip: Zip[A, SourcePosition]): AlgorabParser[I, zip.Zipped] =
+    val (result, span) = Parser.span(parser)
+    zip.zip(result, toSourcePosition(span))
+
+  /**
    * Expect the given token type for the next token.
    */
   def token[A <: Token](using test: TypeTest[Token, A]): AlgorabParser[Token, Unit] = matching:
     case test(value) => ()
 
   /**
-   * Like [[Parser.span]], but using [[Token#span]] instead.
+   * Like [[Parser.span]], but using [[Token#position]] instead.
    *
    * @param parser the wrapped parser
-   * @return the parsed result and the [[Span]] covering the spans of all parsed tokens
+   * @return the parsed result and the [[SourcePosition]] covering the spans of all parsed tokens
    */
-  def tokenPosition[A](parser: AlgorabParser[Token, A])(using zip: Zip[A, Span]): AlgorabParser[Token, zip.Zipped] =
+  def tokenPosition[A](parser: AlgorabParser[Token, A])(using zip: Zip[A, SourcePosition]): AlgorabParser[Token, zip.Zipped] =
     val start = get
     val result = parser
     val end = get
+    val startPosition = read(_(start).position)
+    val endPosition = read(_(math.max(end - 1, 0)).position)
     zip.zip(
       result,
-      Span(
-        read(_(start).span.start),
-        read(_(math.max(end - 1, 0)).span.end)
+      SourcePosition(
+        file = startPosition.file,
+        start = startPosition.start,
+        end = endPosition.end
       )
     )
 
@@ -84,3 +111,30 @@ object AlgorabParser:
    * @return a parser behaving the same as the original parser with `f` applied to its result
    */
   def map[I, A, B](parser: AlgorabParser[I, A])(f: A => B): AlgorabParser[I, B] = f(parser)
+
+  /**
+    * Convert the given [[SourcePosition]] to a [[Span]].
+    *
+    * @param position the position to convert
+    * @return the [[Span]] representing the same location than the given position in the current file.
+    */
+  def toSpan(position: SourcePosition): Reader[FileInfo] ?=> Span = read(fileInfo =>
+    Span(
+      fileInfo.lineSpans(position.start.line).start + position.start.column,
+      fileInfo.lineSpans(position.end.line).start + position.end.column
+    )
+  )
+
+  /**
+    * Convert the given [[Span]] to a [[SourcePosition]].
+    *
+    * @param span the span to convert
+    * @return the [[SourcePosition]] representing the same location than the given span in the current file.
+    */
+  def toSourcePosition(span: Span): Reader[FileInfo] ?=> SourcePosition = read(fileInfo =>
+    SourcePosition(
+      file = fileInfo.name,
+      start = SourcePosition.Point.apply.tupled(fileInfo.lineAndColumn(span.start)),
+      end = SourcePosition.Point.apply.tupled(fileInfo.lineAndColumn(span.end))
+    )
+  )

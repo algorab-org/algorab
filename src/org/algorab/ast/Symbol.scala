@@ -1,6 +1,6 @@
 package org.algorab.ast
 
-import io.github.iltotore.pureparser.Span
+import org.algorab.util.SourcePosition
 
 /**
  * A symbol represents a declared member like a variable or a function.
@@ -27,7 +27,7 @@ object Symbol:
     /**
      * The source position of this symbol's declaration.
      */
-    def span: Span
+    def position: SourcePosition
 
     /**
      * Set the owner of this symbol.
@@ -36,10 +36,10 @@ object Symbol:
      * @return a copy of this symbol with the new owner
      */
     def withOwner(owner: SymbolId): Symbol.Valid = this match
-      case Variable(id, name, _, mutable, span) => Variable(id, name, Some(owner), mutable, span)
-      case Function(id, name, _, span)          => Function(id, name, Some(owner), span)
-      case Type(id, name, _, span)              => Type(id, name, Some(owner), span)
-      case _                                    => throw AssertionError(s"withOwner with $this")
+      case Variable(id, name, _, mutable, position) => Variable(id, name, Some(owner), mutable, position)
+      case Function(id, name, _, position)          => Function(id, name, Some(owner), position)
+      case Type(id, name, _, position)              => Type(id, name, Some(owner), position)
+      case _                                        => throw AssertionError(s"withOwner with $this")
 
   /**
    * A symbol that can be referenced by a namespace.
@@ -58,14 +58,14 @@ object Symbol:
    * @param name the name of this symbol
    * @param owner the owner of this symbol
    * @param mutable whether or not this variable is mutable
-   * @param span the source position of this symbol's declaration
+   * @param position the source position of this symbol's declaration
    */
   case class Variable(
       id: SymbolId,
       name: Identifier,
       owner: Option[SymbolId],
       mutable: Boolean,
-      span: Span
+      position: SourcePosition
   ) extends Valid
 
   /**
@@ -74,13 +74,13 @@ object Symbol:
    * @param id the id of this symbol
    * @param name the name of this symbol
    * @param owner the owner of this symbol
-   * @param span the source position of this symbol's declaration
+   * @param position the source position of this symbol's declaration
    */
   case class Function(
       id: SymbolId,
       name: Identifier,
       owner: Option[SymbolId],
-      span: Span
+      position: SourcePosition
   ) extends Valid
 
   /**
@@ -89,13 +89,13 @@ object Symbol:
    * @param id the id of this symbol
    * @param name the name of this symbol
    * @param owner the owner of this symbol
-   * @param span the source position of this symbol's declaration
+   * @param position the source position of this symbol's declaration
    */
   case class Type(
       id: SymbolId,
       name: Identifier,
       owner: Option[SymbolId],
-      span: Span
+      position: SourcePosition
   ) extends Valid
 
   /**
@@ -107,7 +107,7 @@ object Symbol:
    * @param memberScope the scope containing this symbol's members
    */
   case class Package(id: SymbolId, name: Identifier, owner: Option[SymbolId], memberScope: ScopeId) extends Namespace:
-    override def span: Span = Span(0, 0)
+    override def position: SourcePosition = SourcePosition.BuiltIn
 
   /**
    * The root symbol, ancestor of all symbols.
@@ -121,7 +121,7 @@ object Symbol:
     override def name: Identifier = Identifier("root")
     override def owner: Option[SymbolId] = None
     override def memberScope: ScopeId = ScopeId.Root
-    override def span: Span = Span(0, 0)
+    override def position: SourcePosition = SourcePosition.BuiltIn
 
   /**
    * An invalid symbol.

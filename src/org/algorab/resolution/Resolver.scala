@@ -1,7 +1,6 @@
 package org.algorab.resolution
 
 import io.github.iltotore.iron.autoRefine
-import io.github.iltotore.pureparser.Span
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
 import org.algorab.ast.ScopeId
@@ -11,6 +10,7 @@ import org.algorab.ast.SymbolId
 import org.algorab.ast.raw
 import org.algorab.ast.raw.Import.Selector
 import org.algorab.ast.resolved
+import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
 
@@ -28,36 +28,37 @@ object Resolver:
    * @return the id of the package and its scope path, typically for `package a.b.c` it will be `List(scopeA, scopeB, scopeC)`
    */
   @tailrec
-  def declarePackage(ownerId: SymbolId, scopes: List[ScopeId], path: List[(Identifier, Span)]): Resolution[(SymbolId, List[ScopeId])] = path match
-    case Nil => (ownerId, scopes)
-    case (head, headSpan) :: tail =>
-      val headScope = get.scopes(scopes.head)
-      headScope.localTerms.get(head) match
-        case Some((id, _)) => get.symbols(id) match
-            case namespace: Symbol.Namespace => declarePackage(id, namespace.memberScope :: scopes, tail)
-            case other =>
-              write(ResolutionError.NotANamespace(other, headSpan))
-              (SymbolId.Invalid, List(ScopeId.Invalid))
-        case None =>
-          val packageId = get.nextSymbolId
-          val scopeId = get.nextScopeId
-          val packageSymbol = ResolutionContext.declareSymbol(Symbol.Package(
-            packageId,
-            head,
-            Some(ownerId),
-            scopeId
-          ))
+  def declarePackage(ownerId: SymbolId, scopes: List[ScopeId], path: List[(Identifier, SourcePosition)]): Resolution[(SymbolId, List[ScopeId])] =
+    path match
+      case Nil => (ownerId, scopes)
+      case (head, headPosition) :: tail =>
+        val headScope = get.scopes(scopes.head)
+        headScope.localTerms.get(head) match
+          case Some((id, _)) => get.symbols(id) match
+              case namespace: Symbol.Namespace => declarePackage(id, namespace.memberScope :: scopes, tail)
+              case other =>
+                write(ResolutionError.NotANamespace(other, headPosition))
+                (SymbolId.Invalid, List(ScopeId.Invalid))
+          case None =>
+            val packageId = get.nextSymbolId
+            val scopeId = get.nextScopeId
+            val packageSymbol = ResolutionContext.declareSymbol(Symbol.Package(
+              packageId,
+              head,
+              Some(ownerId),
+              scopeId
+            ))
 
-          update(context =>
-            context.copy(
-              scopes = context.scopes
-                .updated(context.nextScopeId, ResolutionScope.empty(Some(packageId)))
-                .updated(scopes.head, headScope.withLocalTerm(head, packageId, true)),
-              nextScopeId = context.nextScopeId + 1
+            update(context =>
+              context.copy(
+                scopes = context.scopes
+                  .updated(context.nextScopeId, ResolutionScope.empty(Some(packageId)))
+                  .updated(scopes.head, headScope.withLocalTerm(head, packageId, true)),
+                nextScopeId = context.nextScopeId + 1
+              )
             )
-          )
 
-          declarePackage(packageId, scopeId :: scopes, tail)
+            declarePackage(packageId, scopeId :: scopes, tail)
 
   def declareProgramPackage(program: raw.Program): Resolution[(SymbolId, List[ScopeId])] =
     declarePackage(SymbolId.Root, List(ScopeId.Root), program.packageName)
@@ -98,7 +99,7 @@ object Resolver:
                 resolveImport(importClause)
                 None
               case expr: raw.Expr =>
-                write(ResolutionError.TopLevelStatementInModule(expr.span))
+                write(ResolutionError.TopLevelStatementInModule(expr.position))
                 None
         )
       )
@@ -107,11 +108,11 @@ object Resolver:
    * Resolve the given type.
    *
    * @param tpe the type to resolve
-   * @param span the span where the resolution occurs, used for reporting purpose
+   * @param position the position where the resolution occurs, used for reporting purpose
    * @return a representation of the same type with all its names resolved
    */
-  def resolveType(tpe: raw.Type, span: Span): Resolution[resolved.Type] = tpe match
-    case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, span))
+  def resolveType(tpe: raw.Type, position: SourcePosition): Resolution[resolved.Type] = tpe match
+    case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, position))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
   /**
@@ -144,13 +145,13 @@ object Resolver:
    * @param importClause the import clause to resolve
    */
   def resolveImport(importClause: raw.Import): Resolution[Unit] =
-    val (head, headSpan) :: tail = importClause.path.runtimeChecked
-    val (qualifier, qualifierSpan) = tail.foldLeft((ResolutionContext.getLocalTerm(head, headSpan), headSpan)):
-      case ((symbol, symbolSpan), (segment, segmentSpan)) =>
-        if symbol == SymbolId.Invalid then (symbol, symbolSpan)
-        else (ResolutionContext.getMemberTermOrFail(symbol, segment, symbolSpan, segmentSpan), segmentSpan)
+    val (head, headPosition) :: tail = importClause.path.runtimeChecked
+    val (qualifier, qualifierPosition) = tail.foldLeft((ResolutionContext.getLocalTerm(head, headPosition), headPosition)):
+      case ((symbol, symbolPosition), (segment, segmentPosition)) =>
+        if symbol == SymbolId.Invalid then (symbol, symbolPosition)
+        else (ResolutionContext.getMemberTermOrFail(symbol, segment, symbolPosition, segmentPosition), segmentPosition)
 
-    resolveSelector(qualifier, importClause.selector, qualifierSpan)
+    resolveSelector(qualifier, importClause.selector, qualifierPosition)
 
   /**
    * Declare the given definition.
@@ -159,10 +160,10 @@ object Resolver:
    * @param isBlock whether this definition reside in a [[raw.Expr.Block]] or not
    */
   def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
-    case raw.Definition.Val(name, _, expr, mutable, span) =>
-      ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, span), initialized = !isBlock).asInstanceOf[Unit]
-    case raw.Definition.Function(name, _, _, body, span) =>
-      ResolutionContext.declareTerm(Symbol.Function(_, name, None, span)).asInstanceOf[Unit]
+    case raw.Definition.Val(name, _, expr, mutable, position) =>
+      ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, position), initialized = !isBlock).asInstanceOf[Unit]
+    case raw.Definition.Function(name, _, _, body, position) =>
+      ResolutionContext.declareTerm(Symbol.Function(_, name, None, position)).asInstanceOf[Unit]
 
   /**
    * Resolve the given definition.
@@ -171,32 +172,32 @@ object Resolver:
    * @return a representation of the same definition with all its names resolved
    */
   def resolveDefinition(definition: raw.Definition): Resolution[resolved.Definition] = definition match
-    case raw.Definition.Val(name, tpe, expr, mutable, span) =>
+    case raw.Definition.Val(name, tpe, expr, mutable, position) =>
       ResolutionContext.initializeLocalTerm(name)
-      ResolutionContext.assignDeclaration(ResolutionContext.getLocalTerm(name, span))(
+      ResolutionContext.assignDeclaration(ResolutionContext.getLocalTerm(name, position))(
         resolved.Definition.Val(
-          ResolutionContext.getLocalTerm(name, span),
-          resolveType(tpe, span),
+          ResolutionContext.getLocalTerm(name, position),
+          resolveType(tpe, position),
           resolveExpr(expr),
           mutable,
-          span
+          position
         )
       )
-    case raw.Definition.Function(name, params, retType, body, span) =>
-      val id = ResolutionContext.getLocalTerm(name, span)
+    case raw.Definition.Function(name, params, retType, body, position) =>
+      val id = ResolutionContext.getLocalTerm(name, position)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
         ResolutionContext.assignDeclaration(id)(
           resolved.Definition.Function(
             id,
             params.map((name, tpe) =>
               (
-                ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, span)),
-                resolveType(tpe, span)
+                ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, position)),
+                resolveType(tpe, position)
               )
             ),
-            resolveType(retType, span),
+            resolveType(retType, position),
             resolveExpr(body),
-            span
+            position
           )
         )
       )
@@ -208,69 +209,69 @@ object Resolver:
    * @return a representation of the same expression with all its names resolved
    */
   def resolveExpr(expr: raw.Expr): Resolution[resolved.Expr] = expr match
-    case raw.Expr.LBool(value, span)              => resolved.Expr.LBool(value, span)
-    case raw.Expr.LInt(value, span)               => resolved.Expr.LInt(value, span)
-    case raw.Expr.LFloat(value, span)             => resolved.Expr.LFloat(value, span)
-    case raw.Expr.LChar(value, span)              => resolved.Expr.LChar(value, span)
-    case raw.Expr.LString(value, span)            => resolved.Expr.LString(value, span)
-    case raw.Expr.Not(expr, span)                 => resolved.Expr.Not(resolveExpr(expr), span)
-    case raw.Expr.Equal(left, right, span)        => resolved.Expr.Equal(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.NotEqual(left, right, span)     => resolved.Expr.NotEqual(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Less(left, right, span)         => resolved.Expr.Less(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.LessEqual(left, right, span)    => resolved.Expr.LessEqual(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Greater(left, right, span)      => resolved.Expr.Greater(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.GreaterEqual(left, right, span) => resolved.Expr.GreaterEqual(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Plus(expr, span)                => resolved.Expr.Plus(resolveExpr(expr), span)
-    case raw.Expr.Minus(expr, span)               => resolved.Expr.Minus(resolveExpr(expr), span)
-    case raw.Expr.Add(left, right, span)          => resolved.Expr.Add(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Sub(left, right, span)          => resolved.Expr.Sub(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Mul(left, right, span)          => resolved.Expr.Mul(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Div(left, right, span)          => resolved.Expr.Div(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.IntDiv(left, right, span)       => resolved.Expr.IntDiv(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Mod(left, right, span)          => resolved.Expr.Mod(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.And(left, right, span)          => resolved.Expr.And(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.Or(left, right, span)           => resolved.Expr.Or(resolveExpr(left), resolveExpr(right), span)
-    case raw.Expr.VarCall(name, span)             => resolved.Expr.VarCall(ResolutionContext.getLocalTerm(name, span), span)
-    case raw.Expr.Assign(name, expr, span)        => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, span), resolveExpr(expr), span)
-    case raw.Expr.Select(expr, member, span) =>
+    case raw.Expr.LBool(value, position)              => resolved.Expr.LBool(value, position)
+    case raw.Expr.LInt(value, position)               => resolved.Expr.LInt(value, position)
+    case raw.Expr.LFloat(value, position)             => resolved.Expr.LFloat(value, position)
+    case raw.Expr.LChar(value, position)              => resolved.Expr.LChar(value, position)
+    case raw.Expr.LString(value, position)            => resolved.Expr.LString(value, position)
+    case raw.Expr.Not(expr, position)                 => resolved.Expr.Not(resolveExpr(expr), position)
+    case raw.Expr.Equal(left, right, position)        => resolved.Expr.Equal(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.NotEqual(left, right, position)     => resolved.Expr.NotEqual(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Less(left, right, position)         => resolved.Expr.Less(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.LessEqual(left, right, position)    => resolved.Expr.LessEqual(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Greater(left, right, position)      => resolved.Expr.Greater(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.GreaterEqual(left, right, position) => resolved.Expr.GreaterEqual(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Plus(expr, position)                => resolved.Expr.Plus(resolveExpr(expr), position)
+    case raw.Expr.Minus(expr, position)               => resolved.Expr.Minus(resolveExpr(expr), position)
+    case raw.Expr.Add(left, right, position)          => resolved.Expr.Add(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Sub(left, right, position)          => resolved.Expr.Sub(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Mul(left, right, position)          => resolved.Expr.Mul(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Div(left, right, position)          => resolved.Expr.Div(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.IntDiv(left, right, position)       => resolved.Expr.IntDiv(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Mod(left, right, position)          => resolved.Expr.Mod(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.And(left, right, position)          => resolved.Expr.And(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.Or(left, right, position)           => resolved.Expr.Or(resolveExpr(left), resolveExpr(right), position)
+    case raw.Expr.VarCall(name, position)             => resolved.Expr.VarCall(ResolutionContext.getLocalTerm(name, position), position)
+    case raw.Expr.Assign(name, expr, position) => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, position), resolveExpr(expr), position)
+    case raw.Expr.Select(expr, member, position) =>
       resolveExpr(expr) match
-        case resolved.Expr.VarCall(symbol, symbolSpan) =>
+        case resolved.Expr.VarCall(symbol, symbolPosition) =>
           resolved.Expr.VarCall(
-            ResolutionContext.getMemberTermOrFail(symbol, member, symbolSpan, span),
-            span
+            ResolutionContext.getMemberTermOrFail(symbol, member, symbolPosition, position),
+            position
           )
 
-        case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, span)
+        case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, position)
 
-    case raw.Expr.Apply(expr, args, span) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), span)
-    case raw.Expr.Block(statements, span) => ResolutionContext.inNewScope(None):
+    case raw.Expr.Apply(expr, args, position) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), position)
+    case raw.Expr.Block(statements, position) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
-        resolved.Expr.Block(statements.flatMap(resolveStatement), span)
-    case raw.Expr.If(cond, ifTrue, ifFalse, span) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), span)
-    case raw.Expr.While(cond, body, span)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), span)
-    case raw.Expr.For(iterator, iterable, body, span) =>
+        resolved.Expr.Block(statements.flatMap(resolveStatement), position)
+    case raw.Expr.If(cond, ifTrue, ifFalse, position) => resolved.Expr.If(resolveExpr(cond), resolveExpr(ifTrue), resolveExpr(ifFalse), position)
+    case raw.Expr.While(cond, body, position)         => resolved.Expr.While(resolveExpr(cond), resolveExpr(body), position)
+    case raw.Expr.For(iterator, iterable, body, position) =>
       ResolutionContext.inNewScope(None)(
         resolved.Expr.For(
-          ResolutionContext.declareTerm(Symbol.Variable(_, iterator, None, false, span)),
+          ResolutionContext.declareTerm(Symbol.Variable(_, iterator, None, false, position)),
           resolveExpr(iterable),
           resolveExpr(body),
-          span
+          position
         )
       )
-    case raw.Expr.Invalid(span) => resolved.Expr.Invalid(span)
+    case raw.Expr.Invalid(position) => resolved.Expr.Invalid(position)
 
   /**
    * Resolve the given selector.
    *
    * @param qualifier the symbol owning the members to import
    * @param selector the member selector
-   * @param qualifierSpan the source position of the owning symbol, used for error production
+   * @param qualifierPosition the source position of the owning symbol, used for error production
    */
-  def resolveSelector(qualifier: SymbolId, selector: Selector, qualifierSpan: Span): Resolution[Unit] = selector match
-    case Selector.Simple(name, span) =>
-      ResolutionContext.importMember(qualifier, name, name, qualifierSpan, span)
+  def resolveSelector(qualifier: SymbolId, selector: Selector, qualifierPosition: SourcePosition): Resolution[Unit] = selector match
+    case Selector.Simple(name, position) =>
+      ResolutionContext.importMember(qualifier, name, name, qualifierPosition, position)
 
-    case Selector.Wildcard(span) =>
+    case Selector.Wildcard(position) =>
       get.symbols(qualifier) match
         case namespace: Namespace =>
           val namespaceScope = get.scopes(namespace.memberScope)
@@ -281,10 +282,10 @@ object Resolver:
             )
           )
         case sym =>
-          write(ResolutionError.NotANamespace(sym, qualifierSpan))
+          write(ResolutionError.NotANamespace(sym, qualifierPosition))
 
-    case Selector.Rename(name, alias, span) =>
-      ResolutionContext.importMember(qualifier, name, alias, qualifierSpan, span)
+    case Selector.Rename(name, alias, position) =>
+      ResolutionContext.importMember(qualifier, name, alias, qualifierPosition, position)
 
   /**
    * Resolve the names of the given programs.
@@ -296,7 +297,7 @@ object Resolver:
     Resolution:
       val declaredPackages = programs.map(program => (program, Resolver.declareProgramPackage(program)))
       if declaredPackages.count(_._2._1 == SymbolId.Root) > 1 then
-        write(ResolutionError.MultipleScriptFiles(Span(0, 0)))
+        write(ResolutionError.MultipleScriptFiles(SourcePosition.BuiltIn))
         fail(())
       else
         declaredPackages

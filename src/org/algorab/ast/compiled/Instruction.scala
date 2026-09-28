@@ -1,10 +1,10 @@
 package org.algorab.ast.compiled
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.InstructionPosition
 import org.algorab.ast.ParamCount
 import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
+import org.algorab.util.SourcePosition
 
 /**
  * An instruction in the compiled representation of an Algorab program.
@@ -15,256 +15,256 @@ enum Instruction:
    * Push a value onto the stack.
    *
    * @param value the value to push
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Push(value: Value, span: Span)
+  case Push(value: Value, position: SourcePosition)
 
   /**
    * Negate a boolean value.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Not(span: Span)
+  case Not(position: SourcePosition)
 
   /**
    * Test two values for equality.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Equal(span: Span)
+  case Equal(position: SourcePosition)
 
   /**
    * Test two values for inequality.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case NotEqual(span: Span)
+  case NotEqual(position: SourcePosition)
 
   /**
    * Convert an integer to a float.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case ToFloat(span: Span)
+  case ToFloat(position: SourcePosition)
 
   /**
    * Compare two integers for inferiority.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case LessInt(span: Span)
+  case LessInt(position: SourcePosition)
 
   /**
    * Compare two integers for inferiority or equality.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case LessEqualInt(span: Span)
+  case LessEqualInt(position: SourcePosition)
 
   /**
    * Compare two integers for superiority.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case GreaterInt(span: Span)
+  case GreaterInt(position: SourcePosition)
 
   /**
    * Compare two integers for superiority or equality.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case GreaterEqualInt(span: Span)
+  case GreaterEqualInt(position: SourcePosition)
 
   /**
    * Negate an integer.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case MinusInt(span: Span)
+  case MinusInt(position: SourcePosition)
 
   /**
    * Add two integers.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case AddInt(span: Span)
+  case AddInt(position: SourcePosition)
 
   /**
    * Subtract two integers.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case SubInt(span: Span)
+  case SubInt(position: SourcePosition)
 
   /**
    * Multiply two integers.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case MulInt(span: Span)
+  case MulInt(position: SourcePosition)
 
   /**
    * Divide two integers.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case DivInt(span: Span)
+  case DivInt(position: SourcePosition)
 
   /**
    * Perform integer division on two integers.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case IntDivInt(span: Span)
+  case IntDivInt(position: SourcePosition)
 
   /**
    * Compute the remainder of two integer values.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case ModInt(span: Span)
+  case ModInt(position: SourcePosition)
 
   /**
    * Compare two floats for inferiority.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case LessFloat(span: Span)
+  case LessFloat(position: SourcePosition)
 
   /**
    * Compare two floats for inferiority or equality.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case LessEqualFloat(span: Span)
+  case LessEqualFloat(position: SourcePosition)
 
   /**
    * Compare two floats for superiority.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case GreaterFloat(span: Span)
+  case GreaterFloat(position: SourcePosition)
 
   /**
    * Compare two floats for superiority or equality.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case GreaterEqualFloat(span: Span)
+  case GreaterEqualFloat(position: SourcePosition)
 
   /**
    * Negate a float.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case MinusFloat(span: Span)
+  case MinusFloat(position: SourcePosition)
 
   /**
    * Add two floats.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case AddFloat(span: Span)
+  case AddFloat(position: SourcePosition)
 
   /**
    * Subtract two floats.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case SubFloat(span: Span)
+  case SubFloat(position: SourcePosition)
 
   /**
    * Multiply two floats.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case MulFloat(span: Span)
+  case MulFloat(position: SourcePosition)
 
   /**
    * Divide two floats.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case DivFloat(span: Span)
+  case DivFloat(position: SourcePosition)
 
   /**
    * Perform integer division on two floats.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case IntDivFloat(span: Span)
+  case IntDivFloat(position: SourcePosition)
 
   /**
    * Compute the remainder of two float values.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case ModFloat(span: Span)
+  case ModFloat(position: SourcePosition)
 
   /**
    * Store a value in a local variable.
    *
    * @param symbol the unique id of the variable
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Store(symbol: SymbolId, span: Span)
+  case Store(symbol: SymbolId, position: SourcePosition)
 
   /**
    * Store a value in a global variable.
    *
    * @param symbol the unique id of the variable
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case StoreGlobal(symbol: SymbolId, span: Span)
+  case StoreGlobal(symbol: SymbolId, position: SourcePosition)
 
   /**
    * Load a value from a local variable.
    *
    * @param symbol the unique id of the variable
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Load(symbol: SymbolId, span: Span)
+  case Load(symbol: SymbolId, position: SourcePosition)
 
   /**
    * Load a value from a global variable.
    *
    * @param symbol the unique id of the variable
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case LoadGlobal(symbol: SymbolId, span: Span)
+  case LoadGlobal(symbol: SymbolId, position: SourcePosition)
 
   /**
    * Apply a function to arguments on the stack.
    *
    * @param paramCount the number of parameters to pass
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Apply(paramCount: ParamCount, span: Span)
+  case Apply(paramCount: ParamCount, position: SourcePosition)
 
   /**
    * Jump to an instruction position.
    *
    * @param to the instruction position to jump to
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Jump(to: InstructionPosition, span: Span)
+  case Jump(to: InstructionPosition, position: SourcePosition)
 
   /**
    * Jump to an instruction position if the top of the stack is false.
    *
    * @param to the instruction position to jump to
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case JumpIfFalse(to: InstructionPosition, span: Span)
+  case JumpIfFalse(to: InstructionPosition, position: SourcePosition)
 
   /**
    * Return from the current function.
    *
-   * @param span the source position of this instruction
+   * @param position the source position of this instruction
    */
-  case Return(span: Span)
+  case Return(position: SourcePosition)
 
   /**
    * The source position of this instruction.
    */
-  def span: Span
+  def position: SourcePosition

@@ -1,7 +1,6 @@
 package org.algorab.runtime
 
 import io.github.iltotore.iron.autoRefine
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.InstructionPosition
 import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
@@ -10,6 +9,7 @@ import org.algorab.ast.compiled.Instruction
 import org.algorab.ast.compiled.Module
 import org.algorab.compilation.CompilationContext.currentPosition
 import org.algorab.util.Console
+import org.algorab.util.SourcePosition
 import purelogic.*
 
 /**
@@ -228,11 +228,11 @@ object RuntimeContext:
     || ctx.functions(currentFrame.currentFunction).body.sizeCompare(currentFrame.position.value) > 0
 
   /**
-   * The source span of the current instruction.
+   * The source position of the current instruction.
    */
-  def currentSpan: Runtime[Span] =
+  def currentPosition: Runtime[SourcePosition] =
     val ctx = get
     val frame = ctx.frames.head
     val function = ctx.functions(frame.currentFunction)
     val instruction = function.body(frame.position.value)
-    instruction.span
+    instruction.position
