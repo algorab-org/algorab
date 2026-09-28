@@ -29,25 +29,25 @@ object ExprParser:
 
   val termParser: Parser[Token, Expr] = Parser.firstOf(
     literalParser,
-    Parser.inOrder(tokenTypeParser[Token.ParenOpen], exprParser, Parser.commit(tokenTypeParser[Token.ParenClosed]))
+    Parser.inOrder(AlgorabParser.token[Token.ParenOpen], exprParser, Parser.commit(AlgorabParser.token[Token.ParenClosed]))
   )
 
   val applyParser: Parser[Token, Expr] =
     val (first, applications) = Parser.inOrder(
       termParser,
-      repeatParser(
-        tokenSpan(
+      AlgorabParser.repeat(
+        AlgorabParser.tokenPosition(
           Parser.firstOf[Token, (Expr, Span) => Expr](
-            mapParser(
+            AlgorabParser.map(
               Parser.inOrder(
-                tokenTypeParser[Token.ParenOpen],
-                Parser.separatedBy(exprParser, tokenTypeParser[Token.Comma]),
-                Parser.commit(tokenTypeParser[Token.ParenClosed])
+                AlgorabParser.token[Token.ParenOpen],
+                Parser.separatedBy(exprParser, AlgorabParser.token[Token.Comma]),
+                Parser.commit(AlgorabParser.token[Token.ParenClosed])
               )
             )(params => Expr.Apply(_, params, _)),
-            mapParser(
+            AlgorabParser.map(
               Parser.inOrder(
-                tokenTypeParser[Token.Dot],
+                AlgorabParser.token[Token.Dot],
                 identifierParser
               )
             )(member => Expr.Select(_, member, _))
@@ -89,13 +89,13 @@ object ExprParser:
   private def binaryOpParser(operandParser: Parser[Token, Expr], operators: PartialFunction[Token, (Expr, Expr, Span) => Expr]): Parser[Token, Expr] =
     Parser.separatedByReduce(
       operandParser,
-      matchingParser:
+      AlgorabParser.matching:
         case operators(operator) =>
           (left, right) => operator(left, right, left.span.merge(right.span))
     )
 
   val prefixOpParser: Parser[Token, Expr] = Parser.firstOf(
-    matchingParser:
+    AlgorabParser.matching:
       case token @ prefixOps(operator) =>
         val term = prefixOpParser
         operator(term, token.span.merge(term.span))
@@ -109,25 +109,25 @@ object ExprParser:
   val binaryBoolOpParser: Parser[Token, Expr] = binaryOpParser(binaryCompOpParser, binaryBoolOps)
 
   private val blockParser: Parser[Token, Expr] =
-    Expr.Block.apply.tupled(tokenSpan(Parser.separatedBy(statementParser, tokenTypeParser[Token.Newline])))
+    Expr.Block.apply.tupled(AlgorabParser.tokenPosition(Parser.separatedBy(statementParser, AlgorabParser.token[Token.Newline])))
 
-  private val identifierParser: Parser[Token, Identifier] = matchingParser:
+  private val identifierParser: Parser[Token, Identifier] = AlgorabParser.matching:
     case Token.Ident(identifier, _) => identifier
 
   val typeParser: Parser[Token, Type] = Type.Ref(identifierParser)
 
   val ifParser: Parser[Token, Expr] = Expr.If.apply.tupled(
-    tokenSpan(
+    AlgorabParser.tokenPosition(
       Parser.inOrder(
-        tokenTypeParser[Token.If],
+        AlgorabParser.token[Token.If],
         Parser.commit(Parser.inOrder(
           exprParser,
-          tokenTypeParser[Token.Then],
+          AlgorabParser.token[Token.Then],
           exprParser
         )),
         Parser.firstOf(
           Parser.inOrder(
-            tokenTypeParser[Token.Else],
+            AlgorabParser.token[Token.Else],
             Parser.commit(exprParser)
           ),
           Expr.Block(Nil, Span(0, 0))
@@ -137,14 +137,14 @@ object ExprParser:
   )
 
   val forParser: Parser[Token, Expr] = Expr.For.apply.tupled(
-    tokenSpan(
+    AlgorabParser.tokenPosition(
       Parser.inOrder(
-        tokenTypeParser[Token.For],
+        AlgorabParser.token[Token.For],
         Parser.commit(Parser.inOrder(
           identifierParser,
-          tokenTypeParser[Token.In],
+          AlgorabParser.token[Token.In],
           exprParser,
-          tokenTypeParser[Token.Do],
+          AlgorabParser.token[Token.Do],
           exprParser
         ))
       )
@@ -152,12 +152,12 @@ object ExprParser:
   )
 
   val whileParser: Parser[Token, Expr] = Expr.While.apply.tupled(
-    tokenSpan(
+    AlgorabParser.tokenPosition(
       Parser.inOrder(
-        tokenTypeParser[Token.While],
+        AlgorabParser.token[Token.While],
         Parser.commit(Parser.inOrder(
           exprParser,
-          tokenTypeParser[Token.Do],
+          AlgorabParser.token[Token.Do],
           exprParser
         ))
       )
@@ -165,17 +165,17 @@ object ExprParser:
   )
 
   val valDefParser: Parser[Token, Definition] =
-    val (mutable, name, tpe, expr, span) = tokenSpan(
+    val (mutable, name, tpe, expr, span) = AlgorabParser.tokenPosition(
       Parser.inOrder(
-        Parser.firstOf(Parser.as(tokenTypeParser[Token.Mut], true), false),
-        tokenTypeParser[Token.Val],
+        Parser.firstOf(Parser.as(AlgorabParser.token[Token.Mut], true), false),
+        AlgorabParser.token[Token.Val],
         Parser.commit(Parser.inOrder(
           identifierParser,
           Parser.firstOf(
-            Parser.inOrder(tokenTypeParser[Token.Colon], Parser.commit(typeParser)),
+            Parser.inOrder(AlgorabParser.token[Token.Colon], Parser.commit(typeParser)),
             Type.Inferred
           ),
-          tokenTypeParser[Token.Equal],
+          AlgorabParser.token[Token.Equal],
           exprParser
         ))
       )
@@ -184,32 +184,32 @@ object ExprParser:
     Definition.Val(name, tpe, expr, mutable, span)
 
   val assignParser: Parser[Token, Expr] = Expr.Assign.apply.tupled(
-    tokenSpan(
+    AlgorabParser.tokenPosition(
       Parser.inOrder(
         identifierParser,
-        tokenTypeParser[Token.Equal],
+        AlgorabParser.token[Token.Equal],
         Parser.commit(exprParser)
       )
     )
   )
 
   val funDefParser: Parser[Token, Definition] = Definition.Function.apply.tupled(
-    tokenSpan(
+    AlgorabParser.tokenPosition(
       Parser.inOrder(
-        tokenTypeParser[Token.Def],
+        AlgorabParser.token[Token.Def],
         Parser.commit(Parser.inOrder(
           identifierParser,
-          tokenTypeParser[Token.ParenOpen],
+          AlgorabParser.token[Token.ParenOpen],
           Parser.separatedBy(
-            Parser.inOrder(identifierParser, tokenTypeParser[Token.Colon], typeParser),
-            tokenTypeParser[Token.Comma]
+            Parser.inOrder(identifierParser, AlgorabParser.token[Token.Colon], typeParser),
+            AlgorabParser.token[Token.Comma]
           ),
-          tokenTypeParser[Token.ParenClosed],
+          AlgorabParser.token[Token.ParenClosed],
           Parser.firstOf(
-            Parser.inOrder(tokenTypeParser[Token.Colon], Parser.commit(typeParser)),
+            Parser.inOrder(AlgorabParser.token[Token.Colon], Parser.commit(typeParser)),
             Type.Inferred
           ),
-          tokenTypeParser[Token.Equal],
+          AlgorabParser.token[Token.Equal],
           exprParser
         ))
       )
@@ -217,11 +217,11 @@ object ExprParser:
   )
 
   val selectorParser: Parser[Token, Import.Selector] = Parser.firstOf(
-    Import.Selector.Wildcard(tokenSpan(tokenTypeParser[Token.Mul])),
-    Import.Selector.Rename.apply.tupled(tokenSpan(
+    Import.Selector.Wildcard(AlgorabParser.tokenPosition(AlgorabParser.token[Token.Mul])),
+    Import.Selector.Rename.apply.tupled(AlgorabParser.tokenPosition(
       Parser.inOrder(
         identifierParser,
-        tokenTypeParser[Token.As],
+        AlgorabParser.token[Token.As],
         identifierParser
       )
     ))
@@ -229,22 +229,22 @@ object ExprParser:
 
   def importPathParser(acc: List[(Identifier, Span)]): Parser[Token, (List[(Identifier, Span)], Import.Selector)] =
     Parser.inOrder(
-      tokenTypeParser[Token.Dot],
+      AlgorabParser.token[Token.Dot],
       Parser.firstOf(
         (
           acc,
           selectorParser
         ),
-        importPathParser(acc :+ tokenSpan(identifierParser)),
-        (acc, Import.Selector.Simple.apply.tupled(tokenSpan(identifierParser)))
+        importPathParser(acc :+ AlgorabParser.tokenPosition(identifierParser)),
+        (acc, Import.Selector.Simple.apply.tupled(AlgorabParser.tokenPosition(identifierParser)))
       )
     )
 
   val importParser: Parser[Token, Import] = Import.apply.tupled(
-    tokenSpan(
+    AlgorabParser.tokenPosition(
       Parser.inOrder(
-        tokenTypeParser[Token.Import],
-        importPathParser(List(tokenSpan(identifierParser)))
+        AlgorabParser.token[Token.Import],
+        importPathParser(List(AlgorabParser.tokenPosition(identifierParser)))
       )
     )
   )
@@ -257,9 +257,9 @@ object ExprParser:
   val exprParser: Parser[Token, Expr] = Parser.expect(
     Parser.firstOf(
       Parser.inOrder(
-        tokenTypeParser[Token.Indent],
+        AlgorabParser.token[Token.Indent],
         blockParser,
-        tokenTypeParser[Token.DeIndent]
+        AlgorabParser.token[Token.DeIndent]
       ),
       ifParser,
       forParser,
@@ -280,18 +280,18 @@ object ExprParser:
   )
 
   val packageParser: Parser[Token, List[(Identifier, Span)]] = Parser.inOrder(
-    tokenTypeParser[Token.Package],
+    AlgorabParser.token[Token.Package],
     Parser.separatedBy(
-      tokenSpan(identifierParser),
-      tokenTypeParser[Token.Dot]
+      AlgorabParser.tokenPosition(identifierParser),
+      AlgorabParser.token[Token.Dot]
     )
   )
 
   val programParser: Parser[Token, Program] = Program.apply.tupled(
     Parser.inOrder(
       Parser.firstOf(packageParser, Nil),
-      Parser.repeatDiscard0(tokenTypeParser[Token.Newline]),
-      Parser.separatedBy(statementParser, tokenTypeParser[Token.Newline])
+      Parser.repeatDiscard0(AlgorabParser.token[Token.Newline]),
+      Parser.separatedBy(statementParser, AlgorabParser.token[Token.Newline])
     )
   )
 
