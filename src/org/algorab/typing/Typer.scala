@@ -73,7 +73,7 @@ object Typer:
    * @return the same expression, for better UX where it's used
    */
   def assertNumeric(expr: typed.Expr): Typing[typed.Expr] =
-    if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float then
+    if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float && expr.tpe != typed.Type.Invalid then
       write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, position))
     expr
 
@@ -100,6 +100,7 @@ object Typer:
       case (typed.Type.Int, typed.Type.Float)   => op(typed.Expr.ToFloat(typedLeft), typedRight, typed.Type.Float)
       case (typed.Type.Float, typed.Type.Int)   => op(typedLeft, typed.Expr.ToFloat(typedRight), typed.Type.Float)
       case (typed.Type.Float, typed.Type.Float) => op(typedLeft, typedRight, typed.Type.Float)
+      case (_, typed.Type.Invalid) | (typed.Type.Invalid, _) => op(typedLeft, typedRight, typed.Type.Invalid)
       case (leftType, rightType) =>
         write(TypeError.Mismatch(
           expected = List(
