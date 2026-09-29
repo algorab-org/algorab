@@ -1,10 +1,10 @@
 package org.algorab.runtime
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.Value
 import org.algorab.ast.typed.Type
 import org.algorab.typing.TypePattern
 import org.algorab.util.ConsoleError
+import org.algorab.util.SourcePosition
 
 /**
  * An error occurring during the runtime phase.
@@ -16,22 +16,22 @@ enum RuntimeError:
    *
    * @param expected the expected type pattern
    * @param got the actual value
-   * @param span the source position where the error occurred
+   * @param position the source position where the error occurred
    */
-  case TypeMismatch(expected: TypePattern, got: Value, span: Span)
+  case TypeMismatch(expected: TypePattern, got: Value, position: SourcePosition)
 
   /**
    * An error occurred while reading from the console.
    *
    * @param error the console error
-   * @param span the source position where the error occurred
+   * @param position the source position where the error occurred
    */
-  case Console(error: ConsoleError, span: Span)
+  case Console(error: ConsoleError, position: SourcePosition)
 
   /**
    * The source position where the error occurred.
    */
-  def span: Span
+  def position: SourcePosition
 
 object RuntimeError:
 
@@ -40,7 +40,7 @@ object RuntimeError:
    *
    * @param expected the expected type
    * @param got the actual value
-   * @param span the source position where the error occurred
+   * @param position the source position where the error occurred
    */
-  def simpleMismatch(expected: Type, got: Value, span: Span): RuntimeError =
-    RuntimeError.TypeMismatch(TypePattern.Type(expected), got, span)
+  def simpleMismatch(expected: Type, got: Value, position: SourcePosition): RuntimeError =
+    RuntimeError.TypeMismatch(TypePattern.Type(expected), got, position)

@@ -1,17 +1,17 @@
 package org.algorab.ast.raw
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.Identifier
 import org.algorab.ast.raw.Import.Selector
+import org.algorab.util.SourcePosition
 
 /**
  * An import clause.
  *
  * @param path the path before the selector such as `a.b` in `import a.b.c`
  * @param selector the member selector
- * @param span the source position of this import
+ * @param position the source position of this import
  */
-case class Import(path: List[(Identifier, Span)], selector: Selector, span: Span)
+case class Import(path: List[(Identifier, SourcePosition)], selector: Selector, position: SourcePosition)
 
 object Import:
 
@@ -24,27 +24,27 @@ object Import:
      * Import a named member.
      *
      * @param name the name of the member to import
-     * @param span the source position of this selector
+     * @param position the source position of this selector
      */
-    case Simple(name: Identifier, span: Span)
+    case Simple(name: Identifier, position: SourcePosition)
 
     /**
      * Import all members.
      *
-     * @param span the source position of this selector
+     * @param position the source position of this selector
      */
-    case Wildcard(span: Span)
+    case Wildcard(position: SourcePosition)
 
     /**
      * Import a named member under another name.
      *
      * @param name the name of the member to import
      * @param alias the name the member is imported as
-     * @param span the source position of this selector
+     * @param position the source position of this selector
      */
-    case Rename(name: Identifier, alias: Identifier, span: Span)
+    case Rename(name: Identifier, alias: Identifier, position: SourcePosition)
 
     /**
      * The source position of this selector.
      */
-    def span: Span
+    def position: SourcePosition

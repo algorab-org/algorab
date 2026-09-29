@@ -1,7 +1,7 @@
 package org.algorab.ast.typed
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.SymbolId
+import org.algorab.util.SourcePosition
 
 /**
  * A definition such as variable or function declaration.
@@ -15,9 +15,9 @@ enum Definition:
    * @param tpe the variable's declared type
    * @param expr the variable's RHS
    * @param mutable whether or not this variable is mutable
-   * @param span the source position of this definition
+   * @param position the source position of this definition
    */
-  case Val(symbol: SymbolId, tpe: Type, expr: Expr, mutable: Boolean, span: Span)
+  case Val(symbol: SymbolId, tpe: Type, expr: Expr, mutable: Boolean, position: SourcePosition)
 
   /**
    * A function declaration.
@@ -26,9 +26,9 @@ enum Definition:
    * @param params the function's parameters
    * @param retType the type of value returned by this function
    * @param body the function's RHS
-   * @param span the source position of this definition
+   * @param position the source position of this definition
    */
-  case Function(symbol: SymbolId, params: List[(SymbolId, Type)], retType: Type, body: Expr, span: Span)
+  case Function(symbol: SymbolId, params: List[(SymbolId, Type)], retType: Type, body: Expr, position: SourcePosition)
 
   /**
    * The definition's unique id.
@@ -38,4 +38,4 @@ enum Definition:
   /**
    * The definition's unique id.
    */
-  def span: Span
+  def position: SourcePosition

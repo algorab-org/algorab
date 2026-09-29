@@ -1,7 +1,7 @@
 package org.algorab.ast.typed
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.SymbolId
+import org.algorab.util.SourcePosition
 
 /**
  * An Algorab expression.
@@ -13,54 +13,54 @@ enum Expr:
    *
    * @param value the literal's value
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LBool(value: Boolean, tpe: Type, span: Span)
+  case LBool(value: Boolean, tpe: Type, position: SourcePosition)
 
   /**
    * An integer literal.
    *
    * @param value the literal's value
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LInt(value: Int, tpe: Type, span: Span)
+  case LInt(value: Int, tpe: Type, position: SourcePosition)
 
   /**
    * A float literal.
    *
    * @param value the literal's value
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LFloat(value: Double, tpe: Type, span: Span)
+  case LFloat(value: Double, tpe: Type, position: SourcePosition)
 
   /**
    * A character literal.
    *
    * @param value the literal's value
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LChar(value: Char, tpe: Type, span: Span)
+  case LChar(value: Char, tpe: Type, position: SourcePosition)
 
   /**
    * A string literal.
    *
    * @param value the literal's value
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LString(value: String, tpe: Type, span: Span)
+  case LString(value: String, tpe: Type, position: SourcePosition)
 
   /**
    * A boolean not.
    *
    * @param expr the expression to invert
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Not(expr: Expr, tpe: Type, span: Span)
+  case Not(expr: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * An equality test.
@@ -68,9 +68,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Equal(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Equal(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * An non-equality test.
@@ -78,9 +78,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case NotEqual(left: Expr, right: Expr, tpe: Type, span: Span)
+  case NotEqual(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A numeric inferiority test.
@@ -88,9 +88,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Less(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Less(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A numeric inferiority or equality test.
@@ -98,9 +98,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LessEqual(left: Expr, right: Expr, tpe: Type, span: Span)
+  case LessEqual(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A numeric superiority test.
@@ -108,9 +108,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Greater(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Greater(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A numeric superiority and equality test.
@@ -118,27 +118,27 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case GreaterEqual(left: Expr, right: Expr, tpe: Type, span: Span)
+  case GreaterEqual(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A numeric plus. Usually does nothing.
    *
    * @param expr the prefixed expression
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Plus(expr: Expr, tpe: Type, span: Span)
+  case Plus(expr: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A numeric negation.
    *
    * @param expr the prefixed expression to negate
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Minus(expr: Expr, tpe: Type, span: Span)
+  case Minus(expr: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * An addition.
@@ -146,9 +146,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Add(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Add(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A subtraction.
@@ -156,9 +156,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Sub(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Sub(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A multiplication.
@@ -166,9 +166,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Mul(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Mul(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A decimal division.
@@ -176,9 +176,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Div(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Div(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * An integer division.
@@ -186,9 +186,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case IntDiv(left: Expr, right: Expr, tpe: Type, span: Span)
+  case IntDiv(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A modulo aka the remainder of an euclidean division.
@@ -196,9 +196,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Mod(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Mod(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A boolean and.
@@ -206,9 +206,9 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case And(left: Expr, right: Expr, tpe: Type, span: Span)
+  case And(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * An boolean or.
@@ -216,18 +216,18 @@ enum Expr:
    * @param left the LHS
    * @param right the RHS
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Or(left: Expr, right: Expr, tpe: Type, span: Span)
+  case Or(left: Expr, right: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A variable call.
    *
    * @param symbol the unique id of the variable to call
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case VarCall(symbol: SymbolId, tpe: Type, span: Span)
+  case VarCall(symbol: SymbolId, tpe: Type, position: SourcePosition)
 
   /**
    * A value assignation to a variable.
@@ -235,9 +235,9 @@ enum Expr:
    * @param symbol the unique id of the variable to assign to
    * @param expr the expression whose value is to be assigned
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Assign(symbol: SymbolId, expr: Expr, tpe: Type, span: Span)
+  case Assign(symbol: SymbolId, expr: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A function application.
@@ -245,18 +245,18 @@ enum Expr:
    * @param expr the function to apply
    * @param args the arguments to pass to the function
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Apply(expr: Expr, args: List[Expr], tpe: Type, span: Span)
+  case Apply(expr: Expr, args: List[Expr], tpe: Type, position: SourcePosition)
 
   /**
    * A block of one or more statements.
    *
    * @param statements this block's statements
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Block(statements: List[Statement], tpe: Type, span: Span)
+  case Block(statements: List[Statement], tpe: Type, position: SourcePosition)
 
   /**
    * An if-else expression.
@@ -265,9 +265,9 @@ enum Expr:
    * @param ifTrue the body to evaluate if the condition is true
    * @param ifFalse the body to evaluate if the condition is false
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, tpe: Type, span: Span)
+  case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A while loop.
@@ -275,9 +275,9 @@ enum Expr:
    * @param cond the condition to test for each iteration
    * @param body the body to evaluate at each iteration
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case While(cond: Expr, body: Expr, tpe: Type, span: Span)
+  case While(cond: Expr, body: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * A for loop.
@@ -286,17 +286,17 @@ enum Expr:
    * @param iterable the collection to iterate on
    * @param body the body to evaluate at each iteration
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case For(iterator: SymbolId, iterable: Expr, body: Expr, tpe: Type, span: Span)
+  case For(iterator: SymbolId, iterable: Expr, body: Expr, tpe: Type, position: SourcePosition)
 
   /**
    * An invalid expression.
    *
    * @param tpe this expression's type
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Invalid(tpe: Type, span: Span)
+  case Invalid(tpe: Type, position: SourcePosition)
 
   /**
    * This expression's type.
@@ -306,51 +306,51 @@ enum Expr:
   /**
    * The source position of this expression.
    */
-  def span: Span
+  def position: SourcePosition
 
   def withType(tpe: Type): Expr = this match
-    case LBool(value, _, span)                  => LBool(value, tpe, span)
-    case LInt(value, _, span)                   => LInt(value, tpe, span)
-    case LFloat(value, _, span)                 => LFloat(value, tpe, span)
-    case LChar(value, _, span)                  => LChar(value, tpe, span)
-    case LString(value, _, span)                => LString(value, tpe, span)
-    case Not(expr, _, span)                     => Not(expr, tpe, span)
-    case Equal(left, right, _, span)            => Equal(left, right, tpe, span)
-    case NotEqual(left, right, _, span)         => NotEqual(left, right, tpe, span)
-    case Less(left, right, _, span)             => Less(left, right, tpe, span)
-    case LessEqual(left, right, _, span)        => LessEqual(left, right, tpe, span)
-    case Greater(left, right, _, span)          => Greater(left, right, tpe, span)
-    case GreaterEqual(left, right, _, span)     => GreaterEqual(left, right, tpe, span)
-    case Plus(expr, _, span)                    => Plus(expr, tpe, span)
-    case Minus(expr, _, span)                   => Minus(expr, tpe, span)
-    case Add(left, right, _, span)              => Add(left, right, tpe, span)
-    case Sub(left, right, _, span)              => Sub(left, right, tpe, span)
-    case Mul(left, right, _, span)              => Mul(left, right, tpe, span)
-    case Div(left, right, _, span)              => Div(left, right, tpe, span)
-    case IntDiv(left, right, _, span)           => IntDiv(left, right, tpe, span)
-    case Mod(left, right, _, span)              => Mod(left, right, tpe, span)
-    case And(left, right, _, span)              => And(left, right, tpe, span)
-    case Or(left, right, _, span)               => Or(left, right, tpe, span)
-    case VarCall(symbol, _, span)               => VarCall(symbol, tpe, span)
-    case Assign(symbol, expr, _, span)          => Assign(symbol, expr, tpe, span)
-    case Apply(expr, args, _, span)             => Apply(expr, args, tpe, span)
-    case Block(statements, _, span)             => Block(statements, tpe, span)
-    case If(cond, ifTrue, ifFalse, _, span)     => If(cond, ifTrue, ifFalse, tpe, span)
-    case While(cond, body, _, span)             => While(cond, body, tpe, span)
-    case For(iterator, iterable, body, _, span) => For(iterator, iterable, body, tpe, span)
-    case Invalid(_, span)                       => Invalid(tpe, span)
+    case LBool(value, _, position)                  => LBool(value, tpe, position)
+    case LInt(value, _, position)                   => LInt(value, tpe, position)
+    case LFloat(value, _, position)                 => LFloat(value, tpe, position)
+    case LChar(value, _, position)                  => LChar(value, tpe, position)
+    case LString(value, _, position)                => LString(value, tpe, position)
+    case Not(expr, _, position)                     => Not(expr, tpe, position)
+    case Equal(left, right, _, position)            => Equal(left, right, tpe, position)
+    case NotEqual(left, right, _, position)         => NotEqual(left, right, tpe, position)
+    case Less(left, right, _, position)             => Less(left, right, tpe, position)
+    case LessEqual(left, right, _, position)        => LessEqual(left, right, tpe, position)
+    case Greater(left, right, _, position)          => Greater(left, right, tpe, position)
+    case GreaterEqual(left, right, _, position)     => GreaterEqual(left, right, tpe, position)
+    case Plus(expr, _, position)                    => Plus(expr, tpe, position)
+    case Minus(expr, _, position)                   => Minus(expr, tpe, position)
+    case Add(left, right, _, position)              => Add(left, right, tpe, position)
+    case Sub(left, right, _, position)              => Sub(left, right, tpe, position)
+    case Mul(left, right, _, position)              => Mul(left, right, tpe, position)
+    case Div(left, right, _, position)              => Div(left, right, tpe, position)
+    case IntDiv(left, right, _, position)           => IntDiv(left, right, tpe, position)
+    case Mod(left, right, _, position)              => Mod(left, right, tpe, position)
+    case And(left, right, _, position)              => And(left, right, tpe, position)
+    case Or(left, right, _, position)               => Or(left, right, tpe, position)
+    case VarCall(symbol, _, position)               => VarCall(symbol, tpe, position)
+    case Assign(symbol, expr, _, position)          => Assign(symbol, expr, tpe, position)
+    case Apply(expr, args, _, position)             => Apply(expr, args, tpe, position)
+    case Block(statements, _, position)             => Block(statements, tpe, position)
+    case If(cond, ifTrue, ifFalse, _, position)     => If(cond, ifTrue, ifFalse, tpe, position)
+    case While(cond, body, _, position)             => While(cond, body, tpe, position)
+    case For(iterator, iterable, body, _, position) => For(iterator, iterable, body, tpe, position)
+    case Invalid(_, position)                       => Invalid(tpe, position)
 
 object Expr:
 
   object ToFloat:
 
     def apply(expr: Expr): Expr = Apply(
-      VarCall(SymbolId.ToFloatTerm, Type.Function(List(Type.Int), Type.Float), expr.span),
+      VarCall(SymbolId.ToFloatTerm, Type.Function(List(Type.Int), Type.Float), expr.position),
       List(expr),
       Type.Float,
-      expr.span
+      expr.position
     )
 
-    def unapply(toFloat: Expr): Option[(Expr, Span)] = toFloat match
-      case Apply(VarCall(SymbolId.ToFloatTerm, _, _), List(expr), _, span) => Some((expr, span))
-      case _                                                               => None
+    def unapply(toFloat: Expr): Option[(Expr, SourcePosition)] = toFloat match
+      case Apply(VarCall(SymbolId.ToFloatTerm, _, _), List(expr), _, position) => Some((expr, position))
+      case _                                                                   => None

@@ -61,7 +61,7 @@ object TypeContext:
   def getType(symbol: SymbolId): Typing[Type] = get.types(symbol) match
     case Some(tpe) => tpe
     case None =>
-      write(TypeError.RecursiveInference(get.declarations(symbol).span))
+      write(TypeError.RecursiveInference(get.declarations(symbol).position))
       Type.Invalid
 
   /**

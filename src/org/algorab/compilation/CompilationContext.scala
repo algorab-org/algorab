@@ -2,11 +2,11 @@ package org.algorab.compilation
 
 import io.github.iltotore.iron.assume
 import io.github.iltotore.iron.autoRefine
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.InstructionPosition
 import org.algorab.ast.SymbolId
 import org.algorab.ast.compiled.Function
 import org.algorab.ast.compiled.Instruction
+import org.algorab.util.SourcePosition
 import purelogic.*
 
 /**
@@ -109,19 +109,19 @@ object CompilationContext:
    * whether the definition to store into is global or not.
    *
    * @param symbol the symbol of the definition to store into
-   * @param span the source position of the instruction to emit
+   * @param position the source position of the instruction to emit
    */
-  def emitStore(symbol: SymbolId, span: Span): Compilation[Unit] =
-    if isGlobal(symbol) then emit(Instruction.StoreGlobal(symbol, span))
-    else emit(Instruction.Store(symbol, span))
+  def emitStore(symbol: SymbolId, position: SourcePosition): Compilation[Unit] =
+    if isGlobal(symbol) then emit(Instruction.StoreGlobal(symbol, position))
+    else emit(Instruction.Store(symbol, position))
 
   /**
    * Emit an [[Instruction.Load]] or an [[Instruction.LoadGlobal]] depending on
    * whether the definition to load from is global or not.
    *
    * @param symbol the symbol of the definition to load from
-   * @param span the source position of the instruction to emit
+   * @param position the source position of the instruction to emit
    */
-  def emitLoad(symbol: SymbolId, span: Span): Compilation[Unit] =
-    if isGlobal(symbol) then emit(Instruction.LoadGlobal(symbol, span))
-    else emit(Instruction.Load(symbol, span))
+  def emitLoad(symbol: SymbolId, position: SourcePosition): Compilation[Unit] =
+    if isGlobal(symbol) then emit(Instruction.LoadGlobal(symbol, position))
+    else emit(Instruction.Load(symbol, position))

@@ -1,8 +1,9 @@
 package org.algorab.resolution
 
 import io.github.iltotore.iron.autoRefine
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.*
+import org.algorab.util.FileName
+import org.algorab.util.SourcePosition
 import purelogic.*
 
 /**
@@ -65,7 +66,7 @@ case class ResolutionContext(
           id = id,
           name = name,
           owner = Some(SymbolId.Root),
-          span = Span(0, 0)
+          position = SourcePosition.BuiltIn
         )
       ),
       nextSymbolId = nextSymbolId.max(id + 1)
@@ -88,7 +89,7 @@ case class ResolutionContext(
           name = name,
           owner = Some(SymbolId.Root),
           mutable = false,
-          span = Span(0, 0)
+          position = SourcePosition.BuiltIn
         )
       ),
       nextSymbolId = nextSymbolId.max(id + 1)
@@ -110,7 +111,7 @@ case class ResolutionContext(
           id = id,
           name = name,
           owner = Some(SymbolId.Root),
-          span = Span(0, 0)
+          position = SourcePosition.BuiltIn
         )
       ),
       nextSymbolId = nextSymbolId.max(id + 1)
@@ -181,30 +182,30 @@ object ResolutionContext:
    * Get the local term corresponding to the given name.
    *
    * @param name the name of the term to look for
-   * @param span the source position from where the search is called, used for error reporting
+   * @param position the source position from where the search is called, used for error reporting
    * @return the found local term
    */
-  def getLocalTerm(name: Identifier, span: Span): Resolution[SymbolId] =
+  def getLocalTerm(name: Identifier, position: SourcePosition): Resolution[SymbolId] =
     findInScopes(_.localTerms.get(name)) match
       case Some((id, initialized)) =>
-        if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id), span))
+        if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id), position))
         id
       case None =>
-        write(ResolutionError.UnknownName(name, span))
+        write(ResolutionError.UnknownName(name, position))
         SymbolId.Invalid
 
   /**
    * Get the local type corresponding to the given name.
    *
    * @param name the name of the type to look for
-   * @param span the source position from where the search is called, used for error reporting
+   * @param position the source position from where the search is called, used for error reporting
    * @return the found local type
    */
-  def getLocalType(name: Identifier, span: Span): Resolution[SymbolId] =
+  def getLocalType(name: Identifier, position: SourcePosition): Resolution[SymbolId] =
     findInScopes(_.localTypes.get(name)) match
       case Some(id) => id
       case None =>
-        write(ResolutionError.UnknownName(name, span))
+        write(ResolutionError.UnknownName(name, position))
         SymbolId.Invalid
 
   /**
@@ -212,10 +213,10 @@ object ResolutionContext:
    *
    * @param owner the symbol owning the term to get
    * @param member the member to get
-   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @param ownerPosition the source position of the owning symbol, used for error production
    * @return the symbol's member if it exists
    */
-  def getMemberTerm(owner: SymbolId, member: Identifier, ownerSpan: Span): Resolution[Option[SymbolId]] =
+  def getMemberTerm(owner: SymbolId, member: Identifier, ownerPosition: SourcePosition): Resolution[Option[SymbolId]] =
     get.symbols(owner) match
       case namespace: Symbol.Namespace =>
         get
@@ -225,7 +226,7 @@ object ResolutionContext:
           .map(_._1)
 
       case sym =>
-        write(ResolutionError.NotANamespace(sym, ownerSpan))
+        write(ResolutionError.NotANamespace(sym, ownerPosition))
         Some(SymbolId.Invalid)
 
   /**
@@ -233,10 +234,10 @@ object ResolutionContext:
    *
    * @param owner the symbol owning the type to get
    * @param member the member to get
-   * @param ownerSpan the source position of the owning symbol, used for error production
+   * @param ownerPosition the source position of the owning symbol, used for error production
    * @return the symbol's member if it exists
    */
-  def getMemberType(owner: SymbolId, member: Identifier, ownerSpan: Span): Resolution[Option[SymbolId]] =
+  def getMemberType(owner: SymbolId, member: Identifier, ownerPosition: SourcePosition): Resolution[Option[SymbolId]] =
     get.symbols(owner) match
       case namespace: Symbol.Namespace =>
         get
@@ -245,7 +246,7 @@ object ResolutionContext:
           .get(member)
 
       case sym =>
-        write(ResolutionError.NotANamespace(sym, ownerSpan))
+        write(ResolutionError.NotANamespace(sym, ownerPosition))
         Some(SymbolId.Invalid)
 
   /**
@@ -253,13 +254,13 @@ object ResolutionContext:
    *
    * @param owner the symbol owning the term to get
    * @param member the member to get
-   * @param ownerSpan the source position of the owning symbol, used for error production
-   * @param memberSpan the source position of the member reference, used for error production
+   * @param ownerPosition the source position of the owning symbol, used for error production
+   * @param memberPosition the source position of the member reference, used for error production
    * @return the symbol's member or [[SymbolId.Invalid]]
    */
-  def getMemberTermOrFail(owner: SymbolId, member: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[SymbolId] =
-    getMemberTerm(owner, member, ownerSpan).getOrElse:
-      write(ResolutionError.UnknownName(member, memberSpan))
+  def getMemberTermOrFail(owner: SymbolId, member: Identifier, ownerPosition: SourcePosition, memberPosition: SourcePosition): Resolution[SymbolId] =
+    getMemberTerm(owner, member, ownerPosition).getOrElse:
+      write(ResolutionError.UnknownName(member, memberPosition))
       SymbolId.Invalid
 
   /**
@@ -267,13 +268,13 @@ object ResolutionContext:
    *
    * @param owner the symbol owning the type to get
    * @param member the member to get
-   * @param ownerSpan the source position of the owning symbol, used for error production
-   * @param memberSpan the source position of the member reference, used for error production
+   * @param ownerPosition the source position of the owning symbol, used for error production
+   * @param memberPosition the source position of the member reference, used for error production
    * @return the symbol's member or [[SymbolId.Invalid]]
    */
-  def getMemberTypeOrFail(owner: SymbolId, member: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[SymbolId] =
-    getMemberType(owner, member, ownerSpan).getOrElse:
-      write(ResolutionError.UnknownName(member, memberSpan))
+  def getMemberTypeOrFail(owner: SymbolId, member: Identifier, ownerPosition: SourcePosition, memberPosition: SourcePosition): Resolution[SymbolId] =
+    getMemberType(owner, member, ownerPosition).getOrElse:
+      write(ResolutionError.UnknownName(member, memberPosition))
       SymbolId.Invalid
 
   /**
@@ -283,14 +284,20 @@ object ResolutionContext:
    * @param owner the symbol owning the member to import
    * @param member the name of the member to import
    * @param alias the name the member is imported as
-   * @param ownerSpan the source position of the owning symbol, used for error production
-   * @param memberSpan the source position of the member reference, used for error production
+   * @param ownerPosition the source position of the owning symbol, used for error production
+   * @param memberPosition the source position of the member reference, used for error production
    */
-  def importMember(owner: SymbolId, member: Identifier, alias: Identifier, ownerSpan: Span, memberSpan: Span): Resolution[Unit] =
-    val memberTerm = ResolutionContext.getMemberTerm(owner, member, ownerSpan)
-    val memberType = ResolutionContext.getMemberType(owner, member, ownerSpan)
+  def importMember(
+      owner: SymbolId,
+      member: Identifier,
+      alias: Identifier,
+      ownerPosition: SourcePosition,
+      memberPosition: SourcePosition
+  ): Resolution[Unit] =
+    val memberTerm = ResolutionContext.getMemberTerm(owner, member, ownerPosition)
+    val memberType = ResolutionContext.getMemberType(owner, member, ownerPosition)
     if memberTerm.isEmpty && memberType.isEmpty then
-      write(ResolutionError.UnknownName(member, memberSpan))
+      write(ResolutionError.UnknownName(member, memberPosition))
     else
       ResolutionContext.updateCurrentScope(scope =>
         val withTerm = memberTerm
@@ -337,7 +344,7 @@ object ResolutionContext:
     val undeclared = symbol(id)
     currentScope.localTerms.get(undeclared.name) match
       case Some((original, _)) =>
-        write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.span))
+        write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.position))
         original
       case None =>
         val sym = declareLocalSymbol(undeclared)
@@ -355,7 +362,7 @@ object ResolutionContext:
     val undeclared = symbol(id)
     currentScope.localTypes.get(undeclared.name) match
       case Some(original) =>
-        write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.span))
+        write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.position))
         original
       case None =>
         val sym = declareLocalSymbol(undeclared)

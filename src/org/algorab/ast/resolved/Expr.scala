@@ -1,8 +1,8 @@
 package org.algorab.ast.resolved
 
-import io.github.iltotore.pureparser.Span
 import org.algorab.ast.Identifier
 import org.algorab.ast.SymbolId
+import org.algorab.util.SourcePosition
 
 /**
  * An Algorab expression.
@@ -13,208 +13,208 @@ enum Expr:
    * A boolean literal.
    *
    * @param value the literal's value
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LBool(value: Boolean, span: Span)
+  case LBool(value: Boolean, position: SourcePosition)
 
   /**
    * An integer literal.
    *
    * @param value the literal's value
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LInt(value: Int, span: Span)
+  case LInt(value: Int, position: SourcePosition)
 
   /**
    * A float literal.
    *
    * @param value the literal's value
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LFloat(value: Double, span: Span)
+  case LFloat(value: Double, position: SourcePosition)
 
   /**
    * A character literal.
    *
    * @param value the literal's value
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LChar(value: Char, span: Span)
+  case LChar(value: Char, position: SourcePosition)
 
   /**
    * A string literal.
    *
    * @param value the literal's value
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LString(value: String, span: Span)
+  case LString(value: String, position: SourcePosition)
 
   /**
    * A boolean not.
    *
    * @param expr the expression to invert
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Not(expr: Expr, span: Span)
+  case Not(expr: Expr, position: SourcePosition)
 
   /**
    * An equality test.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Equal(left: Expr, right: Expr, span: Span)
+  case Equal(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * An non-equality test.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case NotEqual(left: Expr, right: Expr, span: Span)
+  case NotEqual(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A numeric inferiority test.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Less(left: Expr, right: Expr, span: Span)
+  case Less(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A numeric inferiority or equality test.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case LessEqual(left: Expr, right: Expr, span: Span)
+  case LessEqual(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A numeric superiority test.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Greater(left: Expr, right: Expr, span: Span)
+  case Greater(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A numeric superiority and equality test.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case GreaterEqual(left: Expr, right: Expr, span: Span)
+  case GreaterEqual(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A numeric plus. Usually does nothing.
    *
    * @param expr the prefixed expression
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Plus(expr: Expr, span: Span)
+  case Plus(expr: Expr, position: SourcePosition)
 
   /**
    * A numeric negation.
    *
    * @param expr the prefixed expression to negate
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Minus(expr: Expr, span: Span)
+  case Minus(expr: Expr, position: SourcePosition)
 
   /**
    * An addition.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Add(left: Expr, right: Expr, span: Span)
+  case Add(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A subtraction.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Sub(left: Expr, right: Expr, span: Span)
+  case Sub(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A multiplication.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Mul(left: Expr, right: Expr, span: Span)
+  case Mul(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A decimal division.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Div(left: Expr, right: Expr, span: Span)
+  case Div(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * An integer division.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case IntDiv(left: Expr, right: Expr, span: Span)
+  case IntDiv(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A modulo aka the remainder of an euclidean division.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Mod(left: Expr, right: Expr, span: Span)
+  case Mod(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A boolean and.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case And(left: Expr, right: Expr, span: Span)
+  case And(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * An boolean or.
    *
    * @param left the LHS
    * @param right the RHS
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Or(left: Expr, right: Expr, span: Span)
+  case Or(left: Expr, right: Expr, position: SourcePosition)
 
   /**
    * A variable call.
    *
    * @param symbol the unique id of the variable to call
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case VarCall(symbol: SymbolId, span: Span)
+  case VarCall(symbol: SymbolId, position: SourcePosition)
 
   /**
    * A value assignation to a variable.
    *
    * @param symbol the unique id of the variable to assign to
    * @param expr the expression whose value is to be assigned
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Assign(symbol: SymbolId, expr: Expr, span: Span)
+  case Assign(symbol: SymbolId, expr: Expr, position: SourcePosition)
 
   /**
    * A reference to the member of an expression.
@@ -223,26 +223,26 @@ enum Expr:
    *
    * @param expr the expression to select from
    * @param member the name of the member to select
-   * @param span the source position of this declaration
+   * @param position the source position of this declaration
    */
-  case Select(expr: Expr, member: Identifier, span: Span)
+  case Select(expr: Expr, member: Identifier, position: SourcePosition)
 
   /**
    * A function application.
    *
    * @param expr the function to apply
    * @param args the arguments to pass to the function
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Apply(expr: Expr, args: List[Expr], span: Span)
+  case Apply(expr: Expr, args: List[Expr], position: SourcePosition)
 
   /**
    * A block of one or more statements.
    *
    * @param statements this block's statements
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Block(statements: List[Statement], span: Span)
+  case Block(statements: List[Statement], position: SourcePosition)
 
   /**
    * An if-else expression.
@@ -250,18 +250,18 @@ enum Expr:
    * @param cond the condition to test
    * @param ifTrue the body to evaluate if the condition is true
    * @param ifFalse the body to evaluate if the condition is false
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, span: Span)
+  case If(cond: Expr, ifTrue: Expr, ifFalse: Expr, position: SourcePosition)
 
   /**
    * A while loop.
    *
    * @param cond the condition to test for each iteration
    * @param body the body to evaluate at each iteration
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case While(cond: Expr, body: Expr, span: Span)
+  case While(cond: Expr, body: Expr, position: SourcePosition)
 
   /**
    * A for loop.
@@ -269,18 +269,18 @@ enum Expr:
    * @param iterator the iterator's unique id
    * @param iterable the collection to iterate on
    * @param body the body to evaluate at each iteration
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case For(iterator: SymbolId, iterable: Expr, body: Expr, span: Span)
+  case For(iterator: SymbolId, iterable: Expr, body: Expr, position: SourcePosition)
 
   /**
    * An invalid expression.
    *
-   * @param span the source position of this expression
+   * @param position the source position of this expression
    */
-  case Invalid(span: Span)
+  case Invalid(position: SourcePosition)
 
   /**
    * The source position of this expression.
    */
-  def span: Span
+  def position: SourcePosition
