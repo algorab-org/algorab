@@ -4,11 +4,11 @@ import mill.*, scalalib.*, scalafmt.*
 
 object `package` extends ScalaModule, ScalafmtModule:
 
-  def scalaVersion = "3.8.4"
+  def scalaVersion = "3.9.0"
 
   def mvnDeps = Seq(
-    mvn"com.github.ghostdogpr::purelogic:0.2.3",
-    mvn"io.github.iltotore::pureparser:0.1.0",
+    mvn"com.github.ghostdogpr::purelogic:0.3.0",
+    mvn"io.github.iltotore::pureparser:1.0.0",
     mvn"io.github.iltotore::iron:3.3.2"
   )
 

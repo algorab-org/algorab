@@ -234,17 +234,22 @@ object ExprParser:
   def importPathParser(acc: List[(Identifier, SourcePosition)]): AlgorabParser[Token, (List[(Identifier, SourcePosition)], Import.Selector)] =
     Parser.inOrder(
       AlgorabParser.token[Token.Dot],
-      Parser.firstOf(
-        (
-          acc,
-          selectorParser
-        ),
-        importPathParser(acc :+ AlgorabParser.tokenPosition(identifierParser)),
-        (acc, Import.Selector.Simple.apply.tupled(AlgorabParser.tokenPosition(identifierParser)))
+      Parser.commit(
+        Parser.expect(
+          Parser.firstOf(
+            (
+              acc,
+              selectorParser
+            ),
+            importPathParser(acc :+ AlgorabParser.tokenPosition(identifierParser)),
+            (acc, Import.Selector.Simple.apply.tupled(AlgorabParser.tokenPosition(identifierParser)))
+          ),
+          "identifier or *"
+        )
       )
     )
 
-  val importParser: AlgorabParser[Token, Import] = Import.apply.tupled(
+  val importParser: AlgorabParser[Token, Statement] = Import.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.Import],
@@ -274,13 +279,23 @@ object ExprParser:
     "Valid expression"
   )
 
-  val statementParser: AlgorabParser[Token, Statement] = Parser.expect(
-    Parser.firstOf(
-      importParser,
-      definitionParser,
-      exprParser
+  val statementParser: AlgorabParser[Token, Statement] = Parser.recoverWith(
+    Parser.expect(
+      Parser.firstOf(
+        importParser,
+        definitionParser,
+        exprParser
+      ),
+      "Valid statement"
     ),
-    "Valid statement"
+    RecoverStrategy.skipUntil(
+      Parser.firstOf(
+        AlgorabParser.token[Token.Newline],
+        AlgorabParser.token[Token.DeIndent],
+        Parser.eof
+      ),
+      Expr.Invalid(SourcePosition.at(read[FileInfo].name, 0, 0))
+    )
   )
 
   val packageParser: AlgorabParser[Token, List[(Identifier, SourcePosition)]] = Parser.inOrder(
@@ -294,7 +309,7 @@ object ExprParser:
   val programParser: AlgorabParser[Token, Program] = Program.apply.tupled(
     Parser.inOrder(
       Parser.firstOf(packageParser, Nil),
-      Parser.repeatDiscard0(AlgorabParser.token[Token.Newline]),
+      Parser.repeatDiscard(AlgorabParser.token[Token.Newline]),
       Parser.separatedBy(statementParser, AlgorabParser.token[Token.Newline])
     )
   )
@@ -306,6 +321,12 @@ object ExprParser:
    * @return the parsed [[org.algorab.ast.raw\.Program]]
    */
   def apply(tokens: List[Token]): Reader[FileInfo] ?=> AlgorabProgram[Program] =
-    val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(programParser, Parser.eof))
+    val result = Parser(tokens.toIndexedSeq)(Parser.inOrder(
+      programParser,
+      Parser.recoverWith(
+        Parser.eof,
+        RecoverStrategy.skipUntil(Parser.eof, ())
+      )
+    ))
     Writer.writeAll(result.errors)
     Abort.extractOption(result.output, ())

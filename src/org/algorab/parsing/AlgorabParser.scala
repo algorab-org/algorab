@@ -11,6 +11,8 @@ import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
 import scala.reflect.TypeTest
+import scala.compiletime.constValue
+import io.github.iltotore.pureparser.RecoverStrategy
 
 /**
  * A program to be evaluated during the name resolution phase.
@@ -61,8 +63,8 @@ object AlgorabParser:
   /**
    * Expect the given token type for the next token.
    */
-  def token[A <: Token](using test: TypeTest[Token, A]): AlgorabParser[Token, Unit] = matching:
-    case test(value) => ()
+  inline def token[A <: Token](using test: TypeTest[Token, A]): AlgorabParser[Token, Unit] =
+    Parser.expect(Parser.ofType[Token, A], constValue[Token.ToString[A]])
 
   /**
    * Like [[Parser.span]], but using [[Token#position]] instead.
@@ -111,6 +113,9 @@ object AlgorabParser:
    * @return a parser behaving the same as the original parser with `f` applied to its result
    */
   def map[I, A, B](parser: AlgorabParser[I, A])(f: A => B): AlgorabParser[I, B] = f(parser)
+
+  def skipUntilPosition[I, A](until: Parser[I, Any], fallback: SourcePosition => A): Reader[FileInfo] ?=> RecoverStrategy[I, A] = new RecoverStrategy:
+    override def apply(parser: Parser[I, A]): Parser[I, A] = fallback(position(Parser.skipUntil(parser)))
 
   /**
     * Convert the given [[SourcePosition]] to a [[Span]].

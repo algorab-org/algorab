@@ -323,6 +323,63 @@ enum Token derives CanEqual:
   case As(position: SourcePosition)
 
   /**
+    * TODO
+    *
+    * @param position
+    */
+  case Invalid(position: SourcePosition)
+
+  case Unknown(source: String, position: SourcePosition)
+
+  /**
    * The source position of this token.
    */
   def position: SourcePosition
+
+object Token:
+
+  type ToString[A <: Token] = A match
+    case Token.LBool        => "true or false"
+    case Token.LInt         => "Int literal"
+    case Token.LFloat       => "Float literal"
+    case Token.LChar        => "Char literal"
+    case Token.LString      => "String literal"
+    case Token.Ident        => "identifier"
+    case Token.Indent       => "indentation"
+    case Token.DeIndent     => "de-indentation"
+    case Token.Newline      => "new line"
+    case Token.ParenOpen    => "("
+    case Token.ParenClosed  => ")"
+    case Token.Comma        => ","
+    case Token.Colon        => ":"
+    case Token.Dot          => "."
+    case Token.Plus         => "+"
+    case Token.Minus        => "-"
+    case Token.Mul          => "*"
+    case Token.Div          => "/"
+    case Token.IntDiv       => "//"
+    case Token.Percent      => "%"
+    case Token.Equal        => "="
+    case Token.EqualEqual   => "=="
+    case Token.NotEqual     => "!="
+    case Token.Less         => "<"
+    case Token.LessEqual    => "<="
+    case Token.Greater      => ">"
+    case Token.GreaterEqual => ">="
+    case Token.And          => "and"
+    case Token.Or           => "or"
+    case Token.Not          => "not"
+    case Token.If           => "if"
+    case Token.Then         => "then"
+    case Token.Else         => "else"
+    case Token.For          => "for"
+    case Token.While        => "while"
+    case Token.Do           => "do"
+    case Token.In           => "in"
+    case Token.Def          => "def"
+    case Token.Val          => "val"
+    case Token.Mut          => "mut"
+    case Token.Package      => "package"
+    case Token.Import       => "import"
+    case Token.As           => "as"
+    case Token.Invalid      => "<invalid>"
