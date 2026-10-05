@@ -328,5 +328,7 @@ object ExprParser:
         RecoverStrategy.skipUntil(Parser.eof, ())
       )
     ))
-    Writer.writeAll(result.errors)
+    Writer.writeAll(result.errors.map(error =>
+      ParsingError(error.expected, tokens(math.min(tokens.size, error.at)).position)
+    ))
     Abort.extractOption(result.output, ())

@@ -4,6 +4,12 @@ import org.algorab.util.SourcePosition.Point
 
 case class SourcePosition(file: FileName, start: Point, end: Point):
 
+  val numberOfLines: Int = end.line - start.line
+
+  val lowestColumn: Int = math.min(start.column, end.column)
+
+  val highestColumn: Int = math.max(start.column, end.column)
+
   def union(other: SourcePosition): SourcePosition =
     if file == other.file then
       SourcePosition(

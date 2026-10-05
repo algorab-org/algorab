@@ -337,5 +337,9 @@ object TokenLexer:
    */
   def apply(source: String): Reader[FileInfo] ?=> AlgorabProgram[List[Token]] =
     val result = Parser(source)(indentationParser(tokenListParser, source))
-    Writer.writeAll(result.errors)
+    val info = read[FileInfo]
+    Writer.writeAll(result.errors.map(error =>
+      val (line, column) = info.lineAndColumn(error.at)
+      ParsingError(error.expected, SourcePosition.at(info.name, line, column))
+    ))
     Abort.extractOption(result.output, ())

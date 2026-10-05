@@ -12,17 +12,17 @@ sealed trait Symbol derives CanEqual:
    */
   def owner: Option[SymbolId]
 
+  /**
+   * The name of this symbol, usually used for reporting purpose.
+   */
+  def name: Identifier
+
 object Symbol:
 
   /**
    * A valid symbol.
    */
   sealed trait Valid extends Symbol:
-
-    /**
-     * The name of this symbol, usually used for reporting purpose.
-     */
-    def name: Identifier
 
     /**
      * The source position of this symbol's declaration.
@@ -128,3 +128,5 @@ object Symbol:
    */
   case object Invalid extends Symbol:
     override def owner: Option[SymbolId] = None
+
+    override def name: Identifier = Identifier.assume("<invalid>")

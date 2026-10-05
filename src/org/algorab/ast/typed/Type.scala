@@ -1,6 +1,7 @@
 package org.algorab.ast.typed
 
 import org.algorab.ast.SymbolId
+import org.algorab.ast.Symbol
 
 /**
  * A parsed type.
