@@ -3,6 +3,7 @@
 import mill.*, scalalib.*, scalafmt.*
 
 object `package` extends ScalaModule, ScalafmtModule:
+  self =>
 
   def scalaVersion = "3.9.0"
 
@@ -14,7 +15,8 @@ object `package` extends ScalaModule, ScalafmtModule:
 
   def scalacOptions = Seq(
     "-Wvalue-discard", 
-    "-Wnonunit-statement", 
+    "-Wnonunit-statement",
+    "-deprecation",
     "-Wconf:msg=(unused.*value|discarded.*value|pure.*statement):error",
     "-language:strictEquality"
   )
@@ -23,3 +25,5 @@ object `package` extends ScalaModule, ScalafmtModule:
     def utestVersion = "0.10.0-RC1"
 
     def compileResources = resources
+
+    def scalacOptions = self.scalacOptions()
