@@ -3,6 +3,7 @@ package org.algorab.show
 import org.algorab.ast.typed.Type
 import org.algorab.typing.TypePattern
 import org.algorab.util.SourcePosition
+import org.algorab.AlgorabError
 
 object Printer:
 
@@ -21,7 +22,7 @@ object Printer:
       if position.numberOfLines == 0 then
         val span = info.lineSpans(position.start.line)
         val line = source.slice(span.start, span.end)
-        val arrowLine = " " * (position.start.column - span.start) + "^" * (position.end.column - position.start.column)
+        val arrowLine = " " * position.start.column + "^" * (position.end.column - position.start.column)
         s"$line\n$arrowLine"
 
       else
@@ -31,3 +32,6 @@ object Printer:
         else lines
 
     case None => ""
+
+  def apply(context: ShowContext)(errors: Seq[AlgorabError]): Seq[String] =
+    Show(context)(errors.map(_.show))

@@ -29,5 +29,5 @@ object AlgorabError:
 
     override def show: Show[String] =
       s"""[error] ${ShowContext.getSource(position.file).fold("")(_._1.name)}
-         |${showPosition(position)}
-         |$message"""
+${showPosition(position)}
+$message"""

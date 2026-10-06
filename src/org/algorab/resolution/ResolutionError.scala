@@ -50,7 +50,7 @@ enum ResolutionError extends AlgorabError.Frontend:
   case MultipleScriptFiles(position: SourcePosition) // TODO use SourcePosition
 
   override def message: Show[String] = this match
-    case UnknownName(name, _)          => s"No variable, functiosn or type named $name found. Is it imported?"
+    case UnknownName(name, _)          => s"No variable, function or type named $name found. Is it imported?"
     case ForwardDeclaration(symbol, _) => s"${symbol.name} is used before its declaration. It is declared at ${symbol.position}."
     case AlreadyDeclared(symbol, _)    => s"${symbol.name} is already declared at ${symbol.position}."
     case NotANamespace(symbol, _)      => s"${symbol.name} cannot be used as a namespace."

@@ -29,8 +29,7 @@ object AlgorabParser:
     * @param source the source's content
     * @return the [[Program]] parsed from the source
     */
-  def apply(file: FileName, source: String): AlgorabProgram[Program] =
-    Reader(FileInfo.fromSource(file, source))(ExprParser(TokenLexer(source)))
+  def apply(info: FileInfo, source: String): AlgorabProgram[Program] = Reader(info)(ExprParser(TokenLexer(source)))
 
   /**
    * Try the given parser.
