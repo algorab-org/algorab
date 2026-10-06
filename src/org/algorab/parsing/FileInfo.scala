@@ -9,9 +9,15 @@ import org.algorab.util.FileName
   * @param name the name (usually a relative path) of the file to parse
   * @param lineSpans the absolute span of each 
   */
-case class FileInfo(name: FileName, lineSpans: Array[Span]):
+case class FileInfo(name: FileName, lineSpans: Seq[Span]):
 
-  private val lineSpansAndNumber: Array[(Span, Int)] = lineSpans.zipWithIndex
+  private val lineSpansAndNumber: Seq[(Span, Int)] =
+    lineSpans
+      .appended(Span(Int.MaxValue, Int.MaxValue))
+      .sliding(2)
+      .map(spans => Span(spans(0).start, spans(1).start))
+      .zipWithIndex
+      .toSeq
 
   /**
     * Get the line and column of the character sitting at the given 1-dimensional position.
@@ -37,8 +43,11 @@ object FileInfo:
   def fromSource(name: FileName, source: String): FileInfo = FileInfo(
     name = name,
     lineSpans =
-      source
-        .split("(\n|\r(?!\n))")
-        .scanLeft(Span(0, 0))((spanBefore, line) => Span(spanBefore.end, spanBefore.end + line.length + 1))
-        .tail
+      val breaks = """\r\n|\r|\n""".r.findAllMatchIn(source).toSeq
+
+      breaks
+        .scanLeft(0)((_, m) => m.end)
+        .zip(breaks.map(_.start) :+ source.length)
+        .map(Span.apply)
+        .toIndexedSeq
   )

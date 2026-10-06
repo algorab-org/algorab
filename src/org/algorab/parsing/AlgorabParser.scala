@@ -31,6 +31,9 @@ object AlgorabParser:
     */
   def apply(info: FileInfo, source: String): AlgorabProgram[Program] = Reader(info)(ExprParser(TokenLexer(source)))
 
+  def apply(name: FileName, source: String): AlgorabProgram[Program] =
+    AlgorabParser(FileInfo.fromSource(name, source), source)
+
   /**
    * Try the given parser.
    *
