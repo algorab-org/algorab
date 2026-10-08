@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import java.nio.file.Files
 import java.util.stream.Collectors
 import java.util.NoSuchElementException
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 import scala.quoted.*
 import utest.*
 import scala.util.Using
@@ -23,6 +23,7 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import org.algorab.util.FileName
+import org.algorab.show.Printer
 
 object resources:
 
@@ -64,14 +65,21 @@ object resources:
     Using.resource(Source.fromInputStream(classOf[resources.type].getResourceAsStream(path)))(_.getLines().toSeq)
 
   def runGoldenTest(codes: List[(FileName, String)], input: String, expectedOutput: Option[String]): Unit =
-    val (output, errors, result) = Await.result(
+    val (consoleOut, result) = Await.result(
       Future(
         AlgorabProgram.withInput(input)(runProgram(codes*))
       )(using ExecutionContext.global),
       3.seconds
     )
 
-    assert(output != null && errors.isEmpty && result.isDefined && expectedOutput.forall(_ == output))
+    val errors = result.printedErrors
+
+    assert(
+      consoleOut != null,
+      errors.isEmpty,
+      result.output.isDefined,
+      expectedOutput.forall(_ == consoleOut)
+    )
 
   /** Transparent inline entry point that triggers [[goldenTestsImpl]] at the call site.
     *

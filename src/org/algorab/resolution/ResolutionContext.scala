@@ -188,7 +188,7 @@ object ResolutionContext:
   def getLocalTerm(name: Identifier, position: SourcePosition): Resolution[SymbolId] =
     findInScopes(_.localTerms.get(name)) match
       case Some((id, initialized)) =>
-        if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id), position))
+        if !initialized then write(ResolutionError.ForwardDeclaration(get.symbols(id).asInstanceOf[Symbol.Valid], position))
         id
       case None =>
         write(ResolutionError.UnknownName(name, position))
@@ -344,7 +344,7 @@ object ResolutionContext:
     val undeclared = symbol(id)
     currentScope.localTerms.get(undeclared.name) match
       case Some((original, _)) =>
-        write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.position))
+        write(ResolutionError.AlreadyDeclared(get.symbols(original).asInstanceOf[Symbol.Valid], undeclared.position))
         original
       case None =>
         val sym = declareLocalSymbol(undeclared)
@@ -362,7 +362,7 @@ object ResolutionContext:
     val undeclared = symbol(id)
     currentScope.localTypes.get(undeclared.name) match
       case Some(original) =>
-        write(ResolutionError.AlreadyDeclared(get.symbols(original), undeclared.position))
+        write(ResolutionError.AlreadyDeclared(get.symbols(original).asInstanceOf[Symbol.Valid], undeclared.position))
         original
       case None =>
         val sym = declareLocalSymbol(undeclared)

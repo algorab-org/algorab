@@ -11,6 +11,8 @@ import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
 import scala.reflect.TypeTest
+import scala.compiletime.constValue
+import io.github.iltotore.pureparser.RecoverStrategy
 
 /**
  * A program to be evaluated during the name resolution phase.
@@ -23,12 +25,21 @@ object AlgorabParser:
   /**
     * Parse the given textual source.
     *
+    * @param file the source file's info
+    * @param source the source's content
+    * @return the [[Program]] parsed from the source
+    */
+  def apply(info: FileInfo, source: String): AlgorabProgram[Program] = Reader(info)(ExprParser(TokenLexer(source)))
+
+  /**
+    * Parse the given textual source.
+    *
     * @param file the source file's name
     * @param source the source's content
     * @return the [[Program]] parsed from the source
     */
-  def apply(file: FileName, source: String): AlgorabProgram[Program] =
-    Reader(FileInfo.fromSource(file, source))(ExprParser(TokenLexer(source)))
+  def apply(name: FileName, source: String): AlgorabProgram[Program] =
+    AlgorabParser(FileInfo.fromSource(name, source), source)
 
   /**
    * Try the given parser.
@@ -61,8 +72,8 @@ object AlgorabParser:
   /**
    * Expect the given token type for the next token.
    */
-  def token[A <: Token](using test: TypeTest[Token, A]): AlgorabParser[Token, Unit] = matching:
-    case test(value) => ()
+  inline def token[A <: Token](using test: TypeTest[Token, A]): AlgorabParser[Token, Unit] =
+    Parser.expect(Parser.ofType[Token, A], constValue[Token.ToString[A]])
 
   /**
    * Like [[Parser.span]], but using [[Token#position]] instead.
@@ -111,6 +122,15 @@ object AlgorabParser:
    * @return a parser behaving the same as the original parser with `f` applied to its result
    */
   def map[I, A, B](parser: AlgorabParser[I, A])(f: A => B): AlgorabParser[I, B] = f(parser)
+
+  /**
+    * Skip tokens until the given parser succeeds, then use the given fallback value.
+    *
+    * @param until the parser to check if the recovering succeeded
+    * @param fallback the fallback value
+    */
+  def skipUntilPosition[I, A](until: Parser[I, Any], fallback: SourcePosition => A): Reader[FileInfo] ?=> RecoverStrategy[I, A] = new RecoverStrategy:
+    override def apply(parser: Parser[I, A]): Parser[I, A] = fallback(position(Parser.skipUntil(parser)))
 
   /**
     * Convert the given [[SourcePosition]] to a [[Span]].

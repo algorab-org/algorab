@@ -7,6 +7,7 @@ import org.algorab.util.FileName
 import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.ast.Symbol.Root.position
 
 /**
  * A [[Token]] parser, also called a lexer.
@@ -87,7 +88,16 @@ object TokenLexer:
             "Valid Char between '...'"
           )
         ),
-        Parser.commit(Parser.expect(Parser.literal('\''), "`'` to close the char. If you want multiple characters, use a String \"...\" instead."))
+        Parser.recoverWith(
+          Parser.expect(
+            Parser.literal('\''),
+            "Missing `'` to close the char. If you want multiple characters, use a String \"...\" instead."
+          ),
+          RecoverStrategy.firstOf(
+            RecoverStrategy.skipThenRetryUntil(Parser.firstOf(Parser.newline, Parser.eof)),
+            RecoverStrategy.skipUntil(Parser.firstOf(Parser.newline, Parser.eof), ())
+          )
+        )
       )
     )
   )
@@ -177,7 +187,7 @@ object TokenLexer:
       keywordParser,
       identifierParser
     ),
-    "Token"
+    "Valid token"
   )
 
   val commentParser: AlgorabParser[Char, Unit] = Parser.spaced(
@@ -187,21 +197,32 @@ object TokenLexer:
           Parser.literal("---"),
           Parser.recoverWith(
             Parser.expect(
-              Parser.inOrder(Parser.repeatUntil0(Parser.next, Parser.literal("---")), Parser.literal("---")),
+              Parser.inOrder(Parser.repeatUntil(Parser.next, Parser.literal("---")), Parser.literal("---")),
               "`---` closing the multiline comment"
             ),
             RecoverStrategy.skipUntil(Parser.eof, ())
           )
         ),
-        Parser.inOrder(Parser.literal("--"), Parser.repeatUntil0(Parser.next, Parser.firstOf(Parser.newline, Parser.eof)))
+        Parser.inOrder(Parser.literal("--"), Parser.repeatUntil(Parser.next, Parser.firstOf(Parser.newline, Parser.eof)))
       )
     )
   )
 
-  val tokenListParser: AlgorabParser[Char, List[Token]] = Parser.repeatUntil0(
+  val commentSurroundedTokenParser: AlgorabParser[Char, Token] = Parser.inOrder(
+    Parser.repeatDiscard(commentParser),
+    Parser.spaced(
+      Parser.firstOf(
+        tokenParser,
+        Token.Unknown.apply.tupled(AlgorabParser.position(Parser.repeatUntil(Parser.next, Parser.unit(tokenParser)).mkString))
+      )
+    ),
+    Parser.repeatDiscard(commentParser)
+  )
+
+  val tokenListParser: AlgorabParser[Char, List[Token]] = Parser.repeatUntil(
     Parser.recoverWith(
-      Parser.inOrder(Parser.repeatDiscard0(commentParser), Parser.spaced(tokenParser), Parser.repeatDiscard0(commentParser)),
-      RecoverStrategy.skipThenRetryUntil(Parser.eof)
+      commentSurroundedTokenParser,
+      AlgorabParser.skipUntilPosition(Parser.firstOf(commentSurroundedTokenParser, Parser.eof), Token.Invalid.apply)
     ),
     Parser.eof
   )
@@ -298,7 +319,9 @@ object TokenLexer:
         case _ => withNewline
 
       withParenHandling.copy(
-        output = withParenHandling.output :+ token,
+        output = token match
+          case Token.Invalid(_) => withParenHandling.output
+          case _ => withParenHandling.output :+ token,
         pendingLayout = isLayoutStart(token),
         previousPosition = SourcePosition.Point(line, column)
       )
@@ -314,5 +337,9 @@ object TokenLexer:
    */
   def apply(source: String): Reader[FileInfo] ?=> AlgorabProgram[List[Token]] =
     val result = Parser(source)(indentationParser(tokenListParser, source))
-    Writer.writeAll(result.errors)
+    val info = read[FileInfo]
+    Writer.writeAll(result.errors.map(error =>
+      val (line, column) = info.lineAndColumn(error.at)
+      ParsingError(error.expected, SourcePosition.at(info.name, line, column))
+    ))
     Abort.extractOption(result.output, ())

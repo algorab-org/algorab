@@ -3,7 +3,7 @@ package org.algorab.util
 /**
  * An error occurring during console input.
  */
-enum ConsoleError:
+enum ConsoleError derives CanEqual:
 
   /**
    * The input is not a valid integer.
@@ -23,3 +23,9 @@ enum ConsoleError:
    * The end of the input was reached.
    */
   case EndOfInput
+
+  def message: String = this match
+    case InvalidInt(got) => s"Invalid Int.\nGot: $got"
+    case InvalidFloat(got) => s"Invalid Float.\nGot: $got"
+    case EndOfInput => "No remaining input."
+  

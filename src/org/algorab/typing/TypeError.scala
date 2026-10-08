@@ -1,13 +1,17 @@
 package org.algorab.typing
 
 import org.algorab.ast.SymbolId
+import org.algorab.ast.Symbol
 import org.algorab.ast.typed.Type
 import org.algorab.util.SourcePosition
+import org.algorab.AlgorabError
+import org.algorab.show.Show
+import org.algorab.show.Printer
 
 /**
  * An error occurring during the typing phase.
  */
-enum TypeError:
+enum TypeError extends AlgorabError.Frontend:
 
   /**
    * The given types do not match any of the expected ones.
@@ -49,10 +53,30 @@ enum TypeError:
    */
   case UnsupportedOOP(position: SourcePosition)
 
-  /**
-   * The source position where the error occurred.
-   */
-  def position: SourcePosition
+  override def message: Show[String] = this match
+    case Mismatch(expected, got, _) =>
+      val showExpected = expected match
+        case Nil => "nothing"
+        case List(expected) => Printer.showTypePattern(expected)
+        case _ => expected.map(Printer.showTypePattern).mkString("\n- ", "\n- ", "")
+      
+      s"""Type mismatch.
+         |
+         |Expected: $showExpected
+         |Got: ${got.map(Printer.showType).mkString(", ")}"""
+
+    case ApplyOnNonFunction(got, _) =>
+      s"""Function application such as `foo(...)` can only be done on a function or an array.
+         |Got: ${Printer.showType(got)}"""
+
+    case ApplyMismatch(expectedParams, got, _) =>
+      s"""Parameter mismatch.
+         |
+         |Expected parameters: ${expectedParams.map(Printer.showType).mkString(", ")}
+         |Got: ${got.map(Printer.showType).mkString(", ")}"""
+    case RecursiveInference(_) => "Recursive definition needs explicit type."
+    case UnsupportedOOP(_) => "Object-oriented programming (OOP) is not supported yet."
+  
 
 object TypeError:
 

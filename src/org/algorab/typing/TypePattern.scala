@@ -1,6 +1,8 @@
 package org.algorab.typing
 
 import org.algorab.ast.typed.Type as TypeValue
+import org.algorab.ast.SymbolId
+import org.algorab.ast.Symbol
 
 /**
  * A type pattern, usually used to express expected types.

@@ -11,10 +11,23 @@ import org.algorab.resolution.Resolver
 import org.algorab.runtime.VM
 import org.algorab.typing.Typer
 import org.algorab.util.FileName
+import org.algorab.show.ShowContext
+import org.algorab.parsing.FileInfo
 
+/**
+  * Analyze an Algorab program represented by its sources.
+  * It's typically all the frontend phases.
+  *
+  * @param sources the program sources
+  * @return the typed modules
+  */
 def analyzeProgram(sources: (FileName, String)*): AlgorabProgram[Seq[Program]] =
-  val parsed = sources.map(AlgorabParser.apply)
+  val sourceInfos = sources.map((name, source) => name -> (FileInfo.fromSource(name, source), source))
+  AlgorabProgram.registerSources(sourceInfos.toMap)
+  val parsed = sourceInfos.map((_, infoSource) => AlgorabParser(infoSource._1, infoSource._2))
   val (resolvedContext, resolvedPrograms) = Resolver(parsed)
+  AlgorabProgram.registerSymbols(resolvedContext.symbols)
+  
   Typer(resolvedContext.symbols, resolvedContext.declarations)(resolvedPrograms)
 
 /**

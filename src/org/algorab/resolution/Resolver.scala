@@ -98,6 +98,7 @@ object Resolver:
               case importClause: raw.Import =>
                 resolveImport(importClause)
                 None
+              case _: raw.Expr.Invalid => None
               case expr: raw.Expr =>
                 write(ResolutionError.TopLevelStatementInModule(expr.position))
                 None
