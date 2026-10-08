@@ -14,6 +14,13 @@ import org.algorab.util.FileName
 import org.algorab.show.ShowContext
 import org.algorab.parsing.FileInfo
 
+/**
+  * Analyze an Algorab program represented by its sources.
+  * It's typically all the frontend phases.
+  *
+  * @param sources the program sources
+  * @return the typed modules
+  */
 def analyzeProgram(sources: (FileName, String)*): AlgorabProgram[Seq[Program]] =
   val sourceInfos = sources.map((name, source) => name -> (FileInfo.fromSource(name, source), source))
   AlgorabProgram.registerSources(sourceInfos.toMap)

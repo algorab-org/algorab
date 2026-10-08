@@ -7,6 +7,12 @@ import org.algorab.ast.SymbolId
 import org.algorab.show.Show
 import org.algorab.util.SourcePosition
 
+/**
+  * A parsing error.
+  *
+  * @param expected the expected pattern
+  * @param position the position of the error
+  */
 case class ParsingError(expected: ParseError.Pattern[Char | Token], position: SourcePosition) extends AlgorabError.Frontend:
 
   private given CanEqual[Char | Token, Char | Token] = CanEqual.derived

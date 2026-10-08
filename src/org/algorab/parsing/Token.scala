@@ -323,12 +323,20 @@ enum Token derives CanEqual:
   case As(position: SourcePosition)
 
   /**
-    * TODO
+    * An invalid token.
     *
-    * @param position
+    * @param position the source position of this token
     */
   case Invalid(position: SourcePosition)
 
+  /**
+   * Another type of invalid token.
+   * The difference with [[Invalid]] is that it is considered a normal
+   * token when parsing indentation.
+   * 
+   * @param source the source code of this token, used for reporting purpose
+   * @param position the source position of this token
+   */
   case Unknown(source: String, position: SourcePosition)
 
   /**
@@ -338,7 +346,10 @@ enum Token derives CanEqual:
 
 object Token:
 
-  type ToString[A <: Token] = A match
+  /**
+    * The textual representation of a token type.
+    */
+  type ToString[A <: Token] <: String = A match
     case Token.LBool        => "true or false"
     case Token.LInt         => "Int literal"
     case Token.LFloat       => "Float literal"
@@ -383,3 +394,4 @@ object Token:
     case Token.Import       => "import"
     case Token.As           => "as"
     case Token.Invalid      => "<invalid>"
+    case Token.Unknown      => "<unknown>"

@@ -4,6 +4,9 @@ import io.github.iltotore.iron.RefinedType
 import io.github.iltotore.iron.constraint.any.Not
 import io.github.iltotore.iron.constraint.string.Blank
 
+/**
+  * A file name.
+  */
 type FileName = FileName.T
 object FileName extends RefinedType[String, Not[Blank]]:
 

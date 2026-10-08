@@ -25,12 +25,19 @@ object AlgorabParser:
   /**
     * Parse the given textual source.
     *
-    * @param file the source file's name
+    * @param file the source file's info
     * @param source the source's content
     * @return the [[Program]] parsed from the source
     */
   def apply(info: FileInfo, source: String): AlgorabProgram[Program] = Reader(info)(ExprParser(TokenLexer(source)))
 
+  /**
+    * Parse the given textual source.
+    *
+    * @param file the source file's name
+    * @param source the source's content
+    * @return the [[Program]] parsed from the source
+    */
   def apply(name: FileName, source: String): AlgorabProgram[Program] =
     AlgorabParser(FileInfo.fromSource(name, source), source)
 
@@ -116,6 +123,12 @@ object AlgorabParser:
    */
   def map[I, A, B](parser: AlgorabParser[I, A])(f: A => B): AlgorabParser[I, B] = f(parser)
 
+  /**
+    * Skip tokens until the given parser succeeds, then use the given fallback value.
+    *
+    * @param until the parser to check if the recovering succeeded
+    * @param fallback the fallback value
+    */
   def skipUntilPosition[I, A](until: Parser[I, Any], fallback: SourcePosition => A): Reader[FileInfo] ?=> RecoverStrategy[I, A] = new RecoverStrategy:
     override def apply(parser: Parser[I, A]): Parser[I, A] = fallback(position(Parser.skipUntil(parser)))
 

@@ -45,9 +45,19 @@ enum ResolutionError extends AlgorabError.Frontend:
    */
   case NotANamespace(symbol: Symbol, position: SourcePosition)
 
+  /**
+    * A non-definition statement is at the top-level of a non-script module, which is forbidden.
+    *
+    * @param position the source position where the error occurred
+    */
   case TopLevelStatementInModule(position: SourcePosition)
 
-  case MultipleScriptFiles(position: SourcePosition) // TODO use SourcePosition
+  /**
+    * A program can only have one script file, not multiple.
+    *
+    * @param position the source position where the error occurred
+    */
+  case MultipleScriptFiles(position: SourcePosition)
 
   override def message: Show[String] = this match
     case UnknownName(name, _)          => s"No variable, function or type named $name found. Is it imported?"

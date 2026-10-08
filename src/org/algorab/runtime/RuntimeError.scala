@@ -38,6 +38,9 @@ enum RuntimeError extends AlgorabError:
    */
   def position: SourcePosition
 
+  /**
+    * The error message.
+    */
   def message: Show[String] = this match
     case TypeMismatch(expected, got, _) =>
       s"""Type mismatch.

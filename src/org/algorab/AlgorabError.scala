@@ -17,14 +17,26 @@ import org.algorab.show.Printer.showPosition
  */
 trait AlgorabError:
 
+  /**
+    * The textual representation of this error.
+    */
   def show: Show[String]
 
 object AlgorabError:
 
+  /**
+    * An error occuring during a frontend phase.
+    */
   trait Frontend extends AlgorabError:
 
+    /**
+      * The source position of this expression.
+      */
     def position: SourcePosition
     
+    /**
+      * The error message.
+      */
     def message: Show[String]
 
     override def show: Show[String] =
