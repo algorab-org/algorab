@@ -2,10 +2,13 @@
 
 import mill.*, scalalib.*, scalafmt.*
 
-object `package` extends ScalaModule, ScalafmtModule:
-  self =>
+object versions:
+  def scala: String = "3.9.0"
 
-  def scalaVersion = "3.9.0"
+object `package` extends ScalaModule, ScalafmtModule:
+  main =>
+
+  def scalaVersion = versions.scala
 
   def mvnDeps = Seq(
     mvn"com.github.ghostdogpr::purelogic:0.3.0",
@@ -22,8 +25,22 @@ object `package` extends ScalaModule, ScalafmtModule:
   )
 
   object test extends ScalaTests, TestModule.Utest:
+
     def utestVersion = "0.10.0-RC1"
 
     def compileResources = resources
 
-    def scalacOptions = self.scalacOptions()
+    def scalacOptions = main.scalacOptions()
+
+  object cli extends ScalaModule, ScalafmtModule:
+    
+    def scalaVersion = versions.scala
+
+    def scalacOptions = main.scalacOptions()
+
+    def moduleDeps = Seq(main)
+
+    def mvnDeps = Seq(
+      mvn"com.lihaoyi::mainargs:0.7.8",
+      mvn"com.lihaoyi::os-lib:0.11.8"
+    )
