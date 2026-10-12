@@ -10,6 +10,7 @@ import org.algorab.util.SourcePosition
 import org.algorab.AlgorabError
 import org.algorab.show.Show
 import org.algorab.show.Printer
+import fansi.Str
 
 /**
  * An error occurring during the runtime phase.
@@ -50,7 +51,7 @@ enum RuntimeError extends AlgorabError:
 
     case Console(error, _) => error.message
 
-  override def show: Show[String] = message
+  override def show: Show[Str] = message
 
 object RuntimeError:
 

@@ -6,6 +6,8 @@ import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.show.Show
 import org.algorab.util.SourcePosition
+import fansi.Str
+import org.algorab.show.str
 
 /**
  * An error occurring during the name resolution phase.
@@ -59,10 +61,10 @@ enum ResolutionError extends AlgorabError.Frontend:
     */
   case MultipleScriptFiles(position: SourcePosition)
 
-  override def message: Show[String] = this match
-    case UnknownName(name, _)          => s"No variable, function or type named $name found. Is it imported?"
-    case ForwardDeclaration(symbol, _) => s"${symbol.name} is used before its declaration. It is declared at ${symbol.position}."
-    case AlreadyDeclared(symbol, _)    => s"${symbol.name} is already declared at ${symbol.position}."
-    case NotANamespace(symbol, _)      => s"${symbol.name} cannot be used as a namespace."
-    case TopLevelStatementInModule(_)  => s"Top-level statements are not allowed in non-script modules."
-    case MultipleScriptFiles(_)        => s"You can only have one script file per project."
+  override def message: Show[Str] = this match
+    case UnknownName(name, _)          => str"No variable, function or type named $name found. Is it imported?"
+    case ForwardDeclaration(symbol, _) => str"${symbol.name} is used before its declaration. It is declared at ${symbol.position}."
+    case AlreadyDeclared(symbol, _)    => str"${symbol.name} is already declared at ${symbol.position}."
+    case NotANamespace(symbol, _)      => str"${symbol.name} cannot be used as a namespace."
+    case TopLevelStatementInModule(_)  => str"Top-level statements are not allowed in non-script modules."
+    case MultipleScriptFiles(_)        => str"You can only have one script file per project."

@@ -34,4 +34,4 @@ def runAlgorab[A](program: Abort[String] ?=> AlgorabProgram[A]): Unit = exitOnAb
   val result = AlgorabProgram(program)
 
   if result.errors.isEmpty then ()
-  else fail(Console.RED + result.printedErrors.mkString(s"$line\n", s"\n$line\n", s"\n$line") + Console.RESET)
+  else fail(result.printedErrors.mkString("\n"))

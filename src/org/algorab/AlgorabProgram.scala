@@ -8,6 +8,7 @@ import org.algorab.ast.Symbol
 import org.algorab.util.FileName
 import org.algorab.parsing.FileInfo
 import org.algorab.show.Printer
+import fansi.Str
 
 /**
  * A program representation universal across all phases. Can produce 0 or more [[AlgorabError]] and stop.
@@ -28,7 +29,7 @@ object AlgorabProgram:
     /**
       * The errors produced during the program execution, pretty printed.
       */
-    lazy val printedErrors: Seq[String] = Printer(showContext)(errors)
+    lazy val printedErrors: Seq[Str] = Printer(showContext)(errors)
 
   /**
     * Evaluate all the effects of an [[AlgorabProgram]] except the [[Console]] one.

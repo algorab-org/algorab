@@ -12,6 +12,7 @@ object `package` extends ScalaModule, ScalafmtModule:
 
   def mvnDeps = Seq(
     mvn"com.github.ghostdogpr::purelogic:0.3.0",
+    mvn"com.lihaoyi::fansi:0.5.1",
     mvn"io.github.iltotore::pureparser:1.0.0",
     mvn"io.github.iltotore::iron:3.3.2"
   )

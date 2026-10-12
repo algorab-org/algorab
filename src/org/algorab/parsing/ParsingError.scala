@@ -6,6 +6,7 @@ import org.algorab.AlgorabError
 import org.algorab.ast.SymbolId
 import org.algorab.show.Show
 import org.algorab.util.SourcePosition
+import fansi.Str
 
 /**
   * A parsing error.
@@ -17,7 +18,7 @@ case class ParsingError(expected: ParseError.Pattern[Char | Token], position: So
 
   private given CanEqual[Char | Token, Char | Token] = CanEqual.derived
 
-  override def message: Show[String] = expected match
+  override def message: Show[Str] = expected match
     case Pattern.Token(token)  => s"Expected: $token"
     case Pattern.Label(label)  => s"Expected: $label"
     case Pattern.SomethingElse => "Expected something else"
