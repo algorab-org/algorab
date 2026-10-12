@@ -1,12 +1,15 @@
 package org.algorab.typing
 
-import org.algorab.ast.SymbolId
-import org.algorab.ast.Symbol
-import org.algorab.ast.typed.Type
-import org.algorab.util.SourcePosition
+import fansi.Str
 import org.algorab.AlgorabError
-import org.algorab.show.Show
+import org.algorab.ast.Symbol
+import org.algorab.ast.SymbolId
+import org.algorab.ast.typed.Type
 import org.algorab.show.Printer
+import org.algorab.show.Show
+import org.algorab.show.str
+import org.algorab.show.strStripMargin
+import org.algorab.util.SourcePosition
 
 /**
  * An error occurring during the typing phase.
@@ -53,30 +56,27 @@ enum TypeError extends AlgorabError.Frontend:
    */
   case UnsupportedOOP(position: SourcePosition)
 
-  override def message: Show[String] = this match
+  override def message: Show[Str] = this match
     case Mismatch(expected, got, _) =>
       val showExpected = expected match
-        case Nil => "nothing"
+        case Nil            => "nothing"
         case List(expected) => Printer.showTypePattern(expected)
-        case _ => expected.map(Printer.showTypePattern).mkString("\n- ", "\n- ", "")
-      
-      s"""Type mismatch.
-         |
-         |Expected: $showExpected
-         |Got: ${got.map(Printer.showType).mkString(", ")}"""
+        case _              => expected.map(Printer.showTypePattern).mkString("\n- ", "\n- ", "")
+
+      str"""Type mismatch.
+           |Expected: $showExpected
+           |Got: ${got.map(Printer.showType).mkString(", ")}""".strStripMargin
 
     case ApplyOnNonFunction(got, _) =>
-      s"""Function application such as `foo(...)` can only be done on a function or an array.
-         |Got: ${Printer.showType(got)}"""
+      str"""Function application such as `foo(...)` can only be done on a function or an array.
+           |Got: ${Printer.showType(got)}""".strStripMargin
 
     case ApplyMismatch(expectedParams, got, _) =>
-      s"""Parameter mismatch.
-         |
-         |Expected parameters: ${expectedParams.map(Printer.showType).mkString(", ")}
-         |Got: ${got.map(Printer.showType).mkString(", ")}"""
+      str"""Parameter mismatch.
+           |Expected parameters: ${expectedParams.map(Printer.showType).mkString(", ")}
+           |Got: ${got.map(Printer.showType).mkString(", ")}""".strStripMargin
     case RecursiveInference(_) => "Recursive definition needs explicit type."
-    case UnsupportedOOP(_) => "Object-oriented programming (OOP) is not supported yet."
-  
+    case UnsupportedOOP(_)     => "Object-oriented programming (OOP) is not supported yet."
 
 object TypeError:
 
