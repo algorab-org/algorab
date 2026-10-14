@@ -187,20 +187,25 @@ object Resolver:
     case raw.Definition.Function(name, params, retType, body, position) =>
       val id = ResolutionContext.getLocalTerm(name, position)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
-        ResolutionContext.assignDeclaration(id)(
+        ResolutionContext.assignDeclaration(id):
+          val resolvedParams =
+            params.map:
+              case raw.Param.Simple(name, tpe, default, paramPosition) => resolved.Param.Simple(
+                  symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
+                  tpe = resolveType(tpe, paramPosition),
+                  default = default.map(resolveExpr),
+                  position = paramPosition
+                )
+
+          params.foreach(param => ResolutionContext.initializeLocalTerm(param.name))
+            
           resolved.Definition.Function(
             id,
-            params.map((name, tpe) =>
-              (
-                ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, position)),
-                resolveType(tpe, position)
-              )
-            ),
+            resolvedParams,
             resolveType(retType, position),
             resolveExpr(body),
             position
           )
-        )
       )
 
   /**

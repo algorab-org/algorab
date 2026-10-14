@@ -2,13 +2,13 @@ package org.algorab.typing
 
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Symbol
-import org.algorab.ast.Symbol.Root.position
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.resolved
 import org.algorab.ast.typed
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
+import org.algorab.ast.Symbol.Root.position
 
 /**
  * The typing phase.
@@ -74,7 +74,7 @@ object Typer:
    */
   def assertNumeric(expr: typed.Expr): Typing[typed.Expr] =
     if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float && expr.tpe != typed.Type.Invalid then
-      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, position))
+      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, expr.position))
     expr
 
   /**
@@ -111,7 +111,7 @@ object Typer:
             )
           ),
           got = List(leftType, rightType),
-          position = position
+          position = left.position.union(right.position)
         ))
         op(typedLeft, typedRight, typed.Type.Invalid)
 
@@ -135,6 +135,12 @@ object Typer:
     case definition: resolved.Definition => typeDefinition(definition)
     case expr: resolved.Expr             => typeExpr(expr)
 
+  def typeParam(param: resolved.Param): Typing[typed.Param] = param match
+    case resolved.Param.Simple(symbol, tpe, default, position) =>
+      typed.Param.Simple(symbol, resolveType(tpe), default.map(typeExpr), position)
+    case resolved.Param.Varargs(symbol, tpe, position) =>
+      typed.Param.Varargs(symbol, resolveType(tpe), position)
+
   def resolveDefinitionType(symbol: SymbolId): Typing[typed.Type] =
     if TypeContext.isTyped(symbol) then TypeContext.getType(symbol)
     else
@@ -148,10 +154,10 @@ object Typer:
             resolveType(tpe)
 
         case resolved.Definition.Function(symbol, params, retType, body, position) =>
-          val resolvedParams = params.map((sym, tpe) => (sym, resolveType(tpe)))
+          val resolvedParams = params.map(typeParam)
           val resolvedRetType = resolveType(retType)
-          resolvedParams.foreach(TypeContext.assignType)
-          typed.Type.Function(resolvedParams.map(_._2), resolvedRetType)
+          resolvedParams.foreach(param => TypeContext.assignType(param.symbol, param.usageType))
+          typed.Type.Function(resolvedParams.map(_.usageType), resolvedRetType)
 
       TypeContext.assignType(symbol, definitionType)
       definitionType
@@ -162,7 +168,7 @@ object Typer:
       case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
         typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, position)
       case resolved.Definition.Function(symbol, params, retType, body, position) =>
-        val resolvedParams = params.map(_._1).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
+        val resolvedParams = params.map(_.symbol).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
         val resolvedRetType = resolvedType.asInstanceOf[typed.Type.Function].output
         typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), position)
 

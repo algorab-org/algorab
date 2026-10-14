@@ -6,6 +6,7 @@ import org.algorab.ast.Identifier
 import org.algorab.ast.raw.Definition
 import org.algorab.ast.raw.Expr
 import org.algorab.ast.raw.Import
+import org.algorab.ast.raw.Param
 import org.algorab.ast.raw.Program
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
@@ -197,6 +198,29 @@ object ExprParser:
     )
   )
 
+  val paramParser: AlgorabParser[Token, Param] = Parser.firstOf(
+    Param.Varargs.apply.tupled(
+      AlgorabParser.tokenPosition(
+        Parser.inOrder(
+          identifierParser,
+          AlgorabParser.token[Token.Colon],
+          typeParser,
+          AlgorabParser.token[Token.Mul]
+        )
+      )
+    ),
+    Param.Simple.apply.tupled(
+      AlgorabParser.tokenPosition(
+        Parser.inOrder(
+          identifierParser,
+          AlgorabParser.token[Token.Colon],
+          typeParser,
+          Parser.option(exprParser)
+        )
+      )
+    )
+  )
+
   val funDefParser: AlgorabParser[Token, Definition] = Definition.Function.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
@@ -205,7 +229,7 @@ object ExprParser:
           identifierParser,
           AlgorabParser.token[Token.ParenOpen],
           Parser.separatedBy(
-            Parser.inOrder(identifierParser, AlgorabParser.token[Token.Colon], typeParser),
+            paramParser,
             AlgorabParser.token[Token.Comma]
           ),
           AlgorabParser.token[Token.ParenClosed],
