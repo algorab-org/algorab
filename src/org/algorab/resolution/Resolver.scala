@@ -13,6 +13,7 @@ import org.algorab.ast.resolved
 import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.ast.raw.Param
 
 /**
  * The name resolution phase.
@@ -196,6 +197,12 @@ object Resolver:
                   default = default.map(resolveExpr),
                   position = paramPosition
                 )
+
+              case raw.Param.Varargs(name, tpe, paramPosition) => resolved.Param.Varargs(
+                symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
+                tpe = resolveType(tpe, paramPosition),
+                position = paramPosition
+              )
 
           params.foreach(param => ResolutionContext.initializeLocalTerm(param.name))
             

@@ -215,7 +215,7 @@ object ExprParser:
           identifierParser,
           AlgorabParser.token[Token.Colon],
           typeParser,
-          Parser.option(exprParser)
+          None //TODO default param support
         )
       )
     )

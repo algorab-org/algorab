@@ -37,7 +37,8 @@ object CompilationContext:
       SymbolId.ToFloatTerm -> SymbolId.Invalid,
       SymbolId.PrintLnTerm -> SymbolId.Invalid,
       SymbolId.ReadIntTerm -> SymbolId.Invalid,
-      SymbolId.ReadFloatTerm -> SymbolId.Invalid
+      SymbolId.ReadFloatTerm -> SymbolId.Invalid,
+      SymbolId.ArrayTerm -> SymbolId.Invalid
     ),
     instructions = Seq.empty,
     position = InstructionPosition(0)

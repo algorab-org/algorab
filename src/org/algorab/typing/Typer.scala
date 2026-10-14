@@ -9,6 +9,7 @@ import org.algorab.ast.typed
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
 import org.algorab.ast.Symbol.Root.position
+import org.algorab.ast.resolved.Param
 
 /**
  * The typing phase.
@@ -215,13 +216,29 @@ object Typer:
     case resolved.Expr.Apply(expr, args, position) =>
       val typedExpr = typeExpr(expr)
       val typedArgs = args.map(typeExpr)
-      typedExpr.tpe match
-        case typed.Type.Function(inputs, output) =>
-          if inputs.sizeCompare(typedArgs) != 0 then write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
-          typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, position)
+
+      def typeFunction(inputs: List[typed.Type], output: typed.Type): typed.Expr =
+        if inputs.sizeCompare(typedArgs) != 0 then write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
+        typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, position)
+
+      typedExpr match
+        case typed.Expr.VarCall(symbol, _, _) if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
+          val functionType = typedExpr.tpe.asInstanceOf[typed.Type.Function]
+          get.declarations.get(symbol).toList.flatMap(_.asInstanceOf[resolved.Definition.Function].params) match
+            case init :+ resolved.Param.Varargs(symbol, _, _) =>
+              if init.sizeCompare(typedArgs) > 0 then write(TypeError.ApplyMismatch(functionType.inputs, typedArgs.map(_.tpe), position))
+              val varargsType = TypeContext.getType(symbol)
+              val (beforeVarargs, varargs) = typedArgs.splitAt(functionType.inputs.size - 2)
+              val finalBefore = beforeVarargs.zip(functionType.inputs.init).map(castExpr)
+              val finalVarargs = typed.Expr.Array(varargs, position)
+              typed.Expr.Apply(typedExpr, finalBefore :+ finalVarargs, functionType.output, position)
+            case _ => typeFunction(functionType.inputs, functionType.output)
         case _ =>
-          if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
-          typed.Expr.Apply(typedExpr, typedArgs, typed.Type.Invalid, position)
+          typedExpr.tpe match
+            case typed.Type.Function(inputs, output) => typeFunction(inputs, output)
+            case _ =>
+              if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
+              typed.Expr.Apply(typedExpr, typedArgs, typed.Type.Invalid, position)
 
     case resolved.Expr.Block(statements, position) =>
       val typedStatements = statements.map(typeStatement)
