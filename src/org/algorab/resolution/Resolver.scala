@@ -117,6 +117,9 @@ object Resolver:
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, position))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
+  def resolveArgument(argument: raw.Argument): Resolution[resolved.Argument] = argument match
+    case raw.Argument.Positional(expr, variadic) => resolved.Argument.Positional(resolveExpr(expr), variadic)
+
   /**
    * Declare all given statements.
    *
@@ -256,7 +259,7 @@ object Resolver:
 
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, position)
 
-    case raw.Expr.Apply(expr, args, position) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), position)
+    case raw.Expr.Apply(expr, args, position) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveArgument), position)
     case raw.Expr.Block(statements, position) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
         resolved.Expr.Block(statements.flatMap(resolveStatement), position)

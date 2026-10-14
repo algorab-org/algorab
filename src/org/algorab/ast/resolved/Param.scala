@@ -8,3 +8,5 @@ enum Param:
   case Varargs(symbol: SymbolId, tpe: Type, position: SourcePosition)
 
   def symbol: SymbolId
+
+  def isVarargs: Boolean = this.isInstanceOf[Varargs]

@@ -42,6 +42,8 @@ enum TypeError extends AlgorabError.Frontend:
    */
   case ApplyMismatch(expectedParams: List[Type], got: List[Type], position: SourcePosition)
 
+  case IllegalVariadic(position: SourcePosition)
+
   /**
    * Tried to infer the type of a recursive definition.
    *
