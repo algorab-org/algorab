@@ -23,6 +23,8 @@ enum Type derives CanEqual:
    */
   case Function(inputs: List[Type], output: Type)
 
+  case TypeFunction(params: List[SymbolId], output: Type)
+
   /**
    * An inferred type aka not explicitly typed in the source.
    */

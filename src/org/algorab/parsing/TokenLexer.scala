@@ -152,6 +152,8 @@ object TokenLexer:
   private val symbols: IndexedSeq[(String, SourcePosition => Token)] = Seq(
     "(" -> Token.ParenOpen.apply,
     ")" -> Token.ParenClosed.apply,
+    "[" -> Token.SquareOpen.apply,
+    "]" -> Token.SquareClosed.apply,
     "," -> Token.Comma.apply,
     ":" -> Token.Colon.apply,
     "." -> Token.Dot.apply,

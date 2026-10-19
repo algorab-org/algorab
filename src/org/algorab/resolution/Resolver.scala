@@ -14,6 +14,7 @@ import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
 import org.algorab.ast.raw.Param
+import org.algorab.ast.Symbol.Root.position
 
 /**
  * The name resolution phase.
@@ -167,7 +168,7 @@ object Resolver:
   def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
     case raw.Definition.Val(name, _, expr, mutable, position) =>
       ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, position), initialized = !isBlock).asInstanceOf[Unit]
-    case raw.Definition.Function(name, _, _, body, position) =>
+    case raw.Definition.Function(name, _, _, _, body, position) =>
       ResolutionContext.declareTerm(Symbol.Function(_, name, None, position)).asInstanceOf[Unit]
 
   /**
@@ -188,10 +189,12 @@ object Resolver:
           position
         )
       )
-    case raw.Definition.Function(name, params, retType, body, position) =>
+    case raw.Definition.Function(name, typeParams, params, retType, body, position) =>
       val id = ResolutionContext.getLocalTerm(name, position)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
         ResolutionContext.assignDeclaration(id):
+          val resolvedTypeParams = typeParams.map(name => ResolutionContext.declareType(Symbol.TypeAlias(_, name, None, position)))
+
           val resolvedParams =
             params.map:
               case raw.Param.Simple(name, tpe, default, paramPosition) => resolved.Param.Simple(
@@ -211,6 +214,7 @@ object Resolver:
             
           resolved.Definition.Function(
             id,
+            resolvedTypeParams,
             resolvedParams,
             resolveType(retType, position),
             resolveExpr(body),
@@ -260,6 +264,11 @@ object Resolver:
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, position)
 
     case raw.Expr.Apply(expr, args, position) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveArgument), position)
+    case raw.Expr.TypeApply(expr, args, position) => resolved.Expr.TypeApply(
+      resolveExpr(expr),
+      args.map(resolveType(_, position)),
+      position
+    )
     case raw.Expr.Block(statements, position) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
         resolved.Expr.Block(statements.flatMap(resolveStatement), position)

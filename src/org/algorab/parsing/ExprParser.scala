@@ -55,6 +55,13 @@ object ExprParser:
             )(args => Expr.Apply(_, args, _)),
             AlgorabParser.map(
               Parser.inOrder(
+                AlgorabParser.token[Token.SquareOpen],
+                Parser.separatedBy(typeParser, AlgorabParser.token[Token.Comma]),
+                Parser.commit(AlgorabParser.token[Token.SquareClosed])
+              )
+            )(args => Expr.TypeApply(_, args, _)),
+            AlgorabParser.map(
+              Parser.inOrder(
                 AlgorabParser.token[Token.Dot],
                 identifierParser
               )
@@ -233,6 +240,18 @@ object ExprParser:
         AlgorabParser.token[Token.Def],
         Parser.commit(Parser.inOrder(
           identifierParser,
+          Parser.firstOf(
+            Parser.inOrder(
+              AlgorabParser.token[Token.SquareOpen],
+              Parser.commit(
+                Parser.inOrder(
+                  Parser.separatedBy(identifierParser, AlgorabParser.token[Token.Comma]),
+                  AlgorabParser.token[Token.SquareClosed]
+                )
+              )
+            ),
+            Nil
+          ),
           AlgorabParser.token[Token.ParenOpen],
           Parser.separatedBy(
             paramParser,

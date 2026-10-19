@@ -10,6 +10,7 @@ import org.algorab.show.Show
 import org.algorab.show.str
 import org.algorab.show.strStripMargin
 import org.algorab.util.SourcePosition
+import org.algorab.ast.Identifier
 
 /**
  * An error occurring during the typing phase.
@@ -41,6 +42,8 @@ enum TypeError extends AlgorabError.Frontend:
    * @param position the source position where the error occurred
    */
   case ApplyMismatch(expectedParams: List[Type], got: List[Type], position: SourcePosition)
+
+  case TypeApplyMismatch(expectedParams: List[SymbolId], got: List[Type], position: SourcePosition)
 
   case IllegalVariadic(position: SourcePosition)
 
@@ -77,6 +80,7 @@ enum TypeError extends AlgorabError.Frontend:
       str"""Parameter mismatch.
            |Expected parameters: ${expectedParams.map(Printer.showType).mkString(", ")}
            |Got: ${got.map(Printer.showType).mkString(", ")}""".strStripMargin
+    case IllegalVariadic(_)    => "Variadic arguments are not allowed here."
     case RecursiveInference(_) => "Recursive definition needs explicit type."
     case UnsupportedOOP(_)     => "Object-oriented programming (OOP) is not supported yet."
 

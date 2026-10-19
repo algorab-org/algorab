@@ -23,7 +23,14 @@ object Typer:
    */
   def resolveType(tpe: resolved.Type): typed.Type = tpe match
     case resolved.Type.Ref(symbol) => typed.Type.Class(symbol)
+    case resolved.Type.TypeFunction(params, output) => typed.Type.TypeFunction(params, resolveType(output))
     case resolved.Type.Inferred    => throw AssertionError("Resolving Inferred type")
+
+  def resolveGenerics(tpe: typed.Type, args: Map[SymbolId, typed.Type]): typed.Type = tpe match
+    case typed.Type.Class(symbol) => args.getOrElse(symbol, tpe)
+    case typed.Type.Function(inputs, output) => typed.Type.Function(inputs.map(resolveGenerics(_, args)), resolveGenerics(output, args))
+    case typed.Type.TypeFunction(params, output) => typed.Type.TypeFunction(params, resolveGenerics(output, args))
+    case typed.Type.Invalid => typed.Type.Invalid
 
   /**
    * Unify two types.
@@ -153,11 +160,11 @@ object Typer:
           else
             resolveType(tpe)
 
-        case resolved.Definition.Function(symbol, params, retType, body, position) =>
-          val resolvedParams = params.map(typeParam)
-          val resolvedRetType = resolveType(retType)
-          resolvedParams.foreach(param => TypeContext.assignType(param.symbol, param.usageType))
-          typed.Type.Function(resolvedParams.map(_.usageType), resolvedRetType)
+        case resolved.Definition.Function(symbol, typeParams, params, retType, body, position) =>
+          val typedParams = params.map(typeParam)
+          val typedRetType = resolveType(retType)
+          typedParams.foreach(param => TypeContext.assignType(param.symbol, param.usageType))
+          typed.Type.Function(typedParams.map(_.usageType), typedRetType)
 
       TypeContext.assignType(symbol, definitionType)
       definitionType
@@ -167,7 +174,7 @@ object Typer:
     definition match
       case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
         typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, position)
-      case resolved.Definition.Function(symbol, params, retType, body, position) =>
+      case resolved.Definition.Function(symbol, typeParams, params, retType, body, position) =>
         val resolvedParams = params.map(_.symbol).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
         val resolvedRetType = resolvedType.asInstanceOf[typed.Type.Function].output
         typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), position)
@@ -263,6 +270,25 @@ object Typer:
             case _ =>
               if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
               typed.Expr.Invalid(typed.Type.Invalid, position)
+
+    case resolved.Expr.TypeApply(expr, args, position) =>
+      val typedExpr = typeExpr(expr)
+      val argsType = args.map(resolveType)
+      typedExpr.tpe match
+        case typed.Type.TypeFunction(params, output) =>
+          val typedArgs =
+            if args.sizeCompare(params) != 0 then
+              write(TypeError.TypeApplyMismatch(params, argsType, position))
+              params.map((_, typed.Type.Invalid)).toMap
+            else
+              params.zip(argsType).toMap
+
+          typedExpr.withType(resolveGenerics(output, typedArgs))
+
+        case _ =>
+          println(typedExpr)
+          ???
+      
 
     case resolved.Expr.Block(statements, position) =>
       val typedStatements = statements.map(typeStatement)

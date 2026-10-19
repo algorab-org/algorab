@@ -96,6 +96,10 @@ enum Token derives CanEqual:
    */
   case ParenClosed(position: SourcePosition)
 
+  case SquareOpen(position: SourcePosition)
+
+  case SquareClosed(position: SourcePosition)
+
   /**
    * The `,` symbol.
    *
@@ -323,17 +327,17 @@ enum Token derives CanEqual:
   case As(position: SourcePosition)
 
   /**
-    * An invalid token.
-    *
-    * @param position the source position of this token
-    */
+   * An invalid token.
+   *
+   * @param position the source position of this token
+   */
   case Invalid(position: SourcePosition)
 
   /**
    * Another type of invalid token.
    * The difference with [[Invalid]] is that it is considered a normal
    * token when parsing indentation.
-   * 
+   *
    * @param source the source code of this token, used for reporting purpose
    * @param position the source position of this token
    */
@@ -347,8 +351,8 @@ enum Token derives CanEqual:
 object Token:
 
   /**
-    * The textual representation of a token type.
-    */
+   * The textual representation of a token type.
+   */
   type ToString[A <: Token] <: String = A match
     case Token.LBool        => "true or false"
     case Token.LInt         => "Int literal"
@@ -361,6 +365,8 @@ object Token:
     case Token.Newline      => "new line"
     case Token.ParenOpen    => "("
     case Token.ParenClosed  => ")"
+    case Token.SquareOpen   => "["
+    case Token.SquareClosed => "]"
     case Token.Comma        => ","
     case Token.Colon        => ":"
     case Token.Dot          => "."

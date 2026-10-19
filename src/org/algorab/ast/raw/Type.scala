@@ -1,6 +1,7 @@
 package org.algorab.ast.raw
 
 import org.algorab.ast.Identifier
+import org.algorab.ast.SymbolId
 
 /**
  * A parsed type.

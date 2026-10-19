@@ -236,6 +236,8 @@ enum Expr:
    */
   case Apply(expr: Expr, args: List[Argument], position: SourcePosition)
 
+  case TypeApply(expr: Expr, args: List[Type], position: SourcePosition)
+
   /**
    * A block of one or more statements.
    *
@@ -284,3 +286,4 @@ enum Expr:
    * The source position of this expression.
    */
   def position: SourcePosition
+  
