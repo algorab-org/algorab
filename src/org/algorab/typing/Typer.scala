@@ -241,7 +241,10 @@ object Typer:
               typeExpr(expr)
 
           val typedVarargs = varargs.map:
-            case resolved.Argument.Positional(expr, variadic) => typeExpr(expr)
+            case resolved.Argument.Positional(expr, variadic) =>
+              //TODO support variadic args when genericity+collections are supported
+              if variadic then write(TypeError.IllegalVariadic(expr.position))
+              typeExpr(expr)
           params.lastOption match
             case Some(resolved.Param.Varargs(symbol, _, _)) =>
               val varargsType = TypeContext.getType(symbol)
