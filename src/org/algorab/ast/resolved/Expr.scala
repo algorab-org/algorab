@@ -234,7 +234,7 @@ enum Expr:
    * @param args the arguments to pass to the function
    * @param position the source position of this expression
    */
-  case Apply(expr: Expr, args: List[Expr], position: SourcePosition)
+  case Apply(expr: Expr, args: List[Argument], position: SourcePosition)
 
   /**
    * A block of one or more statements.

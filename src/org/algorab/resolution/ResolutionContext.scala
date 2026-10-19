@@ -141,11 +141,13 @@ object ResolutionContext:
     .declarePredefType(SymbolId.FloatType, Identifier("Float"))
     .declarePredefType(SymbolId.CharType, Identifier("Char"))
     .declarePredefType(SymbolId.StringType, Identifier("String"))
+    .declarePredefType(SymbolId.ArrayType, Identifier("Array"))
     .declarePredefVariable(SymbolId.UnitTerm, Identifier("Unit"))
     .declarePredefFunction(SymbolId.ToFloatTerm, Identifier("toFloat"))
     .declarePredefFunction(SymbolId.PrintLnTerm, Identifier("println"))
     .declarePredefFunction(SymbolId.ReadIntTerm, Identifier("readInt"))
     .declarePredefFunction(SymbolId.ReadFloatTerm, Identifier("readFloat"))
+    .declarePredefFunction(SymbolId.ArrayTerm, Identifier("Array"))
 
   /**
    * Get the owner of the given symbol.

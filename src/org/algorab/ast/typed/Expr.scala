@@ -354,3 +354,10 @@ object Expr:
     def unapply(toFloat: Expr): Option[(Expr, SourcePosition)] = toFloat match
       case Apply(VarCall(SymbolId.ToFloatTerm, _, _), List(expr), _, position) => Some((expr, position))
       case _                                                                   => None
+
+  def Array(exprs: List[Expr], position: SourcePosition): Expr = Apply(
+    VarCall(SymbolId.ArrayTerm, Type.Function(List.fill(exprs.size)(Type.Any), Type.Array), position),
+    exprs,
+    Type.Array,
+    position
+  )

@@ -2,13 +2,13 @@ package org.algorab.typing
 
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Symbol
-import org.algorab.ast.Symbol.Root.position
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.resolved
 import org.algorab.ast.typed
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
+import org.algorab.ast.Symbol.Root.position
 
 /**
  * The typing phase.
@@ -74,7 +74,7 @@ object Typer:
    */
   def assertNumeric(expr: typed.Expr): Typing[typed.Expr] =
     if expr.tpe != typed.Type.Int && expr.tpe != typed.Type.Float && expr.tpe != typed.Type.Invalid then
-      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, position))
+      write(TypeError.simpleMismatch(List(typed.Type.Int, typed.Type.Float), expr.tpe, expr.position))
     expr
 
   /**
@@ -111,7 +111,7 @@ object Typer:
             )
           ),
           got = List(leftType, rightType),
-          position = position
+          position = left.position.union(right.position)
         ))
         op(typedLeft, typedRight, typed.Type.Invalid)
 
@@ -135,6 +135,12 @@ object Typer:
     case definition: resolved.Definition => typeDefinition(definition)
     case expr: resolved.Expr             => typeExpr(expr)
 
+  def typeParam(param: resolved.Param): Typing[typed.Param] = param match
+    case resolved.Param.Simple(symbol, tpe, default, position) =>
+      typed.Param.Simple(symbol, resolveType(tpe), default.map(typeExpr), position)
+    case resolved.Param.Varargs(symbol, tpe, position) =>
+      typed.Param.Varargs(symbol, resolveType(tpe), position)
+
   def resolveDefinitionType(symbol: SymbolId): Typing[typed.Type] =
     if TypeContext.isTyped(symbol) then TypeContext.getType(symbol)
     else
@@ -148,10 +154,10 @@ object Typer:
             resolveType(tpe)
 
         case resolved.Definition.Function(symbol, params, retType, body, position) =>
-          val resolvedParams = params.map((sym, tpe) => (sym, resolveType(tpe)))
+          val resolvedParams = params.map(typeParam)
           val resolvedRetType = resolveType(retType)
-          resolvedParams.foreach(TypeContext.assignType)
-          typed.Type.Function(resolvedParams.map(_._2), resolvedRetType)
+          resolvedParams.foreach(param => TypeContext.assignType(param.symbol, param.usageType))
+          typed.Type.Function(resolvedParams.map(_.usageType), resolvedRetType)
 
       TypeContext.assignType(symbol, definitionType)
       definitionType
@@ -162,7 +168,7 @@ object Typer:
       case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
         typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, position)
       case resolved.Definition.Function(symbol, params, retType, body, position) =>
-        val resolvedParams = params.map(_._1).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
+        val resolvedParams = params.map(_.symbol).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
         val resolvedRetType = resolvedType.asInstanceOf[typed.Type.Function].output
         typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), position)
 
@@ -208,14 +214,55 @@ object Typer:
 
     case resolved.Expr.Apply(expr, args, position) =>
       val typedExpr = typeExpr(expr)
-      val typedArgs = args.map(typeExpr)
-      typedExpr.tpe match
-        case typed.Type.Function(inputs, output) =>
-          if inputs.sizeCompare(typedArgs) != 0 then write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
-          typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, position)
+
+      //TODO handle variadics for direct function call
+      //Error + Invalid if variadic `x*` not at the end
+      //Same for declaration
+
+      def typeFunction(inputs: List[typed.Type], output: typed.Type): typed.Expr =
+        val typedArgs = args.map:
+          case resolved.Argument.Positional(expr, variadic) =>
+            if variadic then write(TypeError.IllegalVariadic(expr.position))
+            typeExpr(expr)
+        if args.exists(_.variadic) then typed.Expr.Invalid(output, position)
+        else if inputs.sizeCompare(args) != 0 then
+          write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
+          typed.Expr.Invalid(output, position)
+        else typed.Expr.Apply(typedExpr, typedArgs.zip(inputs).map(castExpr), output, position)
+
+      typedExpr match
+        case typed.Expr.VarCall(symbol, _, _) if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
+          val functionType = typedExpr.tpe.asInstanceOf[typed.Type.Function]
+          val params = get.declarations.get(symbol).toList.flatMap(_.asInstanceOf[resolved.Definition.Function].params)
+          val (beforeVarargs, varargs) = args.splitAt(functionType.inputs.size - 1)
+          val typedBeforeVarargs = beforeVarargs.map:
+            case resolved.Argument.Positional(expr, variadic) =>
+              if variadic then write(TypeError.IllegalVariadic(expr.position))
+              typeExpr(expr)
+
+          val typedVarargs = varargs.map:
+            case resolved.Argument.Positional(expr, variadic) =>
+              //TODO support variadic args when genericity+collections are supported
+              if variadic then write(TypeError.IllegalVariadic(expr.position))
+              typeExpr(expr)
+          params.lastOption match
+            case Some(resolved.Param.Varargs(symbol, _, _)) =>
+              val varargsType = TypeContext.getType(symbol)
+              val wrappedVarargs = typed.Expr.Array(typedVarargs, position)
+              typed.Expr.Apply(typedExpr, typedBeforeVarargs :+ wrappedVarargs, functionType.output, position)
+            case _ =>
+              val typedArgs = typedBeforeVarargs ++ typedVarargs
+              val cmp = args.sizeCompare(params)
+              if cmp < 0 || (cmp > 0 && !params.lastOption.forall(_.isVarargs)) then
+                write(TypeError.ApplyMismatch(functionType.inputs, typedArgs.map(_.tpe), position))
+
+              typed.Expr.Apply(typedExpr, typedArgs.zip(functionType.inputs).map(castExpr), functionType.output, position)
         case _ =>
-          if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
-          typed.Expr.Apply(typedExpr, typedArgs, typed.Type.Invalid, position)
+          typedExpr.tpe match
+            case typed.Type.Function(inputs, output) => typeFunction(inputs, output)
+            case _ =>
+              if typedExpr.tpe != typed.Type.Invalid then write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
+              typed.Expr.Invalid(typed.Type.Invalid, position)
 
     case resolved.Expr.Block(statements, position) =>
       val typedStatements = statements.map(typeStatement)

@@ -6,6 +6,7 @@ import org.algorab.ast.Identifier
 import org.algorab.ast.raw.Definition
 import org.algorab.ast.raw.Expr
 import org.algorab.ast.raw.Import
+import org.algorab.ast.raw.Param
 import org.algorab.ast.raw.Program
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.raw.Type
@@ -13,6 +14,7 @@ import org.algorab.util.FileName
 import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.ast.raw.Argument
 
 /**
  * A [[org.algorab.ast.raw\.Expr]] parser.
@@ -33,6 +35,11 @@ object ExprParser:
     Parser.inOrder(AlgorabParser.token[Token.ParenOpen], exprParser, Parser.commit(AlgorabParser.token[Token.ParenClosed]))
   )
 
+  val argumentParser: AlgorabParser[Token, Argument] = Parser.firstOf(
+    Argument.Positional(Parser.inOrder(exprParser, AlgorabParser.token[Token.Mul]), true),
+    Argument.Positional(exprParser, false)
+  )
+
   val applyParser: AlgorabParser[Token, Expr] =
     val (first, applications) = Parser.inOrder(
       termParser,
@@ -42,10 +49,10 @@ object ExprParser:
             AlgorabParser.map(
               Parser.inOrder(
                 AlgorabParser.token[Token.ParenOpen],
-                Parser.separatedBy(exprParser, AlgorabParser.token[Token.Comma]),
+                Parser.separatedBy(argumentParser, AlgorabParser.token[Token.Comma]),
                 Parser.commit(AlgorabParser.token[Token.ParenClosed])
               )
-            )(params => Expr.Apply(_, params, _)),
+            )(args => Expr.Apply(_, args, _)),
             AlgorabParser.map(
               Parser.inOrder(
                 AlgorabParser.token[Token.Dot],
@@ -197,6 +204,29 @@ object ExprParser:
     )
   )
 
+  val paramParser: AlgorabParser[Token, Param] = Parser.firstOf(
+    Param.Varargs.apply.tupled(
+      AlgorabParser.tokenPosition(
+        Parser.inOrder(
+          identifierParser,
+          AlgorabParser.token[Token.Colon],
+          typeParser,
+          AlgorabParser.token[Token.Mul]
+        )
+      )
+    ),
+    Param.Simple.apply.tupled(
+      AlgorabParser.tokenPosition(
+        Parser.inOrder(
+          identifierParser,
+          AlgorabParser.token[Token.Colon],
+          typeParser,
+          None //TODO default param support
+        )
+      )
+    )
+  )
+
   val funDefParser: AlgorabParser[Token, Definition] = Definition.Function.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
@@ -205,7 +235,7 @@ object ExprParser:
           identifierParser,
           AlgorabParser.token[Token.ParenOpen],
           Parser.separatedBy(
-            Parser.inOrder(identifierParser, AlgorabParser.token[Token.Colon], typeParser),
+            paramParser,
             AlgorabParser.token[Token.Comma]
           ),
           AlgorabParser.token[Token.ParenClosed],

@@ -13,6 +13,7 @@ import org.algorab.ast.resolved
 import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
+import org.algorab.ast.raw.Param
 
 /**
  * The name resolution phase.
@@ -116,6 +117,9 @@ object Resolver:
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, position))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
+  def resolveArgument(argument: raw.Argument): Resolution[resolved.Argument] = argument match
+    case raw.Argument.Positional(expr, variadic) => resolved.Argument.Positional(resolveExpr(expr), variadic)
+
   /**
    * Declare all given statements.
    *
@@ -187,20 +191,31 @@ object Resolver:
     case raw.Definition.Function(name, params, retType, body, position) =>
       val id = ResolutionContext.getLocalTerm(name, position)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
-        ResolutionContext.assignDeclaration(id)(
+        ResolutionContext.assignDeclaration(id):
+          val resolvedParams =
+            params.map:
+              case raw.Param.Simple(name, tpe, default, paramPosition) => resolved.Param.Simple(
+                  symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
+                  tpe = resolveType(tpe, paramPosition),
+                  default = default.map(resolveExpr),
+                  position = paramPosition
+                )
+
+              case raw.Param.Varargs(name, tpe, paramPosition) => resolved.Param.Varargs(
+                symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
+                tpe = resolveType(tpe, paramPosition),
+                position = paramPosition
+              )
+
+          params.foreach(param => ResolutionContext.initializeLocalTerm(param.name))
+            
           resolved.Definition.Function(
             id,
-            params.map((name, tpe) =>
-              (
-                ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, position)),
-                resolveType(tpe, position)
-              )
-            ),
+            resolvedParams,
             resolveType(retType, position),
             resolveExpr(body),
             position
           )
-        )
       )
 
   /**
@@ -244,7 +259,7 @@ object Resolver:
 
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, position)
 
-    case raw.Expr.Apply(expr, args, position) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveExpr), position)
+    case raw.Expr.Apply(expr, args, position) => resolved.Expr.Apply(resolveExpr(expr), args.map(resolveArgument), position)
     case raw.Expr.Block(statements, position) => ResolutionContext.inNewScope(None):
         declareAllStatements(statements, true)
         resolved.Expr.Block(statements.flatMap(resolveStatement), position)

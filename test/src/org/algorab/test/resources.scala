@@ -78,7 +78,7 @@ object resources:
       consoleOut != null,
       errors.isEmpty,
       result.output.isDefined,
-      expectedOutput.forall(_ == consoleOut)
+      consoleOut.isInstanceOf[Any] && expectedOutput.forall(_ == consoleOut)
     )
 
   /** Transparent inline entry point that triggers [[goldenTestsImpl]] at the call site.

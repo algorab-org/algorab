@@ -1,0 +1,12 @@
+-- Since genericity and arrays are not fully implemented yet, the test does not check if the varargs contain the right values
+
+def f(x: Int*): Unit = Unit
+def g(x: Int, y: Int*): Unit = println(x)
+
+f()
+f(1)
+f(1, 2)
+
+g(1)
+g(1, 2)
+g(1, 2, 3)

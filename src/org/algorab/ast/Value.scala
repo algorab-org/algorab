@@ -5,7 +5,7 @@ import org.algorab.runtime.Runtime
 
 opaque type Value <: Value.Raw = Value.Raw
 object Value:
-  type Raw = Boolean | Int | Double | Char | String | Unit | FunctionRef | BuiltinFunction | Null
+  type Raw = Boolean | Int | Double | Char | String | Unit | Array[Any] | FunctionRef | BuiltinFunction | Null
 
   given CanEqual[Value, Value] = CanEqual.derived
 

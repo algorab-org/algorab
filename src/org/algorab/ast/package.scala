@@ -43,12 +43,14 @@ object SymbolId extends RefinedType[Int, GreaterEqual[-1]]:
   val FloatType: SymbolId = SymbolId(5)
   val CharType: SymbolId = SymbolId(6)
   val StringType: SymbolId = SymbolId(7)
+  val ArrayType: SymbolId = SymbolId(8)
 
-  val UnitTerm: SymbolId = SymbolId(8)
-  val ToFloatTerm: SymbolId = SymbolId(9)
-  val PrintLnTerm: SymbolId = SymbolId(10)
-  val ReadIntTerm: SymbolId = SymbolId(11)
-  val ReadFloatTerm: SymbolId = SymbolId(12)
+  val UnitTerm: SymbolId = SymbolId(9)
+  val ToFloatTerm: SymbolId = SymbolId(10)
+  val PrintLnTerm: SymbolId = SymbolId(11)
+  val ReadIntTerm: SymbolId = SymbolId(12)
+  val ReadFloatTerm: SymbolId = SymbolId(13)
+  val ArrayTerm: SymbolId = SymbolId(14)
 
   given CanEqual[SymbolId, SymbolId] = CanEqual.derived
 

@@ -37,3 +37,4 @@ object Type:
   val Float: Type = Type.Class(SymbolId.FloatType)
   val Char: Type = Type.Class(SymbolId.CharType)
   val String: Type = Type.Class(SymbolId.StringType)
+  val Array: Type = Type.Class(SymbolId.ArrayType)
