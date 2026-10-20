@@ -9,6 +9,7 @@ import org.algorab.ast.typed
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
 import org.algorab.ast.Symbol.Root.position
+import scala.annotation.tailrec
 
 /**
  * The typing phase.
@@ -164,7 +165,10 @@ object Typer:
           val typedParams = params.map(typeParam)
           val typedRetType = resolveType(retType)
           typedParams.foreach(param => TypeContext.assignType(param.symbol, param.usageType))
-          typed.Type.Function(typedParams.map(_.usageType), typedRetType)
+          
+          val functionType = typed.Type.Function(typedParams.map(_.usageType), typedRetType)
+          if typeParams.isEmpty then functionType
+          else typed.Type.TypeFunction(typeParams, functionType)
 
       TypeContext.assignType(symbol, definitionType)
       definitionType
@@ -175,9 +179,21 @@ object Typer:
       case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
         typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, position)
       case resolved.Definition.Function(symbol, typeParams, params, retType, body, position) =>
-        val resolvedParams = params.map(_.symbol).zip(resolvedType.asInstanceOf[typed.Type.Function].inputs)
-        val resolvedRetType = resolvedType.asInstanceOf[typed.Type.Function].output
-        typed.Definition.Function(symbol, resolvedParams, resolvedRetType, typeExprTo(body, resolvedRetType), position)
+
+        @tailrec
+        def getFunctionType(tpe: typed.Type): (List[typed.Type], typed.Type) = tpe match
+          case typed.Type.Function(inputs, output) => (inputs, output)
+          case typed.Type.TypeFunction(params, output) => getFunctionType(output)
+          case _ => throw AssertionError(s"Function definition with non-function type: $tpe")
+
+        val (resolvedParams, resolvedRetType) = getFunctionType(resolvedType)
+        typed.Definition.Function(
+          symbol,
+          params.map(_.symbol).zip(resolvedParams),
+          resolvedRetType,
+          typeExprTo(body, resolvedRetType),
+          position
+        )
 
   def typeExpr(expr: resolved.Expr): Typing[typed.Expr] = expr match
     case resolved.Expr.LBool(value, position)          => typed.Expr.LBool(value, typed.Type.Boolean, position)
@@ -286,8 +302,8 @@ object Typer:
           typedExpr.withType(resolveGenerics(output, typedArgs))
 
         case _ =>
-          println(typedExpr)
-          ???
+          if typedExpr.tpe != typed.Type.Invalid then write(TypeError.TypeApplyOnNonFunction(typedExpr.tpe, position))
+          typed.Expr.Invalid(typed.Type.Invalid, position)
       
 
     case resolved.Expr.Block(statements, position) =>

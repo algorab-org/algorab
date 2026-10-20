@@ -11,6 +11,7 @@ import org.algorab.show.str
 import org.algorab.show.strStripMargin
 import org.algorab.util.SourcePosition
 import org.algorab.ast.Identifier
+import org.algorab.show.ShowContext
 
 /**
  * An error occurring during the typing phase.
@@ -33,6 +34,14 @@ enum TypeError extends AlgorabError.Frontend:
    * @param position the source position where the error occurred
    */
   case ApplyOnNonFunction(got: Type, position: SourcePosition)
+
+  /**
+   * Tried to do a type function application on something that is not applicable (not a type function...).
+   *
+   * @param got the actual type of the applied expression
+   * @param position the source position where the error occurred
+   */
+  case TypeApplyOnNonFunction(got: Type, position: SourcePosition)
 
   /**
    * The passed arguments do not match the expected parameters.
@@ -76,10 +85,20 @@ enum TypeError extends AlgorabError.Frontend:
       str"""Function application such as `foo(...)` can only be done on a function or an array.
            |Got: ${Printer.showType(got)}""".strStripMargin
 
+    case TypeApplyOnNonFunction(got, _) =>
+      str"""Type application such as `foo[...]` can only be done on a function or an array.
+           |Got: ${Printer.showType(got)}""".strStripMargin
+
     case ApplyMismatch(expectedParams, got, _) =>
       str"""Parameter mismatch.
            |Expected parameters: ${expectedParams.map(Printer.showType).mkString(", ")}
            |Got: ${got.map(Printer.showType).mkString(", ")}""".strStripMargin
+
+    case TypeApplyMismatch(expectedParams, got, _) =>
+      str"""Parameter mismatch.
+           |Expected parameters: ${expectedParams.map(ShowContext.getSymbolName).mkString(", ")}
+           |Got: ${got.map(Printer.showType).mkString(", ")}""".strStripMargin
+
     case IllegalVariadic(_)    => "Variadic arguments are not allowed here."
     case RecursiveInference(_) => "Recursive definition needs explicit type."
     case UnsupportedOOP(_)     => "Object-oriented programming (OOP) is not supported yet."

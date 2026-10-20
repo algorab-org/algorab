@@ -21,6 +21,7 @@ object Printer:
   def showType(tpe: Type): Show[String] = tpe match
     case Type.Class(symbol)            => ShowContext.getSymbolName(symbol)
     case Type.Function(inputs, output) => s"${inputs.map(showType).mkString("(", ", ", ")")} => ${showType(output)}"
+    case Type.TypeFunction(params, output) => s"${params.map(ShowContext.getSymbolName).mkString("(", ",", ")")} => ${showType(output)}"
     case Type.Invalid                  => "<invalid>"
 
   /**
