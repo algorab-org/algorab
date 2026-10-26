@@ -284,6 +284,64 @@ object Typer:
           position
         )
 
+  def desugarArguments(expr: resolved.Expr, args: List[resolved.Argument], position: SourcePosition): Typing[List[resolved.Expr]] =
+    def getPositionalExprs(arguments: List[resolved.Argument]): List[resolved.Expr] =
+      arguments.map:
+        case resolved.Argument.Positional(_, true) =>
+            write(TypeError.IllegalVariadic(position))
+            resolved.Expr.Invalid(position)
+          
+        case resolved.Argument.Positional(expr, false) => expr
+
+    def handleFunctionArguments(symbol: SymbolId): Typing[List[resolved.Expr]] =
+      val params =
+        get.declarations
+          .get(symbol)
+          .toList
+          .flatMap(_.asInstanceOf[resolved.Definition.Function].params)
+
+      params.lastOption match
+        case Some(resolved.Param.Varargs(varargSymbol, _, _)) =>
+          val (beforeVarargs, afterVarargs) = args match
+            case before :+ last if last.variadic => (before, last.expr)
+            case _ =>
+              val (before, after) = args.splitAt(params.size - 1)
+              val afterPosition = after.map(_.expr.position).reduceOption(_.union(_)).getOrElse(position)
+              (before, resolved.Expr.Array(getPositionalExprs(after), afterPosition))
+
+          getPositionalExprs(beforeVarargs) :+ afterVarargs
+
+        case _ => getPositionalExprs(args)
+    
+    expr match
+      case resolved.Expr.TypeApply(resolved.Expr.VarCall(symbol, _), _, _) if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
+        handleFunctionArguments(symbol)
+      case resolved.Expr.VarCall(symbol, _) if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
+        handleFunctionArguments(symbol)
+
+      case _ => getPositionalExprs(args)
+
+  def typeApply2(
+    expr: resolved.Expr,
+    args: List[resolved.Argument],
+    position: SourcePosition
+  ): Typing[typed.Expr] =
+    val argExprs = desugarArguments(expr, args, position)
+    val typedExpr = typeExpr(expr)
+    typedExpr.tpe match
+      case typed.Type.Function(inputs, output) =>
+        println(s"Function: $inputs => $output")
+        if inputs.sizeCompare(argExprs) != 0 then
+          write(TypeError.ApplyMismatch(inputs, argExprs.map(typeExpr(_).tpe), position))
+          typed.Expr.Invalid(typed.Type.Invalid, position)
+        else
+          val typedArgs = argExprs.zip(inputs).map(typeExprTo)
+          typed.Expr.Apply(typedExpr, typedArgs, output, position)
+
+      case got =>
+        write(TypeError.ApplyOnNonFunction(got, position))
+        typed.Expr.Invalid(typed.Type.Invalid, position)
+
   def typeApply(
     typedExpr: typed.Expr,
     args: List[resolved.Argument],
@@ -403,7 +461,8 @@ object Typer:
       write(TypeError.UnsupportedOOP(position))
       typed.Expr.Invalid(typed.Type.Invalid, position)
 
-    case resolved.Expr.Apply(expr, args, position) => typeApply(typeExpr(expr), args, position)
+    case resolved.Expr.Array(exprs, position) => typed.Expr.Array(exprs.map(typeExpr), position)
+    case resolved.Expr.Apply(expr, args, position) => typeApply2(expr, args, position)
 
     case resolved.Expr.TypeApply(expr, args, position) =>
       val typedExpr = typeExpr(expr)

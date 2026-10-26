@@ -287,3 +287,16 @@ enum Expr:
    */
   def position: SourcePosition
   
+object Expr:
+
+  object Array:
+    def apply(exprs: List[Expr], position: SourcePosition): Expr = Apply(
+      VarCall(SymbolId.ArrayTerm, position),
+      exprs.map(Argument.Positional(_, false)),
+      position
+    )
+
+    def unapply(expr: Expr): Option[(List[Expr], SourcePosition)] = expr match
+      case Apply(VarCall(SymbolId.ArrayTerm, _), elements, position) => Some(elements.map(_.expr), position)
+      case _ => None
+    

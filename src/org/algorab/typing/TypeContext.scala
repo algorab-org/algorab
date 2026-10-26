@@ -39,7 +39,8 @@ object TypeContext:
       SymbolId.ToFloatTerm -> Some(Type.Function(List(Type.Int), Type.Float)),
       SymbolId.PrintLnTerm -> Some(Type.Function(List(Type.Any), Type.Unit)),
       SymbolId.ReadIntTerm -> Some(Type.Function(Nil, Type.Int)),
-      SymbolId.ReadFloatTerm -> Some(Type.Function(Nil, Type.Float))
+      SymbolId.ReadFloatTerm -> Some(Type.Function(Nil, Type.Float)),
+      SymbolId.ArrayTerm -> Some(Type.Function(List(Type.Array), Type.Array)) //TODO Use Type.Apply
     )
   )
 

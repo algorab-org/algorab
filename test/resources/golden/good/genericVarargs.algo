@@ -1,0 +1,5 @@
+def ids[A](x: A*): Unit = Unit -- TODO return Array[A] once Type.Apply is done
+
+ids[Int]()
+ids[Int](1, 2)
+ids[String]("a", "b", true)
