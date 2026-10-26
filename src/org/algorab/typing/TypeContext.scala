@@ -92,7 +92,7 @@ object TypeContext:
    * @return `true` if `typeA <: typeB`
    */
   def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] =
-    typeA == Type.Invalid || typeB == Type.Invalid || typeA == typeB || typeB == Type.Any
+    typeA == Type.Invalid || typeB == Type.Invalid || typeA == typeB || typeA == Type.Nothing || typeB == Type.Any
 
   /**
    * Get the metadata of a symbol.

@@ -29,9 +29,11 @@ object Typer:
     case resolved.Type.Inferred    => throw AssertionError("Resolving Inferred type")
 
   def resolveGenerics(tpe: typed.Type, args: Map[SymbolId, typed.Type]): typed.Type = tpe match
+    case typed.Type.Nothing => typed.Type.Nothing
     case typed.Type.Class(symbol) => args.getOrElse(symbol, tpe)
     case typed.Type.Function(inputs, output) => typed.Type.Function(inputs.map(resolveGenerics(_, args)), resolveGenerics(output, args))
     case typed.Type.TypeFunction(params, output) => typed.Type.TypeFunction(params, resolveGenerics(output, args))
+    case typed.Type.Apply(tpe, typeArgs) => typed.Type.Apply(resolveGenerics(tpe, args), typeArgs.map(resolveGenerics(_, args)))
     case typed.Type.Invalid => typed.Type.Invalid
 
   def inferGenerics(
@@ -330,7 +332,6 @@ object Typer:
     val typedExpr = typeExpr(expr)
     typedExpr.tpe match
       case typed.Type.Function(inputs, output) =>
-        println(s"Function: $inputs => $output")
         if inputs.sizeCompare(argExprs) != 0 then
           write(TypeError.ApplyMismatch(inputs, argExprs.map(typeExpr(_).tpe), position))
           typed.Expr.Invalid(typed.Type.Invalid, position)
@@ -342,84 +343,84 @@ object Typer:
         write(TypeError.ApplyOnNonFunction(got, position))
         typed.Expr.Invalid(typed.Type.Invalid, position)
 
-  def typeApply(
-    typedExpr: typed.Expr,
-    args: List[resolved.Argument],
-    position: SourcePosition
-  ): Typing[typed.Expr] =
-      //TODO handle variadics for direct function call
-      //Error + Invalid if variadic `x*` not at the end
-      //Same for declaration
+  // def typeApply(
+  //   typedExpr: typed.Expr,
+  //   args: List[resolved.Argument],
+  //   position: SourcePosition
+  // ): Typing[typed.Expr] =
+  //     //TODO handle variadics for direct function call
+  //     //Error + Invalid if variadic `x*` not at the end
+  //     //Same for declaration
 
-    def typeArgument(arg: resolved.Argument): typed.Expr =
-      arg match
-        case resolved.Argument.Positional(expr, variadic) =>
-          if variadic then write(TypeError.IllegalVariadic(expr.position))
-          typeExpr(expr)
+  //   def typeArgument(arg: resolved.Argument): typed.Expr =
+  //     arg match
+  //       case resolved.Argument.Positional(expr, variadic) =>
+  //         if variadic then write(TypeError.IllegalVariadic(expr.position))
+  //         typeExpr(expr)
 
-    def applyFixed(
-        inputs: List[typed.Type],
-        output: typed.Type,
-        typedArgs: List[typed.Expr]
-    ): typed.Expr =
-      if args.exists(_.variadic) then
-        typed.Expr.Invalid(output, position)
-      else if inputs.sizeCompare(typedArgs) != 0 then
-        write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
-        typed.Expr.Invalid(output, position)
-      else
-        typed.Expr.Apply(
-          typedExpr,
-          typedArgs.zip(inputs).map(castExpr),
-          output,
-          position
-        )
+  //   def applyFixed(
+  //       inputs: List[typed.Type],
+  //       output: typed.Type,
+  //       typedArgs: List[typed.Expr]
+  //   ): typed.Expr =
+  //     if args.exists(_.variadic) then
+  //       typed.Expr.Invalid(output, position)
+  //     else if inputs.sizeCompare(typedArgs) != 0 then
+  //       write(TypeError.ApplyMismatch(inputs, typedArgs.map(_.tpe), position))
+  //       typed.Expr.Invalid(output, position)
+  //     else
+  //       typed.Expr.Apply(
+  //         typedExpr,
+  //         typedArgs.zip(inputs).map(castExpr),
+  //         output,
+  //         position
+  //       )
 
-    typedExpr match
-      case typed.Expr.VarCall(symbol, _, _)
-          if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
-        val functionType = typedExpr.tpe.asInstanceOf[typed.Type.Function]
-        val params =
-          get.declarations
-            .get(symbol)
-            .toList
-            .flatMap(_.asInstanceOf[resolved.Definition.Function].params)
+  //   typedExpr match
+  //     case typed.Expr.VarCall(symbol, _, _)
+  //         if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
+  //       val functionType = typedExpr.tpe.asInstanceOf[typed.Type.Function]
+  //       val params =
+  //         get.declarations
+  //           .get(symbol)
+  //           .toList
+  //           .flatMap(_.asInstanceOf[resolved.Definition.Function].params)
 
-        params.lastOption match
-          case Some(resolved.Param.Varargs(varargSymbol, _, _)) =>
-            val fixedCount = functionType.inputs.size - 1
-            val (fixedArgs, varargArgs) = args.splitAt(fixedCount)
+  //       params.lastOption match
+  //         case Some(resolved.Param.Varargs(varargSymbol, _, _)) =>
+  //           val fixedCount = functionType.inputs.size - 1
+  //           val (fixedArgs, varargArgs) = args.splitAt(fixedCount)
 
-            val typedFixedArgs = fixedArgs.map(typeArgument)
-            val typedVarargArgs = varargArgs.map(typeArgument)
+  //           val typedFixedArgs = fixedArgs.map(typeArgument)
+  //           val typedVarargArgs = varargArgs.map(typeArgument)
 
-            // TODO: infer generics and validate/wrap varargs.
-            // The varargs parameter's declared type should determine
-            // the element type and the array type.
-            val wrappedVarargs =
-              typed.Expr.Array(typedVarargArgs, position)
+  //           // TODO: infer generics and validate/wrap varargs.
+  //           // The varargs parameter's declared type should determine
+  //           // the element type and the array type.
+  //           val wrappedVarargs =
+  //             typed.Expr.Array(typedVarargArgs, position)
 
-            applyFixed(
-              functionType.inputs,
-              functionType.output,
-              typedFixedArgs :+ wrappedVarargs
-            )
+  //           applyFixed(
+  //             functionType.inputs,
+  //             functionType.output,
+  //             typedFixedArgs :+ wrappedVarargs
+  //           )
 
-          case _ =>
-            val typedArgs = args.map(typeArgument)
-            applyFixed(functionType.inputs, functionType.output, typedArgs)
+  //         case _ =>
+  //           val typedArgs = args.map(typeArgument)
+  //           applyFixed(functionType.inputs, functionType.output, typedArgs)
 
-      case _ =>
-        typedExpr.tpe match
-          case typed.Type.Function(inputs, output) =>
-            val typedArgs = args.map(typeArgument)
-            applyFixed(inputs, output, typedArgs)
+  //     case _ =>
+  //       typedExpr.tpe match
+  //         case typed.Type.Function(inputs, output) =>
+  //           val typedArgs = args.map(typeArgument)
+  //           applyFixed(inputs, output, typedArgs)
 
-          case _ =>
-            if typedExpr.tpe != typed.Type.Invalid then
-              write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
+  //         case _ =>
+  //           if typedExpr.tpe != typed.Type.Invalid then
+  //             write(TypeError.ApplyOnNonFunction(typedExpr.tpe, position))
 
-            typed.Expr.Invalid(typed.Type.Invalid, position)
+  //           typed.Expr.Invalid(typed.Type.Invalid, position)
 
   def typeExpr(expr: resolved.Expr): Typing[typed.Expr] = expr match
     case resolved.Expr.LBool(value, position)          => typed.Expr.LBool(value, typed.Type.Boolean, position)
@@ -461,7 +462,10 @@ object Typer:
       write(TypeError.UnsupportedOOP(position))
       typed.Expr.Invalid(typed.Type.Invalid, position)
 
-    case resolved.Expr.Array(exprs, position) => typed.Expr.Array(exprs.map(typeExpr), position)
+    case resolved.Expr.Array(exprs, position) =>
+      val typedExprs = exprs.map(typeExpr)
+      val elementType = typedExprs.foldLeft(typed.Type.Nothing)((tpe, expr) => unify(tpe, expr.tpe))
+      typed.Expr.Array(typedExprs, elementType, position)
     case resolved.Expr.Apply(expr, args, position) => typeApply2(expr, args, position)
 
     case resolved.Expr.TypeApply(expr, args, position) =>
