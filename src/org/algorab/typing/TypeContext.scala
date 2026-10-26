@@ -91,8 +91,13 @@ object TypeContext:
    * @param typeB the expected supertype
    * @return `true` if `typeA <: typeB`
    */
-  def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] =
-    typeA == Type.Invalid || typeB == Type.Invalid || typeA == typeB || typeA == Type.Nothing || typeB == Type.Any
+  def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] = (typeA, typeB) match
+    case (Type.Invalid, _) => true
+    case (_, Type.Invalid) => true
+    case (Type.Nothing, _) => true
+    case (_, Type.Any)     => true
+    case (Type.Apply(Type.Array, List(elemA)), Type.Apply(Type.Array, List(elemB))) => isSubtype(elemA, elemB)
+    case _ => typeA == typeB
 
   /**
    * Get the metadata of a symbol.
