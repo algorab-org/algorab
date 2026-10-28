@@ -156,6 +156,9 @@ object Typer:
         
         case _ => castExpr(typeExpr(expr), to)
 
+      case resolved.Expr.Apply(expr, args, position) =>
+        castExpr(typeApply(expr, args, Some(to), position), to)
+
       case _ => castExpr(typeExpr(expr), to)
 
   /**
@@ -334,6 +337,7 @@ object Typer:
   def typeApply(
     expr: resolved.Expr,
     args: List[resolved.Argument],
+    expected: Option[typed.Type],
     position: SourcePosition
   ): Typing[typed.Expr] =
     val argExprs = desugarArguments(expr, args, position)
@@ -346,6 +350,15 @@ object Typer:
         else
           val typedArgs = argExprs.zip(inputs).map(typeExprTo)
           typed.Expr.Apply(typedExpr, typedArgs, output, position)
+
+      case typed.Type.TypeFunction(params, typed.Type.Function(inputs, output)) =>
+        if inputs.sizeCompare(argExprs) != 0 then
+          write(TypeError.ApplyMismatch(inputs, argExprs.map(typeExpr(_).tpe), position))
+          typed.Expr.Invalid(typed.Type.Invalid, position)
+        else
+          val typedArgs = argExprs.map(typeExpr)
+          val generics = inferGenerics(params, inputs, typedArgs, output, expected)
+          typed.Expr.Apply(typedExpr, typedArgs, resolveGenerics(output, generics), position)
 
       case got =>
         write(TypeError.ApplyOnNonFunction(got, position))
@@ -395,7 +408,8 @@ object Typer:
       val typedExprs = exprs.map(typeExpr)
       val elementType = typedExprs.foldLeft(typed.Type.Nothing)((tpe, expr) => unify(tpe, expr.tpe))
       typed.Expr.Array(typedExprs, elementType, position)
-    case resolved.Expr.Apply(expr, args, position) => typeApply(expr, args, position)
+
+    case resolved.Expr.Apply(expr, args, position) => typeApply(expr, args, None, position)
 
     case resolved.Expr.TypeApply(expr, args, position) =>
       val typedExpr = typeExpr(expr)
