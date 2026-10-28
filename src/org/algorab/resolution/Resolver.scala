@@ -116,6 +116,7 @@ object Resolver:
    */
   def resolveType(tpe: raw.Type, position: SourcePosition): Resolution[resolved.Type] = tpe match
     case raw.Type.Ref(name) => resolved.Type.Ref(ResolutionContext.getLocalType(name, position))
+    case raw.Type.Apply(tpe, args) => resolved.Type.Apply(resolveType(tpe, position), args.map(resolveType(_, position)))
     case raw.Type.Inferred  => resolved.Type.Inferred
 
   def resolveArgument(argument: raw.Argument): Resolution[resolved.Argument] = argument match

@@ -15,6 +15,8 @@ enum Type derives CanEqual:
    */
   case Ref(name: Identifier)
 
+  case Apply(tpe: Type, args: List[Type])
+
   /**
    * An inferred type aka not explicitly typed in the source.
    */

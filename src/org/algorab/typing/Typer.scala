@@ -26,6 +26,7 @@ object Typer:
   def resolveType(tpe: resolved.Type): typed.Type = tpe match
     case resolved.Type.Ref(symbol) => typed.Type.Class(symbol)
     case resolved.Type.TypeFunction(params, output) => typed.Type.TypeFunction(params, resolveType(output))
+    case resolved.Type.Apply(tpe, args) => typed.Type.Apply(resolveType(tpe), args.map(resolveType))
     case resolved.Type.Inferred    => throw AssertionError("Resolving Inferred type")
 
   def resolveGenerics(tpe: typed.Type, args: Map[SymbolId, typed.Type]): typed.Type = tpe match
