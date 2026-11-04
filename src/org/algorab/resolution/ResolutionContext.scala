@@ -62,7 +62,7 @@ case class ResolutionContext(
     .copy(
       symbols = symbols.updated(
         nextSymbolId,
-        Symbol.Type(
+        Symbol.Class(
           id = id,
           name = name,
           owner = Some(SymbolId.Root),

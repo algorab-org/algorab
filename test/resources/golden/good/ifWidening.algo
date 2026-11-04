@@ -1,0 +1,15 @@
+val x =
+  if true then 5
+  else 4.0
+
+val y: Float =
+  if true then 5
+  else 4
+
+val z =
+  if true then 5
+  else 4
+
+println(x)
+println(y)
+println(z)

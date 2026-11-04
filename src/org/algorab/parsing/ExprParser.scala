@@ -3,6 +3,7 @@ package org.algorab.parsing
 import io.github.iltotore.pureparser.*
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
+import org.algorab.ast.raw.Argument
 import org.algorab.ast.raw.Definition
 import org.algorab.ast.raw.Expr
 import org.algorab.ast.raw.Import
@@ -14,7 +15,6 @@ import org.algorab.util.FileName
 import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
-import org.algorab.ast.raw.Argument
 
 /**
  * A [[org.algorab.ast.raw\.Expr]] parser.
@@ -53,6 +53,13 @@ object ExprParser:
                 Parser.commit(AlgorabParser.token[Token.ParenClosed])
               )
             )(args => Expr.Apply(_, args, _)),
+            AlgorabParser.map(
+              Parser.inOrder(
+                AlgorabParser.token[Token.SquareOpen],
+                Parser.separatedBy(typeParser, AlgorabParser.token[Token.Comma]),
+                Parser.commit(AlgorabParser.token[Token.SquareClosed])
+              )
+            )(args => Expr.TypeApply(_, args, _)),
             AlgorabParser.map(
               Parser.inOrder(
                 AlgorabParser.token[Token.Dot],
@@ -125,7 +132,24 @@ object ExprParser:
   private val identifierParser: AlgorabParser[Token, Identifier] = AlgorabParser.matching:
     case Token.Ident(identifier, _) => identifier
 
-  val typeParser: AlgorabParser[Token, Type] = Type.Ref(identifierParser)
+  val typeTermParser: AlgorabParser[Token, Type] = Parser.firstOf(
+    Parser.inOrder(AlgorabParser.token[Token.ParenOpen], typeParser, AlgorabParser.token[Token.ParenClosed]),
+    Type.Ref(identifierParser)
+  )
+
+  val typeParser: AlgorabParser[Token, Type] =
+    val (first, applications) = Parser.inOrder(
+      typeTermParser,
+      AlgorabParser.repeat(
+        Parser.inOrder(
+          AlgorabParser.token[Token.SquareOpen],
+          Parser.separatedBy(typeParser, AlgorabParser.token[Token.Comma]),
+          AlgorabParser.token[Token.SquareClosed]
+        )
+      )
+    )
+
+    applications.foldLeft(first)(Type.Apply.apply)
 
   val ifParser: AlgorabParser[Token, Expr] = Expr.If.apply.tupled(
     AlgorabParser.tokenPosition(
@@ -221,7 +245,7 @@ object ExprParser:
           identifierParser,
           AlgorabParser.token[Token.Colon],
           typeParser,
-          None //TODO default param support
+          None // TODO default param support
         )
       )
     )
@@ -233,6 +257,18 @@ object ExprParser:
         AlgorabParser.token[Token.Def],
         Parser.commit(Parser.inOrder(
           identifierParser,
+          Parser.firstOf(
+            Parser.inOrder(
+              AlgorabParser.token[Token.SquareOpen],
+              Parser.commit(
+                Parser.inOrder(
+                  Parser.separatedBy(identifierParser, AlgorabParser.token[Token.Comma]),
+                  AlgorabParser.token[Token.SquareClosed]
+                )
+              )
+            ),
+            Nil
+          ),
           AlgorabParser.token[Token.ParenOpen],
           Parser.separatedBy(
             paramParser,

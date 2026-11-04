@@ -8,6 +8,9 @@ import org.algorab.ast.Symbol
  */
 enum Type derives CanEqual:
 
+  //TODO make it a pseudoclass?
+  case Nothing
+
   /**
    * A reference to a declared class.
    *
@@ -22,6 +25,10 @@ enum Type derives CanEqual:
    * @param output the return type of the function
    */
   case Function(inputs: List[Type], output: Type)
+
+  case TypeFunction(params: List[SymbolId], output: Type)
+
+  case Apply(tpe: Type, args: List[Type])
 
   /**
    * An inferred type aka not explicitly typed in the source.
@@ -38,3 +45,5 @@ object Type:
   val Char: Type = Type.Class(SymbolId.CharType)
   val String: Type = Type.Class(SymbolId.StringType)
   val Array: Type = Type.Class(SymbolId.ArrayType)
+
+  def ArrayOf(tpe: Type): Type = Type.Apply(Type.Array, List(tpe))

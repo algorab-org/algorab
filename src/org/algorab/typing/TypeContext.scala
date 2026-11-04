@@ -39,7 +39,8 @@ object TypeContext:
       SymbolId.ToFloatTerm -> Some(Type.Function(List(Type.Int), Type.Float)),
       SymbolId.PrintLnTerm -> Some(Type.Function(List(Type.Any), Type.Unit)),
       SymbolId.ReadIntTerm -> Some(Type.Function(Nil, Type.Int)),
-      SymbolId.ReadFloatTerm -> Some(Type.Function(Nil, Type.Float))
+      SymbolId.ReadFloatTerm -> Some(Type.Function(Nil, Type.Float)),
+      SymbolId.ArrayTerm -> Some(Type.Function(List(Type.Array), Type.Array)) //TODO Use Type.Apply
     )
   )
 
@@ -90,8 +91,13 @@ object TypeContext:
    * @param typeB the expected supertype
    * @return `true` if `typeA <: typeB`
    */
-  def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] =
-    typeA == Type.Invalid || typeB == Type.Invalid || typeA == typeB || typeB == Type.Any
+  def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] = (typeA, typeB) match
+    case (Type.Invalid, _) => true
+    case (_, Type.Invalid) => true
+    case (Type.Nothing, _) => true
+    case (_, Type.Any)     => true
+    case (Type.Apply(Type.Array, List(elemA)), Type.Apply(Type.Array, List(elemB))) => isSubtype(elemA, elemB)
+    case _ => typeA == typeB
 
   /**
    * Get the metadata of a symbol.

@@ -1,6 +1,7 @@
 package org.algorab.ast.raw
 
 import org.algorab.ast.Identifier
+import org.algorab.ast.SymbolId
 
 /**
  * A parsed type.
@@ -13,6 +14,8 @@ enum Type derives CanEqual:
    * @param name the name of the definition
    */
   case Ref(name: Identifier)
+
+  case Apply(tpe: Type, args: List[Type])
 
   /**
    * An inferred type aka not explicitly typed in the source.

@@ -38,7 +38,8 @@ object Symbol:
     def withOwner(owner: SymbolId): Symbol.Valid = this match
       case Variable(id, name, _, mutable, position) => Variable(id, name, Some(owner), mutable, position)
       case Function(id, name, _, position)          => Function(id, name, Some(owner), position)
-      case Type(id, name, _, position)              => Type(id, name, Some(owner), position)
+      case Class(id, name, _, position)             => Class(id, name, Some(owner), position)
+      case TypeAlias(id, name, _, position)         => TypeAlias(id, name, Some(owner), position)
       case _                                        => throw AssertionError(s"withOwner with $this")
 
   /**
@@ -84,14 +85,29 @@ object Symbol:
   ) extends Valid
 
   /**
-   * A type.
+   * A class.
    *
    * @param id the id of this symbol
    * @param name the name of this symbol
    * @param owner the owner of this symbol
    * @param position the source position of this symbol's declaration
    */
-  case class Type(
+  case class Class(
+      id: SymbolId,
+      name: Identifier,
+      owner: Option[SymbolId],
+      position: SourcePosition
+  ) extends Valid
+
+  /**
+   * A type alias.
+   *
+   * @param id the id of this symbol
+   * @param name the name of this symbol
+   * @param owner the owner of this symbol
+   * @param position the source position of this symbol's declaration
+   */
+  case class TypeAlias(
       id: SymbolId,
       name: Identifier,
       owner: Option[SymbolId],

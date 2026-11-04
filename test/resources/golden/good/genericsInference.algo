@@ -1,0 +1,9 @@
+def id[A](x: A): A = x
+
+val a: Int = id(5)
+val b = id(5.0)
+val c: Float = b
+
+println(a)
+println(b)
+println(c)

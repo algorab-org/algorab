@@ -1,0 +1,4 @@
+def id[A](x: A): A = x
+
+println(id[Int](5))
+println(id[Boolean](true))

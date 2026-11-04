@@ -235,6 +235,8 @@ enum Expr:
    */
   case Apply(expr: Expr, args: List[Argument], position: SourcePosition)
 
+  case TypeApply(expr: Expr, args: List[Type], position: SourcePosition)
+
   /**
    * A block of one or more statements.
    *

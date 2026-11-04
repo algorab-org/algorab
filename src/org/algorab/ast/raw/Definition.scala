@@ -25,12 +25,13 @@ enum Definition:
    * A function declaration.
    *
    * @param name the function's name
+   * @param typeParams the function's type parameters
    * @param params the function's parameters
    * @param retType the function's return type
    * @param expr the function's RHS
    * @param position the source position of this definition
    */
-  case Function(name: Identifier, params: List[Param], retType: Type, body: Expr, position: SourcePosition)
+  case Function(name: Identifier, typeParams: List[Identifier], params: List[Param], retType: Type, body: Expr, position: SourcePosition)
 
   /**
    * The source position of this definition.

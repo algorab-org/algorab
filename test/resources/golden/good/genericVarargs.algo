@@ -1,0 +1,9 @@
+def ids[A](x: A*): Array[A] = x
+
+ids[Int]()
+ids[Int](1, 2)
+ids[String]("a", "b", "c")
+
+ids()
+ids(1, 2)
+ids("a", "b", "c")
