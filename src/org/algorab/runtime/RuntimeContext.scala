@@ -55,12 +55,12 @@ object RuntimeContext:
       SymbolId.ToFloatTerm -> Value.BuiltinFunction:
         case Seq(value: Int) => Value(value.toFloat),
       SymbolId.PrintLnTerm -> Value.BuiltinFunction:
-        case Seq(value) => Value(Console.println(value.toString)),
+        case Seq(value) => Value(Console.println(Value.toString(value))),
       SymbolId.ReadIntTerm -> Value.BuiltinFunction:
         case Seq() => Value(Runtime.convertConsoleError(Console.readInt())),
       SymbolId.ReadFloatTerm -> Value.BuiltinFunction:
         case Seq() => Value(Runtime.convertConsoleError(Console.readDouble())),
-      SymbolId.ArrayTerm -> Value.BuiltinFunction(values => Value(values.toArray))
+      SymbolId.ArrayTerm -> Value.BuiltinFunction(values => Value(values.reverseIterator.toArray))
     ),
     initializedModules = Set(SymbolId.Invalid)
   )

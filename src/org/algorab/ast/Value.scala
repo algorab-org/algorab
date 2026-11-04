@@ -20,6 +20,14 @@ object Value:
     case Type.Char    => '\u0000'
     case _            => null
 
+  def toString(value: Value): String = value match
+    case FunctionRef(id) => s"<function $id>"
+    case BuiltinFunction(f) => "<builtin function>"
+    case _: Unit => "Unit"
+    case array: Array[Any] => array.map(value => Value.toString(value.asInstanceOf[Value])).mkString("Array(", ", ", ")")
+    case _ => value.toString()
+  
+
   case class FunctionRef(id: SymbolId)
 
   object FunctionRef:
