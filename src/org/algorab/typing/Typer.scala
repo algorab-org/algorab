@@ -361,6 +361,14 @@ object Typer:
           val generics = inferGenerics(params, inputs, typedArgs, output, expected)
           typed.Expr.Apply(typedExpr, typedArgs, resolveGenerics(output, generics), position)
 
+      case typed.Type.Apply(typed.Type.Array, List(elementType)) =>
+        if argExprs.sizeCompare(1) != 0 then
+          write(TypeError.ApplyMismatch(List(typed.Type.Int), argExprs.map(typeExpr(_).tpe), position))
+          typed.Expr.Invalid(typed.Type.Invalid, position)
+        else
+          val typedIndex = typeExprTo(argExprs.head, typed.Type.Int)
+          typed.Expr.Apply(typedExpr, List(typedIndex), elementType, position)
+
       case got =>
         write(TypeError.ApplyOnNonFunction(got, position))
         typed.Expr.Invalid(typed.Type.Invalid, position)

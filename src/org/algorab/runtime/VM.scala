@@ -142,6 +142,12 @@ object VM:
         case Value.BuiltinFunction(f) =>
           RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
 
+        case array: Array[Value @unchecked] =>
+          val size = array.length
+          val index = popInt(position)
+          if index < 0 || index >= size then fail(RuntimeError.IndexOutOfBound(index, size, position))
+          else RuntimeContext.push(array(index))
+
         case _ =>
           fail(RuntimeError.simpleMismatch(Type.Function(List.fill(paramCount.value)(Type.Any), Type.Any), function, position))
 

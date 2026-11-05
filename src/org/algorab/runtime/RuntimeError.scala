@@ -34,6 +34,8 @@ enum RuntimeError extends AlgorabError:
    */
   case Console(error: ConsoleError, position: SourcePosition)
 
+  case IndexOutOfBound(size: Int, index: Int, position: SourcePosition)
+
   /**
    * The source position where the error occurred.
    */
@@ -47,9 +49,15 @@ enum RuntimeError extends AlgorabError:
       s"""Type mismatch.
          |
          |Expected: ${Printer.showTypePattern(expected)}
-         |Got: $got"""
+         |Got: $got""".stripMargin
 
     case Console(error, _) => error.message
+
+    case IndexOutOfBound(size, index, _) =>
+      s"""Index out of bound.
+         |
+         |Size: $size
+         |Index: $index""".stripMargin
 
   override def show: Show[Str] = message
 
