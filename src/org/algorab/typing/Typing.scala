@@ -4,8 +4,8 @@ import org.algorab.AlgorabProgram
 import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.ast.resolved.Definition
-import purelogic.*
 import org.algorab.util.Table
+import purelogic.*
 
 /**
  * A program to be evaluated during the typing phase.

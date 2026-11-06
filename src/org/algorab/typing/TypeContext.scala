@@ -5,8 +5,8 @@ import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.ast.resolved
 import org.algorab.ast.typed.Type
-import purelogic.*
 import org.algorab.util.Table
+import purelogic.*
 
 /**
  * The context used during the typing phase.
@@ -41,7 +41,7 @@ object TypeContext:
       SymbolId.PrintLnTerm -> Some(Type.Function(List(Type.Any), Type.Unit)),
       SymbolId.ReadIntTerm -> Some(Type.Function(Nil, Type.Int)),
       SymbolId.ReadFloatTerm -> Some(Type.Function(Nil, Type.Float)),
-      SymbolId.ArrayTerm -> Some(Type.Function(List(Type.Array), Type.Array)) //TODO Use Type.Apply
+      SymbolId.ArrayTerm -> Some(Type.Function(List(Type.Array), Type.Array)) // TODO Use Type.Apply
     )
   )
 
@@ -93,12 +93,12 @@ object TypeContext:
    * @return `true` if `typeA <: typeB`
    */
   def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] = (typeA, typeB) match
-    case (Type.Invalid, _) => true
-    case (_, Type.Invalid) => true
-    case (Type.Nothing, _) => true
-    case (_, Type.Any)     => true
+    case (Type.Invalid, _)                                                          => true
+    case (_, Type.Invalid)                                                          => true
+    case (Type.Nothing, _)                                                          => true
+    case (_, Type.Any)                                                              => true
     case (Type.Apply(Type.Array, List(elemA)), Type.Apply(Type.Array, List(elemB))) => isSubtype(elemA, elemB)
-    case _ => typeA == typeB
+    case _                                                                          => typeA == typeB
 
   /**
    * Get the metadata of a symbol.

@@ -1,11 +1,11 @@
 package org.algorab.ast.compiled
 
+import org.algorab.ast.Identifier
 import org.algorab.ast.InstructionPosition
 import org.algorab.ast.ParamCount
 import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
 import org.algorab.util.SourcePosition
-import org.algorab.ast.Identifier
 
 /**
  * An instruction in the compiled representation of an Algorab program.

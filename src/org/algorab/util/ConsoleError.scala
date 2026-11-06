@@ -25,7 +25,6 @@ enum ConsoleError derives CanEqual:
   case EndOfInput
 
   def message: String = this match
-    case InvalidInt(got) => s"Invalid Int.\nGot: $got"
+    case InvalidInt(got)   => s"Invalid Int.\nGot: $got"
     case InvalidFloat(got) => s"Invalid Float.\nGot: $got"
-    case EndOfInput => "No remaining input."
-  
+    case EndOfInput        => "No remaining input."

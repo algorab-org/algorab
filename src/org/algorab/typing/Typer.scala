@@ -1,18 +1,18 @@
 package org.algorab.typing
 
 import org.algorab.AlgorabProgram
+import org.algorab.ast.Identifier
 import org.algorab.ast.Symbol
+import org.algorab.ast.Symbol.Root.position
 import org.algorab.ast.SymbolId
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.resolved
 import org.algorab.ast.typed
-import org.algorab.ast.Identifier
 import org.algorab.resolution.ResolutionContext
-import purelogic.*
-import org.algorab.ast.Symbol.Root.position
-import scala.annotation.tailrec
 import org.algorab.util.SourcePosition
 import org.algorab.util.Table
+import purelogic.*
+import scala.annotation.tailrec
 
 /**
  * The typing phase.
@@ -26,25 +26,25 @@ object Typer:
    * @return the given type with fully concrete references aka no generic or inferred
    */
   def resolveType(tpe: resolved.Type): typed.Type = tpe match
-    case resolved.Type.Ref(symbol) => typed.Type.Class(symbol)
+    case resolved.Type.Ref(symbol)                  => typed.Type.Class(symbol)
     case resolved.Type.TypeFunction(params, output) => typed.Type.TypeFunction(params, resolveType(output))
-    case resolved.Type.Apply(tpe, args) => typed.Type.Apply(resolveType(tpe), args.map(resolveType))
-    case resolved.Type.Inferred    => throw AssertionError("Resolving Inferred type")
+    case resolved.Type.Apply(tpe, args)             => typed.Type.Apply(resolveType(tpe), args.map(resolveType))
+    case resolved.Type.Inferred                     => throw AssertionError("Resolving Inferred type")
 
   def resolveGenerics(tpe: typed.Type, args: Map[SymbolId, typed.Type]): typed.Type = tpe match
-    case typed.Type.Nothing => typed.Type.Nothing
-    case typed.Type.Class(symbol) => args.getOrElse(symbol, tpe)
-    case typed.Type.Function(inputs, output) => typed.Type.Function(inputs.map(resolveGenerics(_, args)), resolveGenerics(output, args))
+    case typed.Type.Nothing                      => typed.Type.Nothing
+    case typed.Type.Class(symbol)                => args.getOrElse(symbol, tpe)
+    case typed.Type.Function(inputs, output)     => typed.Type.Function(inputs.map(resolveGenerics(_, args)), resolveGenerics(output, args))
     case typed.Type.TypeFunction(params, output) => typed.Type.TypeFunction(params, resolveGenerics(output, args))
-    case typed.Type.Apply(tpe, typeArgs) => typed.Type.Apply(resolveGenerics(tpe, args), typeArgs.map(resolveGenerics(_, args)))
-    case typed.Type.Invalid => typed.Type.Invalid
+    case typed.Type.Apply(tpe, typeArgs)         => typed.Type.Apply(resolveGenerics(tpe, args), typeArgs.map(resolveGenerics(_, args)))
+    case typed.Type.Invalid                      => typed.Type.Invalid
 
   def inferGenerics(
-    params: List[SymbolId],
-    inputs: List[typed.Type],
-    args: List[typed.Expr],
-    output: typed.Type,
-    expected: Option[typed.Type]
+      params: List[SymbolId],
+      inputs: List[typed.Type],
+      args: List[typed.Expr],
+      output: typed.Type,
+      expected: Option[typed.Type]
   ): Typing[Map[SymbolId, typed.Type]] =
     val genericParams = params.toSet
 
@@ -139,30 +139,30 @@ object Typer:
    * @return the given expression, typed to the given type
    */
   def typeExprTo(expr: resolved.Expr, to: typed.Type): Typing[typed.Expr] = expr match
-      case resolved.Expr.If(cond, ifTrue, ifFalse, position) =>
-        val typedCond = typeExprTo(cond, typed.Type.Boolean)
-        val typedIfTrue = typeExprTo(ifTrue, to)
-        val typedIfFalse = typeExprTo(ifFalse, to)
+    case resolved.Expr.If(cond, ifTrue, ifFalse, position) =>
+      val typedCond = typeExprTo(cond, typed.Type.Boolean)
+      val typedIfTrue = typeExprTo(ifTrue, to)
+      val typedIfFalse = typeExprTo(ifFalse, to)
 
-        typed.Expr.If(typedCond, typedIfTrue, typedIfFalse, to, position)
+      typed.Expr.If(typedCond, typedIfTrue, typedIfFalse, to, position)
 
-      case resolved.Expr.Block(statements :+ (last: resolved.Expr), position) =>
-        val typedStatements = statements.map(typeStatement)
-        val typedLast = typeExprTo(last, to)
-        typed.Expr.Block(typedStatements :+ typedLast, to, position)
+    case resolved.Expr.Block(statements :+ (last: resolved.Expr), position) =>
+      val typedStatements = statements.map(typeStatement)
+      val typedLast = typeExprTo(last, to)
+      typed.Expr.Block(typedStatements :+ typedLast, to, position)
 
-      //TODO unify bidir variance once classes are implemented
-      case resolved.Expr.Array(exprs, position) => to match
+    // TODO unify bidir variance once classes are implemented
+    case resolved.Expr.Array(exprs, position) => to match
         case typed.Type.Apply(typed.Type.Array, List(elementType)) =>
           val typedExprs = exprs.map(typeExprTo(_, elementType))
           typed.Expr.Array(typedExprs, elementType, position)
-        
+
         case _ => castExpr(typeExpr(expr), to)
 
-      case resolved.Expr.Apply(expr, args, position) =>
-        castExpr(typeApply(expr, args, Some(to), position), to)
+    case resolved.Expr.Apply(expr, args, position) =>
+      castExpr(typeApply(expr, args, Some(to), position), to)
 
-      case _ => castExpr(typeExpr(expr), to)
+    case _ => castExpr(typeExpr(expr), to)
 
   /**
    * Cast a typed expression to a certain type.
@@ -209,10 +209,10 @@ object Typer:
     val typedRight = typeExpr(right)
 
     (typedLeft.tpe, typedRight.tpe) match
-      case (typed.Type.Int, typed.Type.Int)     => op(typedLeft, typedRight, typed.Type.Int)
-      case (typed.Type.Int, typed.Type.Float)   => op(typed.Expr.ToFloat(typedLeft), typedRight, typed.Type.Float)
-      case (typed.Type.Float, typed.Type.Int)   => op(typedLeft, typed.Expr.ToFloat(typedRight), typed.Type.Float)
-      case (typed.Type.Float, typed.Type.Float) => op(typedLeft, typedRight, typed.Type.Float)
+      case (typed.Type.Int, typed.Type.Int)                  => op(typedLeft, typedRight, typed.Type.Int)
+      case (typed.Type.Int, typed.Type.Float)                => op(typed.Expr.ToFloat(typedLeft), typedRight, typed.Type.Float)
+      case (typed.Type.Float, typed.Type.Int)                => op(typedLeft, typed.Expr.ToFloat(typedRight), typed.Type.Float)
+      case (typed.Type.Float, typed.Type.Float)              => op(typedLeft, typedRight, typed.Type.Float)
       case (_, typed.Type.Invalid) | (typed.Type.Invalid, _) => op(typedLeft, typedRight, typed.Type.Invalid)
       case (leftType, rightType) =>
         write(TypeError.Mismatch(
@@ -270,7 +270,7 @@ object Typer:
           val typedParams = params.map(typeParam)
           val typedRetType = resolveType(retType)
           typedParams.foreach(param => TypeContext.assignType(param.symbol, param.usageType))
-          
+
           val functionType = typed.Type.Function(typedParams.map(_.usageType), typedRetType)
           if typeParams.isEmpty then functionType
           else typed.Type.TypeFunction(typeParams, functionType)
@@ -284,12 +284,11 @@ object Typer:
       case resolved.Definition.Val(symbol, tpe, expr, mutable, position) =>
         typed.Definition.Val(symbol, resolvedType, typeExprTo(expr, resolvedType), mutable, position)
       case resolved.Definition.Function(symbol, typeParams, params, retType, body, position) =>
-
         @tailrec
         def getFunctionType(tpe: typed.Type): (List[typed.Type], typed.Type) = tpe match
-          case typed.Type.Function(inputs, output) => (inputs, output)
+          case typed.Type.Function(inputs, output)     => (inputs, output)
           case typed.Type.TypeFunction(params, output) => getFunctionType(output)
-          case _ => throw AssertionError(s"Function definition with non-function type: $tpe")
+          case _                                       => throw AssertionError(s"Function definition with non-function type: $tpe")
 
         val (resolvedParams, resolvedRetType) = getFunctionType(resolvedType)
         typed.Definition.Function(
@@ -304,9 +303,9 @@ object Typer:
     def getPositionalExprs(arguments: List[resolved.Argument]): List[resolved.Expr] =
       arguments.map:
         case resolved.Argument.Positional(_, true) =>
-            write(TypeError.IllegalVariadic(position))
-            resolved.Expr.Invalid(position)
-          
+          write(TypeError.IllegalVariadic(position))
+          resolved.Expr.Invalid(position)
+
         case resolved.Argument.Positional(expr, false) => expr
 
     def handleFunctionArguments(symbol: SymbolId): Typing[List[resolved.Expr]] =
@@ -328,7 +327,7 @@ object Typer:
           getPositionalExprs(beforeVarargs) :+ afterVarargs
 
         case _ => getPositionalExprs(args)
-    
+
     expr match
       case resolved.Expr.TypeApply(resolved.Expr.VarCall(symbol, _), _, _) if TypeContext.getSymbol(symbol).isInstanceOf[Symbol.Function] =>
         handleFunctionArguments(symbol)
@@ -338,10 +337,10 @@ object Typer:
       case _ => getPositionalExprs(args)
 
   def typeApply(
-    expr: resolved.Expr,
-    args: List[resolved.Argument],
-    expected: Option[typed.Type],
-    position: SourcePosition
+      expr: resolved.Expr,
+      args: List[resolved.Argument],
+      expected: Option[typed.Type],
+      position: SourcePosition
   ): Typing[typed.Expr] =
     val argExprs = desugarArguments(expr, args, position)
     val typedExpr = typeExpr(expr)
@@ -472,40 +471,48 @@ object Typer:
           // typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, position)
           val index = get.symbols.next
           update(ctx => ctx.copy(symbols = ctx.symbols.withValue(Symbol.Variable(index, Identifier("index"), None, true, position))))
-          typed.Expr.Block(List(
-            typed.Definition.Val(index, typed.Type.Int, typed.Expr.LInt(0, typed.Type.Int, position), true, position),
-            typed.Expr.While(
-              cond = typed.Expr.Less(
-                left = typed.Expr.VarCall(index, typed.Type.Int, position),
-                right = typed.Expr.Select(typedIterable, Identifier("size"), typed.Type.Int, typedIterable.position),
-                tpe = typed.Type.Boolean,
-                position = position
-              ),
-              body = typed.Expr.Block(List(
-                typed.Definition.Val(
-                  symbol = iterator,
-                  tpe = elementType,
-                  expr = typed.Expr.Apply(typedIterable, List(typed.Expr.VarCall(index, typed.Type.Int, position)), elementType, position),
-                  mutable = false,
+          typed.Expr.Block(
+            List(
+              typed.Definition.Val(index, typed.Type.Int, typed.Expr.LInt(0, typed.Type.Int, position), true, position),
+              typed.Expr.While(
+                cond = typed.Expr.Less(
+                  left = typed.Expr.VarCall(index, typed.Type.Int, position),
+                  right = typed.Expr.Select(typedIterable, Identifier("size"), typed.Type.Int, typedIterable.position),
+                  tpe = typed.Type.Boolean,
                   position = position
                 ),
-                typedBody,
-                typed.Expr.Assign(
-                  symbol = index,
-                  expr = typed.Expr.Add(
-                    left = typed.Expr.VarCall(index, typed.Type.Int, position),
-                    right = typed.Expr.LInt(1, typed.Type.Int, position),
-                    tpe = typed.Type.Int,
-                    position = position
+                body = typed.Expr.Block(
+                  List(
+                    typed.Definition.Val(
+                      symbol = iterator,
+                      tpe = elementType,
+                      expr = typed.Expr.Apply(typedIterable, List(typed.Expr.VarCall(index, typed.Type.Int, position)), elementType, position),
+                      mutable = false,
+                      position = position
+                    ),
+                    typedBody,
+                    typed.Expr.Assign(
+                      symbol = index,
+                      expr = typed.Expr.Add(
+                        left = typed.Expr.VarCall(index, typed.Type.Int, position),
+                        right = typed.Expr.LInt(1, typed.Type.Int, position),
+                        tpe = typed.Type.Int,
+                        position = position
+                      ),
+                      tpe = typed.Type.Unit,
+                      position = position
+                    )
                   ),
-                  tpe = typed.Type.Unit,
-                  position = position
-                )
-              ), typed.Type.Unit, position),
-              tpe = typed.Type.Unit,
-              position
-            )
-          ), typed.Type.Unit, position)
+                  typed.Type.Unit,
+                  position
+                ),
+                tpe = typed.Type.Unit,
+                position
+              )
+            ),
+            typed.Type.Unit,
+            position
+          )
         case got =>
           write(TypeError.simpleMismatch(List(typed.Type.Array), got, typedIterable.position))
           typed.Expr.Invalid(typed.Type.Invalid, position)

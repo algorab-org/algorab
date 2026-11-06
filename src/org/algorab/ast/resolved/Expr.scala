@@ -286,7 +286,7 @@ enum Expr:
    * The source position of this expression.
    */
   def position: SourcePosition
-  
+
 object Expr:
 
   object Array:
@@ -298,5 +298,4 @@ object Expr:
 
     def unapply(expr: Expr): Option[(List[Expr], SourcePosition)] = expr match
       case Apply(VarCall(SymbolId.ArrayTerm, _), elements, position) => Some(elements.map(_.expr), position)
-      case _ => None
-    
+      case _                                                         => None

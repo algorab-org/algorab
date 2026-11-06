@@ -1,16 +1,16 @@
 package org.algorab.runtime
 
-import org.algorab.ast.Value
-import org.algorab.ast.SymbolId
+import fansi.Str
+import org.algorab.AlgorabError
 import org.algorab.ast.Symbol
+import org.algorab.ast.SymbolId
+import org.algorab.ast.Value
 import org.algorab.ast.typed.Type
+import org.algorab.show.Printer
+import org.algorab.show.Show
 import org.algorab.typing.TypePattern
 import org.algorab.util.ConsoleError
 import org.algorab.util.SourcePosition
-import org.algorab.AlgorabError
-import org.algorab.show.Show
-import org.algorab.show.Printer
-import fansi.Str
 
 /**
  * An error occurring during the runtime phase.
@@ -42,8 +42,8 @@ enum RuntimeError extends AlgorabError:
   def position: SourcePosition
 
   /**
-    * The error message.
-    */
+   * The error message.
+   */
   def message: Show[String] = this match
     case TypeMismatch(expected, got, _) =>
       s"""Type mismatch.

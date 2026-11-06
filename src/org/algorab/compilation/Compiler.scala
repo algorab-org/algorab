@@ -245,7 +245,7 @@ object Compiler:
       CompilationContext.emit(Instruction.JumpIfFalse(bodyEnd, position))
       CompilationContext.emitAll(bodyInstructions)
 
-    case Expr.Invalid(_, position)                       => throw AssertionError(s"Tried to compile an invalid node at $position")
+    case Expr.Invalid(_, position) => throw AssertionError(s"Tried to compile an invalid node at $position")
 
   /**
    * Compile programs into one.

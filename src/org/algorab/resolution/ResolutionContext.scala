@@ -4,8 +4,8 @@ import io.github.iltotore.iron.autoRefine
 import org.algorab.ast.*
 import org.algorab.util.FileName
 import org.algorab.util.SourcePosition
-import purelogic.*
 import org.algorab.util.Table
+import purelogic.*
 
 /**
  * The context used during the name resolution phase.
@@ -21,7 +21,7 @@ case class ResolutionContext(
     scopePath: List[ScopeId],
     symbols: Table[SymbolId, Symbol],
     declarations: Map[SymbolId, resolved.Definition],
-    scopes: Table[ScopeId, ResolutionScope],
+    scopes: Table[ScopeId, ResolutionScope]
 ):
 
   /**
@@ -396,7 +396,7 @@ object ResolutionContext:
     update(context =>
       context.copy(
         scopePath = context.scopes.next :: context.scopePath,
-        scopes = context.scopes.withValue(ResolutionScope.empty(currentOwner.flatMap(_ => owner))),
+        scopes = context.scopes.withValue(ResolutionScope.empty(currentOwner.flatMap(_ => owner)))
       )
     )
     val result = body

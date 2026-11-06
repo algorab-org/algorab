@@ -19,12 +19,12 @@ object Printer:
    * @return the textual representation of this type
    */
   def showType(tpe: Type): Show[String] = tpe match
-    case Type.Nothing => "Nothing"
-    case Type.Class(symbol)            => ShowContext.getSymbolName(symbol)
-    case Type.Function(inputs, output) => s"${inputs.map(showType).mkString("(", ", ", ")")} => ${showType(output)}"
+    case Type.Nothing                      => "Nothing"
+    case Type.Class(symbol)                => ShowContext.getSymbolName(symbol)
+    case Type.Function(inputs, output)     => s"${inputs.map(showType).mkString("(", ", ", ")")} => ${showType(output)}"
     case Type.TypeFunction(params, output) => s"${params.map(ShowContext.getSymbolName).mkString("(", ",", ")")} => ${showType(output)}"
-    case Type.Apply(tpe, args) => s"${showType(tpe)}${args.mkString("[", ", ", "]")}"
-    case Type.Invalid                  => "<invalid>"
+    case Type.Apply(tpe, args)             => s"${showType(tpe)}${args.mkString("[", ", ", "]")}"
+    case Type.Invalid                      => "<invalid>"
 
   /**
    * Pretty-print a type pattern.

@@ -2,16 +2,16 @@ package org.algorab.typing
 
 import fansi.Str
 import org.algorab.AlgorabError
+import org.algorab.ast.Identifier
 import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.ast.typed.Type
 import org.algorab.show.Printer
 import org.algorab.show.Show
+import org.algorab.show.ShowContext
 import org.algorab.show.str
 import org.algorab.show.strStripMargin
 import org.algorab.util.SourcePosition
-import org.algorab.ast.Identifier
-import org.algorab.show.ShowContext
 
 /**
  * An error occurring during the typing phase.

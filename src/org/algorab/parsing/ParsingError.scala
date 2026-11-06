@@ -1,19 +1,19 @@
 package org.algorab.parsing
 
+import fansi.Str
 import io.github.iltotore.pureparser.ParseError
 import io.github.iltotore.pureparser.ParseError.Pattern
 import org.algorab.AlgorabError
 import org.algorab.ast.SymbolId
 import org.algorab.show.Show
 import org.algorab.util.SourcePosition
-import fansi.Str
 
 /**
-  * A parsing error.
-  *
-  * @param expected the expected pattern
-  * @param position the position of the error
-  */
+ * A parsing error.
+ *
+ * @param expected the expected pattern
+ * @param position the position of the error
+ */
 case class ParsingError(expected: ParseError.Pattern[Char | Token], position: SourcePosition) extends AlgorabError.Frontend:
 
   private given CanEqual[Char | Token, Char | Token] = CanEqual.derived

@@ -1,6 +1,7 @@
 package org.algorab.runtime
 
 import org.algorab.AlgorabProgram
+import org.algorab.ast.Identifier
 import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
 import org.algorab.ast.compiled.Instruction
@@ -10,7 +11,6 @@ import org.algorab.ast.typed.Type
 import org.algorab.runtime.RuntimeContext.currentFrame
 import org.algorab.util.SourcePosition
 import purelogic.*
-import org.algorab.ast.Identifier
 
 /**
  * The runtime phase, based on a stack VM.
