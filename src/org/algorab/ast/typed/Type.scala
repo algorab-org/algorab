@@ -1,14 +1,14 @@
 package org.algorab.ast.typed
 
-import org.algorab.ast.SymbolId
 import org.algorab.ast.Symbol
+import org.algorab.ast.SymbolId
 
 /**
  * A parsed type.
  */
 enum Type derives CanEqual:
 
-  //TODO make it a pseudoclass?
+  // TODO make it a pseudoclass?
   case Nothing
 
   /**

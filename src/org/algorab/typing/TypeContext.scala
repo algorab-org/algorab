@@ -5,6 +5,7 @@ import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.ast.resolved
 import org.algorab.ast.typed.Type
+import org.algorab.util.Table
 import purelogic.*
 
 /**
@@ -15,7 +16,7 @@ import purelogic.*
  * @param types the type for each typed symbol, [[None]] meaning that the symbol is currently being type-inferred
  */
 case class TypeContext(
-    symbols: Map[SymbolId, Symbol],
+    symbols: Table[SymbolId, Symbol],
     declarations: Map[SymbolId, resolved.Definition],
     types: Map[SymbolId, Option[Type]]
 )
@@ -30,7 +31,7 @@ object TypeContext:
    * @param declarations the declaration of each declared symbol, used for inference during the typing phase
    * @return a new type context with standard symbols types plus the given symbols and declaration
    */
-  def default(symbols: Map[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition]): TypeContext = TypeContext(
+  def default(symbols: Table[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition]): TypeContext = TypeContext(
     symbols = symbols,
     declarations = declarations,
     types = Map(
@@ -40,7 +41,7 @@ object TypeContext:
       SymbolId.PrintLnTerm -> Some(Type.Function(List(Type.Any), Type.Unit)),
       SymbolId.ReadIntTerm -> Some(Type.Function(Nil, Type.Int)),
       SymbolId.ReadFloatTerm -> Some(Type.Function(Nil, Type.Float)),
-      SymbolId.ArrayTerm -> Some(Type.Function(List(Type.Array), Type.Array)) //TODO Use Type.Apply
+      SymbolId.ArrayTerm -> Some(Type.Function(List(Type.Array), Type.Array)) // TODO Use Type.Apply
     )
   )
 
@@ -92,12 +93,12 @@ object TypeContext:
    * @return `true` if `typeA <: typeB`
    */
   def isSubtype(typeA: Type, typeB: Type): Typing[Boolean] = (typeA, typeB) match
-    case (Type.Invalid, _) => true
-    case (_, Type.Invalid) => true
-    case (Type.Nothing, _) => true
-    case (_, Type.Any)     => true
+    case (Type.Invalid, _)                                                          => true
+    case (_, Type.Invalid)                                                          => true
+    case (Type.Nothing, _)                                                          => true
+    case (_, Type.Any)                                                              => true
     case (Type.Apply(Type.Array, List(elemA)), Type.Apply(Type.Array, List(elemB))) => isSubtype(elemA, elemB)
-    case _ => typeA == typeB
+    case _                                                                          => typeA == typeB
 
   /**
    * Get the metadata of a symbol.

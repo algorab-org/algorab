@@ -1,7 +1,7 @@
 package org.algorab.show
 
-import fansi.EscapeAttr
 import fansi.Color
+import fansi.EscapeAttr
 
 object AlgorabColor:
 

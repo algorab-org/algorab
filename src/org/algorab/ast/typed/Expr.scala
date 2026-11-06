@@ -1,5 +1,6 @@
 package org.algorab.ast.typed
 
+import org.algorab.ast.Identifier
 import org.algorab.ast.SymbolId
 import org.algorab.util.SourcePosition
 
@@ -250,6 +251,17 @@ enum Expr:
   case Apply(expr: Expr, args: List[Expr], tpe: Type, position: SourcePosition)
 
   /**
+   * A reference to the member of an expression.
+   * At this point, [[Select]] always represents an instance member:
+   * qualified names are turned into a single [[VarCall]] pointing to the right [[SymbolId]].
+   *
+   * @param expr the expression to select from
+   * @param member the name of the member to select
+   * @param position the source position of this declaration
+   */
+  case Select(expr: Expr, member: Identifier, tpe: Type, position: SourcePosition)
+
+  /**
    * A block of one or more statements.
    *
    * @param statements this block's statements
@@ -280,17 +292,6 @@ enum Expr:
   case While(cond: Expr, body: Expr, tpe: Type, position: SourcePosition)
 
   /**
-   * A for loop.
-   *
-   * @param iterator the iterator's unique id
-   * @param iterable the collection to iterate on
-   * @param body the body to evaluate at each iteration
-   * @param tpe this expression's type
-   * @param position the source position of this expression
-   */
-  case For(iterator: SymbolId, iterable: Expr, body: Expr, tpe: Type, position: SourcePosition)
-
-  /**
    * An invalid expression.
    *
    * @param tpe this expression's type
@@ -309,36 +310,36 @@ enum Expr:
   def position: SourcePosition
 
   def withType(tpe: Type): Expr = this match
-    case LBool(value, _, position)                  => LBool(value, tpe, position)
-    case LInt(value, _, position)                   => LInt(value, tpe, position)
-    case LFloat(value, _, position)                 => LFloat(value, tpe, position)
-    case LChar(value, _, position)                  => LChar(value, tpe, position)
-    case LString(value, _, position)                => LString(value, tpe, position)
-    case Not(expr, _, position)                     => Not(expr, tpe, position)
-    case Equal(left, right, _, position)            => Equal(left, right, tpe, position)
-    case NotEqual(left, right, _, position)         => NotEqual(left, right, tpe, position)
-    case Less(left, right, _, position)             => Less(left, right, tpe, position)
-    case LessEqual(left, right, _, position)        => LessEqual(left, right, tpe, position)
-    case Greater(left, right, _, position)          => Greater(left, right, tpe, position)
-    case GreaterEqual(left, right, _, position)     => GreaterEqual(left, right, tpe, position)
-    case Plus(expr, _, position)                    => Plus(expr, tpe, position)
-    case Minus(expr, _, position)                   => Minus(expr, tpe, position)
-    case Add(left, right, _, position)              => Add(left, right, tpe, position)
-    case Sub(left, right, _, position)              => Sub(left, right, tpe, position)
-    case Mul(left, right, _, position)              => Mul(left, right, tpe, position)
-    case Div(left, right, _, position)              => Div(left, right, tpe, position)
-    case IntDiv(left, right, _, position)           => IntDiv(left, right, tpe, position)
-    case Mod(left, right, _, position)              => Mod(left, right, tpe, position)
-    case And(left, right, _, position)              => And(left, right, tpe, position)
-    case Or(left, right, _, position)               => Or(left, right, tpe, position)
-    case VarCall(symbol, _, position)               => VarCall(symbol, tpe, position)
-    case Assign(symbol, expr, _, position)          => Assign(symbol, expr, tpe, position)
-    case Apply(expr, args, _, position)             => Apply(expr, args, tpe, position)
-    case Block(statements, _, position)             => Block(statements, tpe, position)
-    case If(cond, ifTrue, ifFalse, _, position)     => If(cond, ifTrue, ifFalse, tpe, position)
-    case While(cond, body, _, position)             => While(cond, body, tpe, position)
-    case For(iterator, iterable, body, _, position) => For(iterator, iterable, body, tpe, position)
-    case Invalid(_, position)                       => Invalid(tpe, position)
+    case LBool(value, _, position)              => LBool(value, tpe, position)
+    case LInt(value, _, position)               => LInt(value, tpe, position)
+    case LFloat(value, _, position)             => LFloat(value, tpe, position)
+    case LChar(value, _, position)              => LChar(value, tpe, position)
+    case LString(value, _, position)            => LString(value, tpe, position)
+    case Not(expr, _, position)                 => Not(expr, tpe, position)
+    case Equal(left, right, _, position)        => Equal(left, right, tpe, position)
+    case NotEqual(left, right, _, position)     => NotEqual(left, right, tpe, position)
+    case Less(left, right, _, position)         => Less(left, right, tpe, position)
+    case LessEqual(left, right, _, position)    => LessEqual(left, right, tpe, position)
+    case Greater(left, right, _, position)      => Greater(left, right, tpe, position)
+    case GreaterEqual(left, right, _, position) => GreaterEqual(left, right, tpe, position)
+    case Plus(expr, _, position)                => Plus(expr, tpe, position)
+    case Minus(expr, _, position)               => Minus(expr, tpe, position)
+    case Add(left, right, _, position)          => Add(left, right, tpe, position)
+    case Sub(left, right, _, position)          => Sub(left, right, tpe, position)
+    case Mul(left, right, _, position)          => Mul(left, right, tpe, position)
+    case Div(left, right, _, position)          => Div(left, right, tpe, position)
+    case IntDiv(left, right, _, position)       => IntDiv(left, right, tpe, position)
+    case Mod(left, right, _, position)          => Mod(left, right, tpe, position)
+    case And(left, right, _, position)          => And(left, right, tpe, position)
+    case Or(left, right, _, position)           => Or(left, right, tpe, position)
+    case VarCall(symbol, _, position)           => VarCall(symbol, tpe, position)
+    case Assign(symbol, expr, _, position)      => Assign(symbol, expr, tpe, position)
+    case Select(expr, member, _, position)      => Select(expr, member, tpe, position)
+    case Apply(expr, args, _, position)         => Apply(expr, args, tpe, position)
+    case Block(statements, _, position)         => Block(statements, tpe, position)
+    case If(cond, ifTrue, ifFalse, _, position) => If(cond, ifTrue, ifFalse, tpe, position)
+    case While(cond, body, _, position)         => While(cond, body, tpe, position)
+    case Invalid(_, position)                   => Invalid(tpe, position)
 
 object Expr:
 

@@ -1,6 +1,7 @@
 package org.algorab.runtime
 
 import org.algorab.AlgorabProgram
+import org.algorab.ast.Identifier
 import org.algorab.ast.SymbolId
 import org.algorab.ast.Value
 import org.algorab.ast.compiled.Instruction
@@ -130,6 +131,11 @@ object VM:
       else
         loadModule(moduleId, ctx.modules(moduleId))
 
+    case Instruction.Select(member, position) =>
+      if member == Identifier("size") then
+        RuntimeContext.push(Value(RuntimeContext.pop.asInstanceOf[Array[?]].size))
+      else throw AssertionError("OOP not supported yet")
+
     case Instruction.Apply(paramCount, position) =>
       val function = RuntimeContext.pop
 
@@ -141,6 +147,12 @@ object VM:
 
         case Value.BuiltinFunction(f) =>
           RuntimeContext.push(f(RuntimeContext.popN(paramCount.value)))
+
+        case array: Array[Value @unchecked] =>
+          val size = array.length
+          val index = popInt(position)
+          if index < 0 || index >= size then fail(RuntimeError.IndexOutOfBound(index, size, position))
+          else RuntimeContext.push(array(index))
 
         case _ =>
           fail(RuntimeError.simpleMismatch(Type.Function(List.fill(paramCount.value)(Type.Any), Type.Any), function, position))

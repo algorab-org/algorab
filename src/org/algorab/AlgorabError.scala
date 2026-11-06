@@ -8,14 +8,14 @@ import org.algorab.ast.SymbolId
 import org.algorab.parsing.Token
 import org.algorab.resolution.ResolutionError
 import org.algorab.runtime.RuntimeError
+import org.algorab.show.AlgorabColor
 import org.algorab.show.Printer.showPosition
 import org.algorab.show.Show
 import org.algorab.show.ShowContext
 import org.algorab.show.str
+import org.algorab.show.strStripMargin
 import org.algorab.typing.TypeError
 import org.algorab.util.SourcePosition
-import org.algorab.show.strStripMargin
-import org.algorab.show.AlgorabColor
 
 /**
  * An error of the Algorab compiler/runtime.
@@ -46,7 +46,7 @@ object AlgorabError:
 
     override def show: Show[Str] =
       val sourcePos = Str(ShowContext.getSource(position.file).fold("")((info, _) =>
-        s"${info.name}:${position.start.line+1}:${position.start.column+1}"
+        s"${info.name}:${position.start.line + 1}:${position.start.column + 1}"
       )).overlay(AlgorabColor.Error)
 
       str"""${Str("--").overlay(AlgorabColor.Error)} [${Str("error").overlay(AlgorabColor.Error)}] $sourcePos

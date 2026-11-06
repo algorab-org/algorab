@@ -1,0 +1,8 @@
+for i in Array(2, 4, 6) do
+  println(i)
+
+for no in Array() do
+  println(no)
+
+for c in Array('a', 'b', 'c') do
+  println(c)

@@ -213,6 +213,9 @@ object Compiler:
     case Expr.ToFloat(expr, position) =>
       compileExpr(expr)
       CompilationContext.emit(Instruction.ToFloat(position))
+    case Expr.Select(expr, member, _, position) =>
+      compileExpr(expr)
+      CompilationContext.emit(Instruction.Select(member, position))
     case Expr.Apply(expr, args, _, position) =>
       args.foreach(compileExpr)
       compileExpr(expr)
@@ -242,8 +245,7 @@ object Compiler:
       CompilationContext.emit(Instruction.JumpIfFalse(bodyEnd, position))
       CompilationContext.emitAll(bodyInstructions)
 
-    case Expr.For(iterator, iterable, body, _, position) => ???
-    case Expr.Invalid(_, position)                       => throw AssertionError(s"Tried to compile an invalid node at $position")
+    case Expr.Invalid(_, position) => throw AssertionError(s"Tried to compile an invalid node at $position")
 
   /**
    * Compile programs into one.

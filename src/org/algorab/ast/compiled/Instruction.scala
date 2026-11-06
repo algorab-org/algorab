@@ -1,5 +1,6 @@
 package org.algorab.ast.compiled
 
+import org.algorab.ast.Identifier
 import org.algorab.ast.InstructionPosition
 import org.algorab.ast.ParamCount
 import org.algorab.ast.SymbolId
@@ -232,6 +233,8 @@ enum Instruction:
    * @param position the source position of this instruction
    */
   case LoadGlobal(symbol: SymbolId, position: SourcePosition)
+
+  case Select(member: Identifier, position: SourcePosition)
 
   /**
    * Apply a function to arguments on the stack.

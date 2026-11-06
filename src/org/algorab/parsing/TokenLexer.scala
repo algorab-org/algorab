@@ -3,11 +3,11 @@ package org.algorab.parsing
 import io.github.iltotore.pureparser.*
 import org.algorab.AlgorabProgram
 import org.algorab.ast.Identifier
+import org.algorab.ast.Symbol.Root.position
 import org.algorab.util.FileName
 import org.algorab.util.SourcePosition
 import purelogic.*
 import scala.annotation.tailrec
-import org.algorab.ast.Symbol.Root.position
 
 /**
  * A [[Token]] parser, also called a lexer.
@@ -323,7 +323,7 @@ object TokenLexer:
       withParenHandling.copy(
         output = token match
           case Token.Invalid(_) => withParenHandling.output
-          case _ => withParenHandling.output :+ token,
+          case _                => withParenHandling.output :+ token,
         pendingLayout = isLayoutStart(token),
         previousPosition = SourcePosition.Point(line, column)
       )

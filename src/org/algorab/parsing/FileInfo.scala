@@ -4,11 +4,11 @@ import io.github.iltotore.pureparser.Span
 import org.algorab.util.FileName
 
 /**
-  * File information used for parsing.
-  *
-  * @param name the name (usually a relative path) of the file to parse
-  * @param lineSpans the absolute span of each 
-  */
+ * File information used for parsing.
+ *
+ * @param name the name (usually a relative path) of the file to parse
+ * @param lineSpans the absolute span of each
+ */
 case class FileInfo(name: FileName, lineSpans: Seq[Span]):
 
   private val lineSpansAndNumber: Seq[(Span, Int)] =
@@ -20,11 +20,11 @@ case class FileInfo(name: FileName, lineSpans: Seq[Span]):
       .toSeq
 
   /**
-    * Get the line and column of the character sitting at the given 1-dimensional position.
-    *
-    * @param position the index of the character
-    * @return the character's 2D coordinates, line and column
-    */
+   * Get the line and column of the character sitting at the given 1-dimensional position.
+   *
+   * @param position the index of the character
+   * @return the character's 2D coordinates, line and column
+   */
   def lineAndColumn(position: Int): (Int, Int) =
     lineSpansAndNumber
       .collectFirst:
@@ -34,12 +34,12 @@ case class FileInfo(name: FileName, lineSpans: Seq[Span]):
 object FileInfo:
 
   /**
-    * Extract a [[FileInfo]] from the name and source.
-    *
-    * @param name the file's name
-    * @param source the file's textual content
-    * @return the [[FileInfo]] representing the given file
-    */
+   * Extract a [[FileInfo]] from the name and source.
+   *
+   * @param name the file's name
+   * @param source the file's textual content
+   * @return the [[FileInfo]] representing the given file
+   */
   def fromSource(name: FileName, source: String): FileInfo = FileInfo(
     name = name,
     lineSpans =

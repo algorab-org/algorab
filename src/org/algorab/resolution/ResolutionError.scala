@@ -1,13 +1,13 @@
 package org.algorab.resolution
 
+import fansi.Str
 import org.algorab.AlgorabError
 import org.algorab.ast.Identifier
 import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.show.Show
-import org.algorab.util.SourcePosition
-import fansi.Str
 import org.algorab.show.str
+import org.algorab.util.SourcePosition
 
 /**
  * An error occurring during the name resolution phase.
@@ -48,17 +48,17 @@ enum ResolutionError extends AlgorabError.Frontend:
   case NotANamespace(symbol: Symbol, position: SourcePosition)
 
   /**
-    * A non-definition statement is at the top-level of a non-script module, which is forbidden.
-    *
-    * @param position the source position where the error occurred
-    */
+   * A non-definition statement is at the top-level of a non-script module, which is forbidden.
+   *
+   * @param position the source position where the error occurred
+   */
   case TopLevelStatementInModule(position: SourcePosition)
 
   /**
-    * A program can only have one script file, not multiple.
-    *
-    * @param position the source position where the error occurred
-    */
+   * A program can only have one script file, not multiple.
+   *
+   * @param position the source position where the error occurred
+   */
   case MultipleScriptFiles(position: SourcePosition)
 
   override def message: Show[Str] = this match

@@ -12,5 +12,4 @@ enum Param:
 
   def usageType: Type = this match
     case Simple(_, tpe, _, _) => tpe
-    case Varargs(_, tpe, _) => Type.ArrayOf(tpe)
-  
+    case Varargs(_, tpe, _)   => Type.ArrayOf(tpe)
