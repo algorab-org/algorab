@@ -292,17 +292,6 @@ enum Expr:
   case While(cond: Expr, body: Expr, tpe: Type, position: SourcePosition)
 
   /**
-   * A for loop.
-   *
-   * @param iterator the iterator's unique id
-   * @param iterable the collection to iterate on
-   * @param body the body to evaluate at each iteration
-   * @param tpe this expression's type
-   * @param position the source position of this expression
-   */
-  case For(iterator: SymbolId, iterable: Expr, body: Expr, tpe: Type, position: SourcePosition)
-
-  /**
    * An invalid expression.
    *
    * @param tpe this expression's type
@@ -350,7 +339,6 @@ enum Expr:
     case Block(statements, _, position)             => Block(statements, tpe, position)
     case If(cond, ifTrue, ifFalse, _, position)     => If(cond, ifTrue, ifFalse, tpe, position)
     case While(cond, body, _, position)             => While(cond, body, tpe, position)
-    case For(iterator, iterable, body, _, position) => For(iterator, iterable, body, tpe, position)
     case Invalid(_, position)                       => Invalid(tpe, position)
 
 object Expr:

@@ -2,6 +2,7 @@ package org.algorab.ast
 
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.all.*
+import org.algorab.util.Table
 
 /**
  * A reference relative name. Does not have to be unique since shadowing is allowed.
@@ -32,6 +33,8 @@ object SymbolId extends RefinedType[Int, GreaterEqual[-1]]:
      * @return the biggest symbol id between this one and [[y]]
      */
     def max(y: SymbolId): SymbolId = SymbolId.assume(math.max(x.value, y.value))
+
+  given Table.Key[SymbolId] = Table.Key.refined
 
   val Invalid: SymbolId = SymbolId(-1)
   val Root: SymbolId = SymbolId(0)
@@ -68,6 +71,8 @@ object ScopeId extends RefinedType[Int, GreaterEqual[-1]]:
      * @return this scope id's value + [[y]]
      */
     def +(y: Int :| Positive0): ScopeId = ScopeId.assume(x.value + y)
+
+  given Table.Key[ScopeId] = Table.Key.refined
 
   val Invalid: ScopeId = ScopeId(-1)
   val Root: ScopeId = ScopeId.Root

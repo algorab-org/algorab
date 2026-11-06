@@ -42,8 +42,8 @@ object Resolver:
                 write(ResolutionError.NotANamespace(other, headPosition))
                 (SymbolId.Invalid, List(ScopeId.Invalid))
           case None =>
-            val packageId = get.nextSymbolId
-            val scopeId = get.nextScopeId
+            val packageId = get.symbols.next
+            val scopeId = get.scopes.next
             val packageSymbol = ResolutionContext.declareSymbol(Symbol.Package(
               packageId,
               head,
@@ -54,9 +54,8 @@ object Resolver:
             update(context =>
               context.copy(
                 scopes = context.scopes
-                  .updated(context.nextScopeId, ResolutionScope.empty(Some(packageId)))
-                  .updated(scopes.head, headScope.withLocalTerm(head, packageId, true)),
-                nextScopeId = context.nextScopeId + 1
+                  .withValue(ResolutionScope.empty(Some(packageId)))
+                  .withEntry(scopes.head, headScope.withLocalTerm(head, packageId, true)),
               )
             )
 

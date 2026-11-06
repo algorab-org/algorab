@@ -245,7 +245,6 @@ object Compiler:
       CompilationContext.emit(Instruction.JumpIfFalse(bodyEnd, position))
       CompilationContext.emitAll(bodyInstructions)
 
-    case Expr.For(iterator, iterable, body, _, position) => ???
     case Expr.Invalid(_, position)                       => throw AssertionError(s"Tried to compile an invalid node at $position")
 
   /**

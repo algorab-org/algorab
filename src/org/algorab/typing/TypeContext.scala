@@ -6,6 +6,7 @@ import org.algorab.ast.SymbolId
 import org.algorab.ast.resolved
 import org.algorab.ast.typed.Type
 import purelogic.*
+import org.algorab.util.Table
 
 /**
  * The context used during the typing phase.
@@ -15,7 +16,7 @@ import purelogic.*
  * @param types the type for each typed symbol, [[None]] meaning that the symbol is currently being type-inferred
  */
 case class TypeContext(
-    symbols: Map[SymbolId, Symbol],
+    symbols: Table[SymbolId, Symbol],
     declarations: Map[SymbolId, resolved.Definition],
     types: Map[SymbolId, Option[Type]]
 )
@@ -30,7 +31,7 @@ object TypeContext:
    * @param declarations the declaration of each declared symbol, used for inference during the typing phase
    * @return a new type context with standard symbols types plus the given symbols and declaration
    */
-  def default(symbols: Map[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition]): TypeContext = TypeContext(
+  def default(symbols: Table[SymbolId, Symbol], declarations: Map[SymbolId, resolved.Definition]): TypeContext = TypeContext(
     symbols = symbols,
     declarations = declarations,
     types = Map(

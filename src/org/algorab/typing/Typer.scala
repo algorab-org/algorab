@@ -12,6 +12,7 @@ import purelogic.*
 import org.algorab.ast.Symbol.Root.position
 import scala.annotation.tailrec
 import org.algorab.util.SourcePosition
+import org.algorab.util.Table
 
 /**
  * The typing phase.
@@ -463,8 +464,51 @@ object Typer:
     case resolved.Expr.While(cond, body, position) =>
       typed.Expr.While(typeExprTo(cond, typed.Type.Boolean), typeExpr(body), typed.Type.Unit, position)
     case resolved.Expr.For(iterator, iterable, body, position) =>
-      TypeContext.assignType(iterator, typed.Type.Any)
-      typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, position)
+      val typedIterable = typeExpr(iterable)
+      typedIterable.tpe match
+        case typed.Type.Apply(typed.Type.Array, List(elementType)) =>
+          TypeContext.assignType(iterator, elementType)
+          val typedBody = typeExpr(body)
+          // typed.Expr.For(iterator, typeExpr(iterable), typeExpr(body), typed.Type.Unit, position)
+          val index = get.symbols.next
+          update(ctx => ctx.copy(symbols = ctx.symbols.withValue(Symbol.Variable(index, Identifier("index"), None, true, position))))
+          typed.Expr.Block(List(
+            typed.Definition.Val(index, typed.Type.Int, typed.Expr.LInt(0, typed.Type.Int, position), true, position),
+            typed.Expr.While(
+              cond = typed.Expr.Less(
+                left = typed.Expr.VarCall(index, typed.Type.Int, position),
+                right = typed.Expr.Select(typedIterable, Identifier("size"), typed.Type.Int, typedIterable.position),
+                tpe = typed.Type.Boolean,
+                position = position
+              ),
+              body = typed.Expr.Block(List(
+                typed.Definition.Val(
+                  symbol = iterator,
+                  tpe = elementType,
+                  expr = typed.Expr.Apply(typedIterable, List(typed.Expr.VarCall(index, typed.Type.Int, position)), elementType, position),
+                  mutable = false,
+                  position = position
+                ),
+                typedBody,
+                typed.Expr.Assign(
+                  symbol = index,
+                  expr = typed.Expr.Add(
+                    left = typed.Expr.VarCall(index, typed.Type.Int, position),
+                    right = typed.Expr.LInt(1, typed.Type.Int, position),
+                    tpe = typed.Type.Int,
+                    position = position
+                  ),
+                  tpe = typed.Type.Unit,
+                  position = position
+                )
+              ), typed.Type.Unit, position),
+              tpe = typed.Type.Unit,
+              position
+            )
+          ), typed.Type.Unit, position)
+        case got =>
+          write(TypeError.simpleMismatch(List(typed.Type.Array), got, typedIterable.position))
+          typed.Expr.Invalid(typed.Type.Invalid, position)
     case resolved.Expr.Invalid(position) => typed.Expr.Invalid(typed.Type.Invalid, position)
 
   /**
@@ -476,7 +520,7 @@ object Typer:
    * @return the typed programs
    */
   def apply(
-      symbols: Map[SymbolId, Symbol],
+      symbols: Table[SymbolId, Symbol],
       declarations: Map[SymbolId, resolved.Definition]
   )(programs: Seq[resolved.Program]): AlgorabProgram[Seq[typed.Program]] =
     Typing(symbols, declarations)(programs.map(typeProgram))

@@ -26,7 +26,7 @@ def analyzeProgram(sources: (FileName, String)*): AlgorabProgram[Seq[Program]] =
   AlgorabProgram.registerSources(sourceInfos.toMap)
   val parsed = sourceInfos.map((_, infoSource) => AlgorabParser(infoSource._1, infoSource._2))
   val (resolvedContext, resolvedPrograms) = Resolver(parsed)
-  AlgorabProgram.registerSymbols(resolvedContext.symbols)
+  AlgorabProgram.registerSymbols(resolvedContext.symbols.entries)
   
   Typer(resolvedContext.symbols, resolvedContext.declarations)(resolvedPrograms)
 

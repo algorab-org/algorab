@@ -5,6 +5,7 @@ import org.algorab.ast.Symbol
 import org.algorab.ast.SymbolId
 import org.algorab.ast.resolved.Definition
 import purelogic.*
+import org.algorab.util.Table
 
 /**
  * A program to be evaluated during the typing phase.
@@ -21,5 +22,5 @@ object Typing:
    * @param program the program to evaluate
    * @return an [[AlgorabProgram]] describing the same computation, with phase-specific effects evaluated
    */
-  def apply[A](symbols: Map[SymbolId, Symbol], declarations: Map[SymbolId, Definition])(program: Typing[A]): AlgorabProgram[A] =
+  def apply[A](symbols: Table[SymbolId, Symbol], declarations: Map[SymbolId, Definition])(program: Typing[A]): AlgorabProgram[A] =
     State(TypeContext.default(symbols, declarations))(program)._2
