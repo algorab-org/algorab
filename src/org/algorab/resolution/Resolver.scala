@@ -256,11 +256,17 @@ object Resolver:
     case raw.Expr.Assign(name, expr, position) => resolved.Expr.Assign(ResolutionContext.getLocalTerm(name, position), resolveExpr(expr), position)
     case raw.Expr.Select(expr, member, position) =>
       resolveExpr(expr) match
-        case resolved.Expr.VarCall(symbol, symbolPosition) =>
-          resolved.Expr.VarCall(
-            ResolutionContext.getMemberTermOrFail(symbol, member, symbolPosition, position),
-            position
-          )
+        case resolvedExpr@resolved.Expr.VarCall(symbol, symbolPosition) =>
+          if get.symbols(symbol).isInstanceOf[Symbol.Namespace] then
+            ResolutionContext.getMemberTerm(symbol, member, symbolPosition) match
+              case None => resolved.Expr.Select(resolvedExpr, member, position)
+              case Some(memberSymbol) =>
+                resolved.Expr.VarCall(
+                  memberSymbol,
+                  position
+                )
+          else
+            resolved.Expr.Select(resolvedExpr, member, position)
 
         case resolvedExpr => resolved.Expr.Select(resolvedExpr, member, position)
 

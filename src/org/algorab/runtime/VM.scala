@@ -10,6 +10,7 @@ import org.algorab.ast.typed.Type
 import org.algorab.runtime.RuntimeContext.currentFrame
 import org.algorab.util.SourcePosition
 import purelogic.*
+import org.algorab.ast.Identifier
 
 /**
  * The runtime phase, based on a stack VM.
@@ -129,6 +130,11 @@ object VM:
       if ctx.initializedModules.contains(moduleId) then RuntimeContext.push(RuntimeContext.loadGlobal(symbol))
       else
         loadModule(moduleId, ctx.modules(moduleId))
+
+    case Instruction.Select(member, position) =>
+      if member == Identifier("size") then
+        RuntimeContext.push(Value(RuntimeContext.pop.asInstanceOf[Array[?]].size))
+      else throw AssertionError("OOP not supported yet")
 
     case Instruction.Apply(paramCount, position) =>
       val function = RuntimeContext.pop

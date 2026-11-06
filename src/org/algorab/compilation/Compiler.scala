@@ -213,6 +213,9 @@ object Compiler:
     case Expr.ToFloat(expr, position) =>
       compileExpr(expr)
       CompilationContext.emit(Instruction.ToFloat(position))
+    case Expr.Select(expr, member, _, position) =>
+      compileExpr(expr)
+      CompilationContext.emit(Instruction.Select(member, position))
     case Expr.Apply(expr, args, _, position) =>
       args.foreach(compileExpr)
       compileExpr(expr)

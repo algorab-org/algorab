@@ -2,6 +2,7 @@ package org.algorab.ast.typed
 
 import org.algorab.ast.SymbolId
 import org.algorab.util.SourcePosition
+import org.algorab.ast.Identifier
 
 /**
  * An Algorab expression.
@@ -250,6 +251,17 @@ enum Expr:
   case Apply(expr: Expr, args: List[Expr], tpe: Type, position: SourcePosition)
 
   /**
+   * A reference to the member of an expression.
+   * At this point, [[Select]] always represents an instance member:
+   * qualified names are turned into a single [[VarCall]] pointing to the right [[SymbolId]].
+   *
+   * @param expr the expression to select from
+   * @param member the name of the member to select
+   * @param position the source position of this declaration
+   */
+  case Select(expr: Expr, member: Identifier, tpe: Type, position: SourcePosition)
+
+  /**
    * A block of one or more statements.
    *
    * @param statements this block's statements
@@ -333,6 +345,7 @@ enum Expr:
     case Or(left, right, _, position)               => Or(left, right, tpe, position)
     case VarCall(symbol, _, position)               => VarCall(symbol, tpe, position)
     case Assign(symbol, expr, _, position)          => Assign(symbol, expr, tpe, position)
+    case Select(expr, member, _, position)          => Select(expr, member, tpe, position)
     case Apply(expr, args, _, position)             => Apply(expr, args, tpe, position)
     case Block(statements, _, position)             => Block(statements, tpe, position)
     case If(cond, ifTrue, ifFalse, _, position)     => If(cond, ifTrue, ifFalse, tpe, position)

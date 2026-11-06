@@ -6,6 +6,7 @@ import org.algorab.ast.SymbolId
 import org.algorab.ast.raw.Statement
 import org.algorab.ast.resolved
 import org.algorab.ast.typed
+import org.algorab.ast.Identifier
 import org.algorab.resolution.ResolutionContext
 import purelogic.*
 import org.algorab.ast.Symbol.Root.position
@@ -410,8 +411,14 @@ object Typer:
     case resolved.Expr.Assign(symbol, expr, position) =>
       typed.Expr.Assign(symbol, typeExprTo(expr, TypeContext.getType(symbol)), typed.Type.Unit, position)
     case resolved.Expr.Select(expr, member, position) =>
-      write(TypeError.UnsupportedOOP(position))
-      typed.Expr.Invalid(typed.Type.Invalid, position)
+      val typedExpr = typeExpr(expr)
+      typedExpr.tpe match
+        case typed.Type.Apply(typed.Type.Array, _) if member == Identifier("size") =>
+          typed.Expr.Select(typedExpr, member, typed.Type.Int, position)
+
+        case _ =>
+          write(TypeError.UnsupportedOOP(position))
+          typed.Expr.Invalid(typed.Type.Invalid, position)
 
     case resolved.Expr.Array(exprs, position) =>
       val typedExprs = exprs.map(typeExpr)

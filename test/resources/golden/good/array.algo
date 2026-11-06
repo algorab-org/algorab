@@ -1,5 +1,6 @@
 val array = Array("a", "b", "c")
 
+println(array.size)
 println(array(0))
 println(array(1))
 println(array(2))
