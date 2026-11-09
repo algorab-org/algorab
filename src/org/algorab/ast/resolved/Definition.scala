@@ -32,6 +32,17 @@ enum Definition:
   case Function(symbol: SymbolId, typeParams: List[SymbolId], params: List[Param], retType: Type, body: Expr, position: SourcePosition)
 
   /**
+   * A class declaration.
+   *
+   * @param name the class's name
+   * @param typeParams the constructor's type parameters
+   * @param params the constructor's parameters
+   * @param definitions the class's members
+   * @param position the source position of this definition
+   */
+  case Class(symbol: SymbolId, typeParams: List[SymbolId], params: List[Param], definitions: List[Definition], position: SourcePosition)
+
+  /**
    * The definition's unique id.
    */
   def symbol: SymbolId

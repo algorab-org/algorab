@@ -171,6 +171,9 @@ object Resolver:
     case raw.Definition.Function(name, _, _, _, body, position) =>
       if ResolutionContext.currentScope.owner.isEmpty then write(ResolutionError.NestedFunctionNotImplemented(position))
       ResolutionContext.declareTerm(Symbol.Function(_, name, None, position)).asInstanceOf[Unit]
+    case raw.Definition.Class(name, _, _, body, position) =>
+      if ResolutionContext.currentScope.owner.isEmpty then write(ResolutionError.NestedFunctionNotImplemented(position))
+      ResolutionContext.declareTerm(Symbol.Class(_, name, None, position)).asInstanceOf[Unit]
 
   /**
    * Resolve the given definition.
@@ -222,6 +225,8 @@ object Resolver:
             position
           )
       )
+
+    case raw.Definition.Class(name, typeParams, params, definitions, position) => ???
 
   /**
    * Resolve the given expression.

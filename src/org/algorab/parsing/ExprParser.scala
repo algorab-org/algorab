@@ -251,36 +251,62 @@ object ExprParser:
     )
   )
 
+  val signatureParser: AlgorabParser[Token, (List[Identifier], List[Param])] = Parser.inOrder(
+    Parser.firstOf(
+      Parser.inOrder(
+        AlgorabParser.token[Token.SquareOpen],
+        Parser.commit(
+          Parser.inOrder(
+            Parser.separatedBy(identifierParser, AlgorabParser.token[Token.Comma]),
+            AlgorabParser.token[Token.SquareClosed]
+          )
+        )
+      ),
+      Nil
+    ),
+    AlgorabParser.token[Token.ParenOpen],
+    Parser.separatedBy(
+      paramParser,
+      AlgorabParser.token[Token.Comma]
+    ),
+    AlgorabParser.token[Token.ParenClosed]
+  )
+
   val funDefParser: AlgorabParser[Token, Definition] = Definition.Function.apply.tupled(
     AlgorabParser.tokenPosition(
       Parser.inOrder(
         AlgorabParser.token[Token.Def],
         Parser.commit(Parser.inOrder(
           identifierParser,
-          Parser.firstOf(
-            Parser.inOrder(
-              AlgorabParser.token[Token.SquareOpen],
-              Parser.commit(
-                Parser.inOrder(
-                  Parser.separatedBy(identifierParser, AlgorabParser.token[Token.Comma]),
-                  AlgorabParser.token[Token.SquareClosed]
-                )
-              )
-            ),
-            Nil
-          ),
-          AlgorabParser.token[Token.ParenOpen],
-          Parser.separatedBy(
-            paramParser,
-            AlgorabParser.token[Token.Comma]
-          ),
-          AlgorabParser.token[Token.ParenClosed],
+          signatureParser,
           Parser.firstOf(
             Parser.inOrder(AlgorabParser.token[Token.Colon], Parser.commit(typeParser)),
             Type.Inferred
           ),
           AlgorabParser.token[Token.Equal],
           exprParser
+        ))
+      )
+    )
+  )
+
+  val classDefParser: AlgorabParser[Token, Definition] = Definition.Class.apply.tupled(
+    AlgorabParser.tokenPosition(
+      Parser.inOrder(
+        AlgorabParser.token[Token.Class],
+        Parser.commit(Parser.inOrder(
+          identifierParser,
+          Parser.firstOf(
+            signatureParser,
+            (Nil, Nil)
+          ),
+          Parser.firstOf(
+            Parser.inOrder(
+              AlgorabParser.token[Token.Is],
+              Parser.commit(Parser.separatedBy(definitionParser, AlgorabParser.token[Token.Newline]))
+            ),
+            Nil
+          )
         ))
       )
     )
@@ -326,7 +352,8 @@ object ExprParser:
 
   val definitionParser: AlgorabParser[Token, Definition] = Parser.firstOf(
     valDefParser,
-    funDefParser
+    funDefParser,
+    classDefParser
   )
 
   val exprParser: AlgorabParser[Token, Expr] = Parser.expect(

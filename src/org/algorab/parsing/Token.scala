@@ -306,6 +306,20 @@ enum Token derives CanEqual:
   case Mut(position: SourcePosition)
 
   /**
+   * The `class` symbol.
+   *
+   * @param position the source position of this token
+   */
+  case Class(position: SourcePosition)
+
+  /**
+   * The `is` symbol.
+   *
+   * @param position the source position of this token
+   */
+  case Is(position: SourcePosition)
+
+  /**
    * The `package` symbol.
    *
    * @param position the source position of this token
@@ -396,6 +410,8 @@ object Token:
     case Token.Def          => "def"
     case Token.Val          => "val"
     case Token.Mut          => "mut"
+    case Token.Class        => "class"
+    case Token.Is           => "is"
     case Token.Package      => "package"
     case Token.Import       => "import"
     case Token.As           => "as"

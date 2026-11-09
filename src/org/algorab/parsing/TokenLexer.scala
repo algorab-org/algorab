@@ -144,6 +144,8 @@ object TokenLexer:
     "def" -> Token.Def.apply,
     "val" -> Token.Val.apply,
     "mut" -> Token.Mut.apply,
+    "class" -> Token.Class.apply,
+    "is" -> Token.Is.apply,
     "package" -> Token.Package.apply,
     "import" -> Token.Import.apply,
     "as" -> Token.As.apply
@@ -257,8 +259,8 @@ object TokenLexer:
   )
 
   private def isLayoutStart(token: Token): Boolean = token match
-    case _: (Token.If | Token.Then | Token.Else | Token.For | Token.While | Token.Do | Token.In | Token.Equal) => true
-    case _                                                                                                     => false
+    case _: (Token.If | Token.Then | Token.Else | Token.For | Token.While | Token.Do | Token.In | Token.Equal | Token.Is) => true
+    case _                                                                                                                => false
 
   private def isLayoutEnd(token: Token): Boolean = token match
     case _: (Token.Then | Token.Else | Token.In | Token.Do) => true
