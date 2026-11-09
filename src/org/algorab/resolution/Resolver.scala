@@ -169,6 +169,7 @@ object Resolver:
     case raw.Definition.Val(name, _, expr, mutable, position) =>
       ResolutionContext.declareTerm(Symbol.Variable(_, name, None, mutable, position), initialized = !isBlock).asInstanceOf[Unit]
     case raw.Definition.Function(name, _, _, _, body, position) =>
+      if ResolutionContext.currentScope.owner.isEmpty then write(ResolutionError.NestedFunctionNotImplemented(position))
       ResolutionContext.declareTerm(Symbol.Function(_, name, None, position)).asInstanceOf[Unit]
 
   /**

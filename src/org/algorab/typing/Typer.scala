@@ -290,14 +290,17 @@ object Typer:
           case typed.Type.TypeFunction(params, output) => getFunctionType(output)
           case _                                       => throw AssertionError(s"Function definition with non-function type: $tpe")
 
-        val (resolvedParams, resolvedRetType) = getFunctionType(resolvedType)
-        typed.Definition.Function(
-          symbol,
-          params.map(_.symbol).zip(resolvedParams),
-          resolvedRetType,
-          typeExprTo(body, resolvedRetType),
-          position
-        )
+        if resolvedType == typed.Type.Invalid then
+          typed.Definition.Function(symbol, Nil, typed.Type.Invalid, typed.Expr.Invalid(typed.Type.Invalid, body.position), position)
+        else
+          val (resolvedParams, resolvedRetType) = getFunctionType(resolvedType)
+          typed.Definition.Function(
+            symbol,
+            params.map(_.symbol).zip(resolvedParams),
+            resolvedRetType,
+            typeExprTo(body, resolvedRetType),
+            position
+          )
 
   def desugarArguments(expr: resolved.Expr, args: List[resolved.Argument], position: SourcePosition): Typing[List[resolved.Expr]] =
     def getPositionalExprs(arguments: List[resolved.Argument]): List[resolved.Expr] =
@@ -369,6 +372,8 @@ object Typer:
         else
           val typedIndex = typeExprTo(argExprs.head, typed.Type.Int)
           typed.Expr.Apply(typedExpr, List(typedIndex), elementType, position)
+
+      case typed.Type.Invalid => typed.Expr.Invalid(typed.Type.Invalid, position)
 
       case got =>
         write(TypeError.ApplyOnNonFunction(got, position))

@@ -61,10 +61,18 @@ enum ResolutionError extends AlgorabError.Frontend:
    */
   case MultipleScriptFiles(position: SourcePosition)
 
+  /**
+    * Nested functions are not implemented yet.
+    *
+    * @param position the source position where the error occurred
+    */
+  case NestedFunctionNotImplemented(position: SourcePosition)
+
   override def message: Show[Str] = this match
     case UnknownName(name, _)          => str"No variable, function or type named $name found. Is it imported?"
     case ForwardDeclaration(symbol, _) => str"${symbol.name} is used before its declaration. It is declared at ${symbol.position}."
     case AlreadyDeclared(symbol, _)    => str"${symbol.name} is already declared at ${symbol.position}."
     case NotANamespace(symbol, _)      => str"${symbol.name} cannot be used as a namespace."
     case TopLevelStatementInModule(_)  => str"Top-level statements are not allowed in non-script modules."
-    case MultipleScriptFiles(_)        => str"You can only have one script file per project."
+    case MultipleScriptFiles(_)        => "You can only have one script file per project."
+    case NestedFunctionNotImplemented(_) => "You can only declare functions at the top level of the file."
