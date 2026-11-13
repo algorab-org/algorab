@@ -303,7 +303,11 @@ object ExprParser:
           Parser.firstOf(
             Parser.inOrder(
               AlgorabParser.token[Token.Is],
-              Parser.commit(Parser.separatedBy(definitionParser, AlgorabParser.token[Token.Newline]))
+              Parser.commit(Parser.inOrder(
+                AlgorabParser.token[Token.Indent],
+                Parser.separatedBy(definitionParser, AlgorabParser.token[Token.Newline]),
+                AlgorabParser.token[Token.DeIndent]
+              ))
             ),
             Nil
           )

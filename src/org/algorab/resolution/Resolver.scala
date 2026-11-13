@@ -159,11 +159,33 @@ object Resolver:
 
     resolveSelector(qualifier, importClause.selector, qualifierPosition)
 
+  def resolveParams(typeParams: List[Identifier], params: List[raw.Param]): Resolution[(List[SymbolId], List[resolved.Param])] =
+    val resolvedTypeParams = typeParams.map(name => ResolutionContext.declareType(Symbol.TypeAlias(_, name, None, position)))
+
+    val resolvedParams =
+      params.map:
+        case raw.Param.Simple(name, tpe, default, paramPosition) => resolved.Param.Simple(
+            symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
+            tpe = resolveType(tpe, paramPosition),
+            default = default.map(resolveExpr),
+            position = paramPosition
+          )
+
+        case raw.Param.Varargs(name, tpe, paramPosition) => resolved.Param.Varargs(
+            symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
+            tpe = resolveType(tpe, paramPosition),
+            position = paramPosition
+          )
+
+    params.foreach(param => ResolutionContext.initializeLocalTerm(param.name))
+
+    (resolvedTypeParams, resolvedParams)
+
   /**
    * Declare the given definition.
    *
    * @param definition the definition to declare
-   * @param isBlock whether this definition reside in a [[raw.Expr.Block]] or not
+   * @param isBlock whether this definition resides in a [[raw.Expr.Block]] or not
    */
   def declareDefinition(definition: raw.Definition, isBlock: Boolean): Resolution[Unit] = definition match
     case raw.Definition.Val(name, _, expr, mutable, position) =>
@@ -197,24 +219,7 @@ object Resolver:
       val id = ResolutionContext.getLocalTerm(name, position)
       ResolutionContext.inNewScope(ResolutionContext.getOwner(id))(
         ResolutionContext.assignDeclaration(id):
-          val resolvedTypeParams = typeParams.map(name => ResolutionContext.declareType(Symbol.TypeAlias(_, name, None, position)))
-
-          val resolvedParams =
-            params.map:
-              case raw.Param.Simple(name, tpe, default, paramPosition) => resolved.Param.Simple(
-                  symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
-                  tpe = resolveType(tpe, paramPosition),
-                  default = default.map(resolveExpr),
-                  position = paramPosition
-                )
-
-              case raw.Param.Varargs(name, tpe, paramPosition) => resolved.Param.Varargs(
-                  symbol = ResolutionContext.declareTerm(Symbol.Variable(_, name, None, false, paramPosition), initialized = false),
-                  tpe = resolveType(tpe, paramPosition),
-                  position = paramPosition
-                )
-
-          params.foreach(param => ResolutionContext.initializeLocalTerm(param.name))
+          val (resolvedTypeParams, resolvedParams) = resolveParams(typeParams, params)
 
           resolved.Definition.Function(
             id,
@@ -225,8 +230,23 @@ object Resolver:
             position
           )
       )
+    //TODO add `this` keyword, force instance symbols to explictly use `this` (check if owner is a class)
+    case raw.Definition.Class(name, typeParams, params, definitions, position) =>
+      val id = ResolutionContext.getLocalTerm(name, position)
+      ResolutionContext.inNewScope(Some(id))(
+        ResolutionContext.assignDeclaration(id):
+          val (resolvedTypeParams, resolvedParams) = resolveParams(typeParams, params)
 
-    case raw.Definition.Class(name, typeParams, params, definitions, position) => ???
+          declareAllStatements(definitions, false)
+
+          resolved.Definition.Class(
+            id,
+            resolvedTypeParams,
+            resolvedParams,
+            definitions.map(resolveDefinition),
+            position
+          )
+      )
 
   /**
    * Resolve the given expression.
